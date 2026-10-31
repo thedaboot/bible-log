@@ -30,24 +30,56 @@ for (let day = 1; day <= 7; day++) {
 }
 
 const REF = /^[가-힣]+ \d+:\d+(~\d+)?$/; // 예: '창 1:1', '창 2:10~14'
+
+// 줄바꿈 2판(docs/standards/dialogue.md). 한 줄 기준 36자, 이름은 3글자로 센다.
+const LINE = 36, TAIL = 12;
+// 문장부호(. , ? ! …)는 세지 않는다. 표준 문서의 36자 예시가 이 기준이다.
+const len = (s) => s.replaceAll('{nameVoc}', '이름이야').replaceAll('{name}', '이름이').replace(/[.,?!…]/g, '').length;
+function wrapErrors(text) {
+  const errs = [];
+  if (len(text.replaceAll('\n', ' ')) <= LINE) return text.includes('\n') ? ['36자 이하는 한 줄로 둔다'] : [];
+  // 문장 단위로 나누고, 문장 사이 구분자(공백/줄바꿈)를 기억한다.
+  const parts = text.split(/(?<=[.?!…])([ \n])/);
+  const sentences = parts.filter((_, i) => i % 2 === 0);
+  const seps = parts.filter((_, i) => i % 2 === 1);
+  if (sentences.length > 1 && !seps.includes('\n')) errs.push('두 문장 이상이 36자를 넘으면 문장 사이에서 줄을 바꾼다');
+  for (const s of sentences) {
+    const pieces = s.split('\n');
+    if (pieces.length === 1) {
+      if (len(s) > LINE) errs.push(`36자를 넘는 문장은 의미 단위에서 한 번 가른다: ${s}`);
+      continue;
+    }
+    if (len(s.replace('\n', ' ')) <= LINE) errs.push(`36자 이하 문장은 가르지 않는다: ${s}`);
+    if (pieces.length > 2) errs.push(`한 문장은 한 번만 가른다: ${s}`);
+    if (pieces.some((p) => len(p) < TAIL)) errs.push(`12자 미만 조각이 생긴다: ${s}`);
+  }
+  for (const line of text.split('\n')) {
+    if (len(line) > LINE && /[.?!…] /.test(line)) errs.push(`36자를 넘는 줄에 문장이 둘 이상이다: ${line}`);
+  }
+  return errs;
+}
+// 자체 점검: 표준 문서의 예시가 통과하고 대표 위반이 걸린다.
+assert.deepEqual(wrapErrors('여자의 후손이 뱀의 머리를 상하게 한다는 말씀, 꼭 기억해 두세요.\n나중에 다시 만나게 될 약속이에요.'), []);
+assert.deepEqual(wrapErrors('여호와 하나님께서 땅과 하늘을 만드시던 날,\n들에는 아직 풀 한 포기 없었고 땅을 일굴 사람도 없었다.'), []);
+assert.deepEqual(wrapErrors('하늘에 빛들이 있어 낮과 밤을 나누고, 계절과 날과 해를 이루어라.'), []);
+assert.equal(wrapErrors('짧은 문장.\n또 짧은 문장.').length, 1);
+assert.equal(wrapErrors('여호와 하나님께서 땅과 하늘을 만드시던 날, 들에는 아직 풀 한 포기 없었고 땅을 일굴 사람도 없었다.').length, 1);
+assert.equal(wrapErrors('이제 사람이 손을 뻗어 생명나무 열매까지 따 먹고 영원히 살게 해서는\n안 된다.').length, 1);
 let count = 0;
+const problems = [];
 for (const [where, lines] of groups) {
   for (const [i, l] of lines.entries()) {
     const at = `${where}[${i}]`;
     assert.ok(l.who in SPEAKERS, `${at}: 알 수 없는 화자 ${l.who}`);
     assert.ok(typeof l.text === 'string' && l.text.trim(), `${at}: 빈 대사`);
     assert.ok(l.ref === null || REF.test(l.ref), `${at}: 장절 형식 오류 ${l.ref}`);
-    // 줄바꿈 기준: 문장이 끝난 자리에서만, 합쳐서 30자(이름은 3글자로 셈)를 넘을 때만
-    if (l.text.includes('\n')) {
-      const plain = l.text.replaceAll('{nameVoc}', '이름이야').replaceAll('{name}', '이름이').replaceAll('\n', ' ');
-      assert.ok(plain.length > 30, `${at}: 30자 이하는 한 줄로 둔다`);
-      for (const part of l.text.split('\n').slice(0, -1)) assert.ok(/[.?!…]$/.test(part.trim()), `${at}: 문장 중간 줄바꿈`);
-    }
+    for (const e of wrapErrors(l.text)) problems.push(`${at}: ${e}`);
     // 창 1:1~2:3은 엘로힘, 창 2:4부터는 YHWH(이름표 규칙)
     if (l.ref?.startsWith('창 2:') || l.ref?.startsWith('창 3:')) assert.notEqual(l.who, 'elohim', `${at}: 창 2:4 이후는 YHWH`);
     count++;
   }
 }
+assert.deepEqual(problems, [], '줄바꿈 2판 위반');
 assert.equal(RIVERS.length, 4, '강은 네 줄기');
 assert.ok(ANIMALS.every((a) => a.name && a.size > 0), '동물 데이터 오류');
 for (const [i, q] of QUIZ.entries()) {

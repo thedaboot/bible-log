@@ -238,7 +238,7 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
   letter-spacing: -0.01em;
   word-break: keep-all;
   overflow-wrap: anywhere;
-  text-wrap: pretty;
+  text-wrap: balance;
   white-space: pre-line;
 }
 /* 글자가 한 자씩 나올 때 아직 안 나온 글자도 자리를 차지하게 해서, 단어가 줄 끝에서 튀지 않게 한다 */

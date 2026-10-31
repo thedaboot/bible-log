@@ -8,7 +8,7 @@ import { makeCreation } from './creation.js';
 import { makeEden, EDEN_RADIUS } from './eden.js';
 import { PROLOGUE } from './data/prologue.js';
 import { CREATION, DAY_NAMES } from './data/creation.js';
-import { EDEN, FALL, QUIZ } from './data/eden.js';
+import { EDEN, FALL, QUIZ, FRUITS } from './data/eden.js';
 import { load, save, reach, newState } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
 import { tween, setInstant } from './anim.js';
@@ -331,7 +331,7 @@ async function runDressingRoom() {
   state.earthLook = await askLook(state.earthLook ?? DEFAULT_EARTH, (look) => dressFigure(player, earthSpec(look)), {
     kicker: '에덴으로 내려가기 전',
     title: '지상에서의 내 모습',
-    text: '땅에서도 사람들 눈에는 보이지 않아요. 여러 시대를 함께 걸을 모습을 골라 주세요.',
+    text: '땅에서도 사람들 눈에는 보이지 않아요.\n여러 시대를 함께 걸을 모습을 골라 주세요.',
     options: LOOK.earth,
     tabs: LOOK_TABS.earth,
     page: true,
@@ -380,7 +380,7 @@ async function runEdenGarden() {
   await questFind({
     title: '에덴에서 갈라진 네 강',
     targets: eden.riverEnds,
-    text: (r) => `${r.name} 강 찾기`,
+    text: (r) => `${r.name} 강으로 이동하기`,
     radius: 2,
     onFound: (r) => say(r.lines, state),
   });
@@ -395,7 +395,7 @@ async function runEdenGarden() {
   await questFind({
     title: '아담이 이름 지은 동물',
     targets: eden.animals.map((an) => ({ name: an.userData.name, pos: an.position })),
-    text: (a) => `${a.name} 기록하기`,
+    text: (a) => `${a.name}에게 다가가 이름 듣기`,
     radius: 2.2,
     onFound: async (a) => toast(`바이블로그에 기록했어요: ${a.name}`),
   });
@@ -415,8 +415,8 @@ async function runEdenGarden() {
   });
   await questFind({
     title: '먹어도 되는 열매',
-    targets: eden.fruitTrees.slice(0, 5).map((tree, i) => ({ tree, pos: tree.position, n: i + 1 })),
-    text: (f) => `열매 ${f.n} 모으기`,
+    targets: eden.fruitTrees.slice(0, FRUITS.length).map((tree, i) => ({ tree, pos: tree.position, name: FRUITS[i] })),
+    text: (f) => `${f.name} 따서 바구니에 담기`,
     radius: 1.8,
     onFound: async (f) => {
       f.tree.userData.fruits.forEach((x) => (x.visible = false));
