@@ -1,6 +1,6 @@
 // 창조 6일의 세계. 하나의 세계를 만들어 두고 날마다 acts로 바꾼다. 모델은 모두 임시 도형이다.
 import * as THREE from 'three';
-import { mat, makeCloud, makeSpiritLight, makeTree, makeAnimal, makeBird } from './props.js';
+import { mat, makeCloud, makeSpiritLight, makeTree, makeAnimal, makeBird, animateAnimal } from './props.js';
 import { tween, easeOut, stagger } from './anim.js';
 
 const C = (hex) => new THREE.Color(hex);
@@ -130,7 +130,7 @@ export function makeCreation(scene) {
     const an = makeAnimal(color, s * 1.7, kind);
     const a = (i / ANIMALS.length) * Math.PI * 2;
     an.position.set(Math.cos(a) * 4, 0.5, Math.sin(a) * 4); // 땅이 다 솟은 뒤 윗면 높이
-    an.userData = { heading: Math.random() * Math.PI * 2, delay: i * 0.06 };
+    Object.assign(an.userData, { heading: Math.random() * Math.PI * 2, delay: i * 0.06, speed: 0, timer: Math.random() * 3, moving: false });
     scaleIn(an, 0);
     group.add(an);
     return an;
@@ -240,14 +240,25 @@ export function makeCreation(scene) {
       b.children[2].rotation.x = -Math.sin(t * 10 + u.a) * 0.6;
     }
 
+    // 동물: 걷다 서다를 번갈아 하고, 방향은 천천히 튼다(에덴과 같은 몸짓 animateAnimal)
     if (flags.animalsWander) for (const an of animals) {
       const u = an.userData;
-      u.heading += (Math.random() - 0.5) * dt * 2;
-      tmp.set(Math.cos(u.heading), 0, Math.sin(u.heading)).multiplyScalar(dt * 0.5);
-      an.position.add(tmp);
+      u.want ??= u.heading;
+      u.timer -= dt;
+      if (u.timer <= 0) {
+        u.moving = !u.moving;
+        u.timer = u.moving ? 2 + Math.random() * 3 : 1.5 + Math.random() * 3;
+        u.want = u.heading + (Math.random() - 0.5) * 2;
+      }
       // 땅 끝에 닿으면 가운데 쪽으로 돌아선다
-      if (Math.hypot(an.position.x, an.position.z) > LAND_RADIUS - 1) u.heading = Math.atan2(-an.position.z, -an.position.x);
+      if (Math.hypot(an.position.x, an.position.z) > LAND_RADIUS - 1) { u.want = Math.atan2(-an.position.z, -an.position.x); u.moving = true; }
+      const turn = Math.atan2(Math.sin(u.want - u.heading), Math.cos(u.want - u.heading));
+      u.heading += Math.max(-1.5 * dt, Math.min(1.5 * dt, turn));
+      u.speed += ((u.moving ? u.walk : 0) - u.speed) * Math.min(1, dt * 2);
+      an.position.x += Math.cos(u.heading) * u.speed * dt;
+      an.position.z += Math.sin(u.heading) * u.speed * dt;
       an.rotation.y = -u.heading;
+      animateAnimal(an, u.speed, dt, t, !u.moving);
     }
   }
 

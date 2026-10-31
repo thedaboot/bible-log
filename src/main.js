@@ -114,9 +114,11 @@ const vel = new THREE.Vector3();
 const want = new THREE.Vector3();
 function movePlayer(dt, t) {
   want.set(0, 0, 0);
-  if (mode === 'walk') {
-    const f = held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown');
-    const r = held('KeyD', 'ArrowRight') - held('KeyA', 'ArrowLeft');
+  // 'auto': 연출 중에 관찰자가 장면 앞을 비켜 걸어 나간다(키 입력은 받지 않는다). 4초 안에 못 닿으면 그 자리에 선다.
+  if (mode === 'auto' && (!target || performance.now() > autoUntil)) { target = null; mode = 'none'; }
+  if (mode === 'walk' || mode === 'auto') {
+    const f = mode === 'walk' ? held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown') : 0;
+    const r = mode === 'walk' ? held('KeyD', 'ArrowRight') - held('KeyA', 'ArrowLeft') : 0;
     // 카메라가 (+x, +z)에서 내려다보므로 화면 위쪽은 월드의 (-1, 0, -1) 방향이다. 걷기 중에는 camAngle이 0이다.
     want.set(r - f, 0, -r - f);
     if (want.lengthSq() > 0) target = null;
@@ -134,6 +136,19 @@ function movePlayer(dt, t) {
     turnFigure(player, Math.atan2(vel.x, vel.z), dt);
   }
   animateFigure(player, vel.length(), dt, t);
+}
+
+// 연출 무대: 동물과 관찰자가 장면 앞(카메라 쪽)을 비켜 준다. 연출 중에 관찰자가 무대 안에 있으면 가장자리로 걸어 나간다.
+let autoUntil = 0;
+function setStage(name) {
+  const st = eden.acts.stage(name);
+  if (!st || mode !== 'none') return;
+  const away = player.position.clone().sub(st.c).setY(0);
+  if (away.length() >= st.r) return;
+  if (away.lengthSq() < 1e-4) away.set(1, 0, -1);
+  target = st.c.clone().addScaledVector(away.normalize(), st.r + 0.8);
+  autoUntil = performance.now() + 4000;
+  mode = 'auto';
 }
 
 // 걸어서 닿으면 실행되는 지점들(문, 강 끝, 동물, 열매 나무)
@@ -384,21 +399,28 @@ async function runEden(from = 'eden') {
   await runEdenFall();
 }
 
+// 에덴의 대사: 말하는 인물이 고개를 끄덕이며 들썩인다(eden.acts.speak).
+function talk(lines, ctx, opts = {}) {
+  return say(lines, ctx, { onLine: (l, i) => { eden?.acts.speak(l.who); opts.onLine?.(l, i); } });
+}
+
 async function runEdenGarden() {
   reach(state, 'eden');
   camFocus = eden.spots.adam;
+  setStage('adam');
   await fade(0);
-  await say(EDEN.arrive, state);
+  await talk(EDEN.arrive, state);
   await eden.acts.formAdam();
   // 창 2:9 동산 가운데를 말하는 대사가 나오면 카메라가 가운데로 가고 선악을 알게 하는 나무에 빛이 내린다.
   let spotOn = false;
-  await say(EDEN.adamAfter, state, {
+  await talk(EDEN.adamAfter, state, {
     onLine: (l) => {
-      if (l.focus === 'center') { spotOn = true; camFocus = eden.spots.center; setView(10); eden.acts.spotlight(true); }
-      else if (spotOn) { spotOn = false; camFocus = eden.spots.adam; setView(13); eden.acts.spotlight(false); }
+      if (l.focus === 'center') { spotOn = true; camFocus = eden.spots.center; setView(10); setStage('center'); eden.acts.spotlight(true); }
+      else if (spotOn) { spotOn = false; camFocus = eden.spots.adam; setView(13); setStage('adam'); eden.acts.spotlight(false); }
     },
   });
   camFocus = null;
+  setStage(null);
 
   // 퀘스트 1: 네 강
   await questFind({
@@ -406,17 +428,19 @@ async function runEdenGarden() {
     targets: eden.riverEnds,
     text: (r) => `${r.name} 강으로 이동하기`,
     radius: 2,
-    onFound: (r) => say(r.lines, state),
+    onFound: (r) => talk(r.lines, state),
   });
-  await say(EDEN.riversDone, state);
+  await talk(EDEN.riversDone, state);
   camFocus = eden.spots.adam;
-  await say(EDEN.command, state);
+  setStage('adam');
+  await talk(EDEN.command, state);
 
   // 퀘스트 2: 동물 이름 짓기. 하나님께서 동물들을 아담에게 데려가시고(창 2:19), 아담이 관찰자 곁을 따라다닌다.
   await eden.acts.gatherAnimals();
-  await say(EDEN.animalsIntro, state);
+  await talk(EDEN.animalsIntro, state);
   eden.acts.releaseAnimals();
   eden.acts.follow(eden.adam, player.position);
+  setStage(null);
   camFocus = null;
   await questFind({
     title: '아담이 이름 지은 동물',
@@ -429,7 +453,7 @@ async function runEdenGarden() {
       a.animal.userData.calm = true;
       eden.acts.face(eden.adam, a.animal.position);
       camFocus = a.animal.position.clone().lerp(eden.adam.position, 0.5);
-      await say(NAMING, { ...state, animal: a.name });
+      await talk(NAMING, { ...state, animal: a.name });
       camFocus = null;
       await showCard({ title: a.name, text: '아담이 지어 준 이름 · 창 2:19', count: `${n} / ${total}` });
       a.animal.userData.calm = false;
@@ -437,22 +461,25 @@ async function runEdenGarden() {
   });
   eden.acts.follow(null);
   camFocus = eden.spots.adam;
-  await say(EDEN.animalsDone.slice(0, 1), state);
+  setStage('adam');
+  await talk(EDEN.animalsDone.slice(0, 1), state);
   // 창 2:21~22 화면 전환 없이: 아담이 잠들고, 옆구리에서 나온 빛이 하와가 된다.
   await eden.acts.sleep();
-  await say(EDEN.animalsDone.slice(1), state);
+  await talk(EDEN.animalsDone.slice(1), state);
   await eden.acts.formEve();
-  await say(EDEN.eveAfter, state);
+  await talk(EDEN.eveAfter, state);
   camFocus = null;
 
   // 퀘스트 3: 먹어도 되는 열매. 따면 열매가 관찰자의 바구니로 날아가 담긴다.
   // 선악을 알게 하는 나무에 다가가면 대천사가 한 번 알려 준다.
+  setStage(null);
   basket = makeBasket();
-  basket.position.set(-0.48, 0.62, 0.12);
+  basket.position.set(-0.6, 0.55, 0.15);
+  basket.scale.setScalar(BASKET_SIZE);
   player.add(basket);
   const warn = addTrigger(eden.knowledge.position, 2.4, async () => {
     mode = 'none';
-    await say(EDEN.forbidden, state);
+    await talk(EDEN.forbidden, state);
     mode = 'walk';
   });
   await questFind({
@@ -466,7 +493,7 @@ async function runEdenGarden() {
       const from = picked.getWorldPosition(new THREE.Vector3());
       picked.visible = false;
       const fly = eden.makeFruit(kind);
-      fly.scale.setScalar(1.6);
+      fly.scale.setScalar(2.4);
       scene.add(fly);
       const to = new THREE.Vector3();
       await tween(800, (p) => {
@@ -477,45 +504,51 @@ async function runEdenGarden() {
       scene.remove(fly);
       const inside = eden.makeFruit(kind);
       inside.position.copy(basket.userData.slots[(n - 1) % basket.userData.slots.length]);
-      inside.scale.setScalar(1.2);
+      inside.scale.setScalar(1.4);
       basket.add(inside);
       toast(`${f.name}를 바구니에 담았어요`, { gain: true });
-      await tween(320, (p) => basket.scale.setScalar(1 + Math.sin(p * Math.PI) * 0.3));
+      await tween(320, (p) => basket.scale.setScalar(BASKET_SIZE * (1 + Math.sin(p * Math.PI) * 0.3)));
     },
   });
   triggers = triggers.filter((x) => x !== warn);
-  await say(EDEN.fruitDone, state);
+  await talk(EDEN.fruitDone, state);
 }
 
 let basket = null;
+const BASKET_SIZE = 1.6; // 바구니와 담긴 열매가 멀리서도 보이게 키운다
 
 async function runEdenFall() {
   reach(state, 'fall');
   stopWalk();
   eden.acts.follow(null);
   if (basket) { player.remove(basket); basket = null; }
+  // 타락이 시작되면 동물들은 저마다 자기 터로 걸어 돌아가고, 연출 무대(장면 앞)를 비켜 준다.
+  eden.acts.sendHome();
+  setStage('knowledge');
   camFocus = eden.spots.knowledge;
   await eden.acts.gatherAtTree();
-  await say(FALL.serpent, state);
+  await talk(FALL.serpent, state);
   await eden.acts.eat();
-  await say(FALL.ate, state);
+  await talk(FALL.ate, state);
   await eden.acts.fall();
   eden.acts.figLeaves();
-  await say(FALL.eyes, state);
+  await talk(FALL.eyes, state);
   camFocus = eden.spots.hide;
+  setStage('hide');
   await Promise.all([eden.acts.hide(), eden.acts.presence()]);
-  await say(FALL.trial.slice(0, 1), state); // "네가 어디 있느냐?"
+  await talk(FALL.trial.slice(0, 1), state); // "네가 어디 있느냐?"
   await eden.acts.comeOut();
-  await say(FALL.trial.slice(1), state);
-  await say(FALL.curse, state);
+  await talk(FALL.trial.slice(1), state);
+  await talk(FALL.curse, state);
   await eden.acts.clothe();
-  await say(FALL.clothed, state);
+  await talk(FALL.clothed, state);
   // 추방: 두 사람을 따라 동쪽 문 밖 거친 땅까지 카메라가 간다.
   camFocus = eden.adam.position;
+  setStage('gate');
   setView(16);
   await eden.acts.expel();
   camFocus = eden.spots.gate;
-  await say(FALL.guarded, state);
+  await talk(FALL.guarded, state);
   setView(13);
   await askQuiz(QUIZ);
   await fade(1);

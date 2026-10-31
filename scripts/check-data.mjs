@@ -5,7 +5,7 @@ import { PROLOGUE } from '../src/data/prologue.js';
 import { CREATION, DAY_NAMES } from '../src/data/creation.js';
 import { EDEN, FALL, RIVERS, ANIMALS, QUIZ } from '../src/data/eden.js';
 import { SPEAKERS, vocative, fill, withRa } from '../src/text.js';
-import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES } from '../src/eden.js';
+import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, STAGES, inFrontOfScene } from '../src/eden.js';
 import { load, save, reach, newState } from '../src/save.js';
 import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
@@ -181,10 +181,86 @@ assert.ok(BRIDGES.every((b) => free(b.pos.clone())), '다리 위가 막혀 있�
 // 동물은 한곳에 몰리지 않는다: 터끼리 4 이상 떨어져 있고, 강으로 나뉜 구역 세 곳 이상에 흩어져 있다
 const homes = eden.animals.map((an) => an.userData.home);
 for (const [i, h] of homes.entries()) for (const g of homes.slice(i + 1)) assert.ok(h.distanceTo(g) >= 4, '동물 터가 너무 가까움');
-// 구역: 샘에서 본 방향이 어느 두 강 사이에 드는지(강 끝 방향으로 나눈다)
-const splitAt = RIVER_SEGMENTS[0][0];
-const ang = (p) => (Math.atan2(p.z - splitAt.z, p.x - splitAt.x) + Math.PI * 2) % (Math.PI * 2);
-const cuts = RIVER_SEGMENTS.filter((_, i) => i % 2).map(([, end]) => ang(end)).sort((x, y) => x - y);
-const sector = (p) => cuts.filter((c) => ang(p) > c).length % cuts.length;
+// 구역: 다리를 빼고 물(강, 샘)만 막았을 때 격자 탐색으로 이어지는 땅. 강이 꺾여도 정확하다.
+const wet = (p) => p.length() > EDEN_RADIUS || p.distanceTo(RIVER_SEGMENTS[0][0]) < 1.25
+  || RIVER_SEGMENTS.some(([a, b]) => { const ab = b.clone().sub(a); const t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / ab.lengthSq())); return p.distanceTo(a.clone().addScaledVector(ab, t)) < 0.45; });
+const regionId = new Map();
+let regions = 0;
+const key = (p) => [Math.round((p.x + EDEN_RADIUS) / STEP), Math.round((p.z + EDEN_RADIUS) / STEP)];
+for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
+  if (regionId.has(`${i},${j}`) || wet(cell(i, j))) continue;
+  regions++;
+  const q = [[i, j]];
+  regionId.set(`${i},${j}`, regions);
+  while (q.length) {
+    const [a, b] = q.pop();
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const k = [a + di, b + dj];
+      if (k[0] < 0 || k[1] < 0 || k[0] > N || k[1] > N || regionId.has(k.join()) || wet(cell(...k))) continue;
+      regionId.set(k.join(), regions);
+      q.push(k);
+    }
+  }
+}
+const sector = (p) => regionId.get(key(p).join()) ?? -1;
 assert.ok(new Set(homes.map(sector)).size >= 3, '동물이 한 구역에 몰려 있음');
+// 동물의 터는 연출 무대 밖에 있어야 한다(연출 중 장면을 가리지 않게)
+for (const an of eden.animals) for (const [k, st] of Object.entries(STAGES)) {
+  assert.ok(an.userData.home.distanceTo(st.c) > st.r + 0.3, `${an.userData.name}의 터가 무대(${k}) 안에 있음`);
+}
+// 연출에서 인물이 서는 자리와 카메라 사이에는 나무가 없다(나무가 장면을 가리지 않게)
+for (const o of eden.group.children) {
+  if (o.userData.fruits && o !== eden.knowledge && inFrontOfScene(o.position)) assert.fail(`장면 앞에 나무가 있음: (${o.position.x.toFixed(1)}, ${o.position.z.toFixed(1)})`);
+}
+// 그룹과 불 칼은 문기둥과 겹치지 않는다
+const posts = eden.group.children.filter((o) => o.geometry?.parameters?.height === 2.6);
+assert.equal(posts.length, 2, '문기둥 두 개');
+for (const c of eden.cherubim) for (const p of posts) assert.ok(Math.hypot(c.position.x - p.position.x, c.position.z - p.position.z) > 1.2, '그룹이 문기둥과 겹침');
 console.log(`OK: 에덴 충돌 점검 통과(걸어서 닿는 칸 ${reachable.length}개)`);
+
+// 동물은 자기 터가 있는 강 이쪽에서만 돌아다닌다(다리를 건너 연출 자리 쪽으로 넘어오지 않게)
+for (const an of eden.animals) {
+  for (let i = 0; i < 300; i++) assert.equal(sector(eden.pickDest(an)), sector(an.userData.home), `${an.userData.name}가 강 건너를 고름`);
+}
+console.log('OK: 동물이 고르는 자리 점검 통과(자기 구역 유지)');
+
+// 동물을 아담 곁으로 모았다가 터로 돌려보내면, 다리를 건너 걸어서(순간 이동 없이) 자기 터에 닿는다
+{
+  const e3 = makeEden({ background: new THREE.Color() });
+  let tt = 0, jumps = 0;
+  const last = e3.animals.map((an) => an.position.clone());
+  const run = (sec) => {
+    for (let i = 0; i < sec / 0.05; i++) {
+      tt += 0.05;
+      e3.update(0.05, tt, null);
+      e3.animals.forEach((an, k) => { if (an.position.distanceTo(last[k]) > 0.5) { jumps++; console.log(`  순간 이동: ${an.userData.name} t=${tt.toFixed(1)}`); } last[k].copy(an.position); });
+    }
+  };
+  e3.acts.gatherAnimals();
+  run(40);
+  e3.acts.sendHome();
+  run(60);
+  e3.animals.forEach((an) => assert.ok(an.position.distanceTo(an.userData.home) < 4.5, `${an.userData.name}가 터로 돌아가지 못함`));
+  assert.equal(jumps, 0, `동물이 ${jumps}번 순간 이동함`);
+  console.log('OK: 동물 모이기·돌아가기 점검 통과(다리로 건넘, 순간 이동 없음)');
+}
+
+// 아담이 관찰자를 따라 강 건너까지 다리로 걸어서 따라온다(순간 이동 없이)
+{
+  const e4 = makeEden({ background: new THREE.Color() });
+  const target = new THREE.Vector3(-2, 0, -10); // 비손 강 끝 근처: 출발 구역에서 다리를 건너야 한다
+  e4.adam.visible = true;
+  e4.adam.position.set(4, 0, 3);
+  e4.acts.follow(e4.adam, target);
+  let tt = 0, jumps = 0;
+  const last = e4.adam.position.clone();
+  for (let i = 0; i < 1200; i++) {
+    tt += 0.05;
+    e4.update(0.05, tt, target);
+    if (e4.adam.position.distanceTo(last) > 0.5) jumps++;
+    last.copy(e4.adam.position);
+  }
+  assert.ok(e4.adam.position.distanceTo(target) < 3, `아담이 따라오지 못함(거리 ${e4.adam.position.distanceTo(target).toFixed(1)})`);
+  assert.equal(jumps, 0, `아담이 ${jumps}번 순간 이동함`);
+  console.log('OK: 아담 따라오기 점검 통과(다리로 건넘)');
+}

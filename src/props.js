@@ -309,16 +309,22 @@ export function lookSpec(look) {
 }
 
 // 걷기: 위아래 흔들림 + 앞으로 기울기 + 좌우 흔들림. 멈춰 있을 때는 숨쉬듯 아주 조금 움직인다.
-export function animateFigure(fig, speed, dt, t) {
-  const { rig } = fig.userData;
-  const s = Math.min(1, speed / 4);
-  fig.userData.phase += speed * dt * 3.4;
-  const p = fig.userData.phase;
-  rig.position.y = Math.abs(Math.sin(p)) * 0.13 * s;
-  rig.rotation.x = 0.14 * s;
-  rig.rotation.z = Math.sin(p) * 0.06 * s;
-  const h = fig.userData.height ?? 1;
-  rig.scale.set(h, h * (1 + Math.sin(t * 2) * 0.015 * (1 - s)), h);
+// ref는 흔들림이 가장 커지는 속도다. 관찰자는 4, 천천히 걷는 아담·하와는 1.3을 넘겨 같은 생동감을 준다.
+// 멈춰 있을 때는 숨 쉬며 무게를 좌우로 옮기고, userData.talk(0~1)가 있으면 말하듯 고개를 끄덕이며 들썩인다.
+export function animateFigure(fig, speed, dt, t, ref = 4) {
+  const u = fig.userData;
+  const { rig } = u;
+  const s = Math.min(1, speed / ref);
+  u.phase += speed * dt * 3.4 * (4 / ref);
+  const p = u.phase;
+  const idle = 1 - s;
+  const talk = u.talk ?? 0;
+  if (talk > 0) u.talk = Math.max(0, talk - dt * 0.9);
+  rig.position.y = Math.abs(Math.sin(p)) * 0.13 * s + Math.abs(Math.sin(t * 9)) * 0.05 * talk;
+  rig.rotation.x = 0.14 * s + Math.sin(t * 7) * 0.06 * talk;
+  rig.rotation.z = Math.sin(p) * 0.06 * s + Math.sin(t * 0.9 + (u.seed ??= Math.random() * 6)) * 0.025 * idle;
+  const h = u.height ?? 1;
+  rig.scale.set(h, h * (1 + Math.sin(t * 2 + u.seed) * 0.015 * idle), h);
 }
 
 // 방향을 부드럽게 돌린다(가장 짧은 쪽으로).
@@ -411,7 +417,7 @@ export function makeTree(kind = 'round', fruit = null) {
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
       const f = fruit ? makeFruit(fruit) : new THREE.Mesh(new THREE.IcosahedronGeometry(0.09 * k, 0), fruitM);
-      if (fruit) f.scale.setScalar(1.3);
+      if (fruit) f.scale.setScalar(1.7);
       f.position.set(Math.cos(a) * 0.5 * k, (0.8 + (i % 2) * 0.25) * k, Math.sin(a) * 0.5 * k);
       g.add(f);
       g.userData.fruits.push(f);
@@ -443,7 +449,7 @@ function makePalm() {
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + 0.4;
     const f = makeFruit('date');
-    f.scale.setScalar(1.5);
+    f.scale.setScalar(1.9);
     f.position.set(Math.cos(a) * 0.22, 1.72, Math.sin(a) * 0.22);
     g.add(f);
     g.userData.fruits.push(f);
@@ -510,8 +516,16 @@ export function makeThornBush(s = 1) {
 
 // 동물: 머리는 +x 쪽이다. kind마다 실루엣 특징을 더해 그 동물로 바로 알아보게 한다(docs/standards/art-3d.md).
 // kind: 'lion' | 'sheep' | 'elephant' | 'deer' | 'horse' | 'bear' | 'generic'
+// 다리는 엉덩이에 축을 둔 그룹(userData.legs)이라 걸을 때 앞뒤로 흔든다. 나머지는 body 그룹에 모은다.
+const ANIMAL_GAIT = { // walk: 걷는 속도, run: 서두를 때 속도
+  elephant: { walk: 0.55, run: 1.1 }, sheep: { walk: 0.6, run: 1.4 }, lion: { walk: 0.8, run: 1.8 },
+  bear: { walk: 0.65, run: 1.4 }, deer: { walk: 1.0, run: 2.2 }, horse: { walk: 1.0, run: 2.2 }, generic: { walk: 0.7, run: 1.5 },
+};
 export function makeAnimal(color, s, kind = 'generic') {
   const g = new THREE.Group();
+  const body = new THREE.Group();
+  g.add(body);
+  const legsOut = [];
   const m = mat(color);
   const dark = mat(new THREE.Color(color).multiplyScalar(0.55));
   const light = mat(new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.45));
@@ -519,11 +533,26 @@ export function makeAnimal(color, s, kind = 'generic') {
     const b = new THREE.Mesh(new THREE.BoxGeometry(w * s, h * s, d * s), material);
     b.position.set(x * s, y * s, z * s);
     b.rotation.z = rz;
-    g.add(b);
+    body.add(b);
     return b;
   };
+  const blob = (geo, x, y, z, material = m) => {
+    const b = new THREE.Mesh(geo, material);
+    b.position.set(x * s, y * s, z * s);
+    body.add(b);
+    return b;
+  };
+  // 순서: (-x,-z), (-x,+z), (+x,-z), (+x,+z). 0·3번과 1·2번이 대각선 짝으로 함께 움직인다.
   const legs = (w, h, xs, zs, material = m) => {
-    for (const x of [-xs, xs]) for (const z of [-zs, zs]) box(w, h, w, x, h / 2, z, material);
+    for (const x of [-xs, xs]) for (const z of [-zs, zs]) {
+      const hip = new THREE.Group();
+      hip.position.set(x * s, h * s, z * s);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(w * s, h * s, w * s), material);
+      leg.position.y = (-h / 2) * s;
+      hip.add(leg);
+      g.add(hip);
+      legsOut.push(hip);
+    }
   };
   switch (kind) {
     case 'deer': { // 가는 다리, 짧은 흰 꼬리, 가지 친 뿔
@@ -546,9 +575,7 @@ export function makeAnimal(color, s, kind = 'generic') {
       const mane = mat(0x8a5a2a);
       legs(0.14, 0.45, 0.34, 0.15);
       box(0.95, 0.48, 0.44, 0, 0.68, 0);
-      const ruff = new THREE.Mesh(new THREE.IcosahedronGeometry(0.44 * s, 0).scale(0.75, 1, 1.05), mane);
-      ruff.position.set(0.5 * s, 0.95 * s, 0);
-      g.add(ruff);
+      blob(new THREE.IcosahedronGeometry(0.44 * s, 0).scale(0.75, 1, 1.05), 0.5, 0.95, 0, mane);
       box(0.34, 0.34, 0.34, 0.7, 0.93, 0);
       box(0.14, 0.14, 0.2, 0.86, 0.86, 0, light);
       box(0.06, 0.55, 0.06, -0.6, 0.68, 0, m, 0.9);
@@ -573,9 +600,7 @@ export function makeAnimal(color, s, kind = 'generic') {
     case 'sheep': { // 둥근 털 덩어리 몸, 작은 머리
       const face = mat(0x3a3330);
       legs(0.07, 0.36, 0.26, 0.13, face);
-      const wool = new THREE.Mesh(new THREE.IcosahedronGeometry(0.46 * s, 1).scale(1.25, 0.9, 1), m);
-      wool.position.y = 0.66 * s;
-      g.add(wool);
+      blob(new THREE.IcosahedronGeometry(0.46 * s, 1).scale(1.25, 0.9, 1), 0, 0.66, 0);
       box(0.22, 0.24, 0.2, 0.6, 0.78, 0, face);
       for (const z of [-1, 1]) box(0.06, 0.06, 0.14, 0.55, 0.86, z * 0.15, face);
       break;
@@ -593,16 +618,10 @@ export function makeAnimal(color, s, kind = 'generic') {
     }
     case 'bear': { // 둥근 귀, 묵직한 몸
       legs(0.2, 0.4, 0.32, 0.18);
-      const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 * s, 1).scale(1.15, 0.75, 0.8), m);
-      body.position.y = 0.72 * s;
-      g.add(body);
+      blob(new THREE.IcosahedronGeometry(0.5 * s, 1).scale(1.15, 0.75, 0.8), 0, 0.72, 0);
       box(0.4, 0.36, 0.38, 0.62, 0.92, 0);
       box(0.15, 0.14, 0.18, 0.86, 0.87, 0, light);
-      for (const z of [-1, 1]) {
-        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.08 * s, 6, 5), m);
-        ear.position.set(0.56 * s, 1.13 * s, z * 0.14 * s);
-        g.add(ear);
-      }
+      for (const z of [-1, 1]) blob(new THREE.SphereGeometry(0.08 * s, 6, 5), 0.56, 1.13, z * 0.14);
       break;
     }
     default: {
@@ -611,7 +630,22 @@ export function makeAnimal(color, s, kind = 'generic') {
       box(0.4, 0.4, 0.38, 0.6, 0.9, 0);
     }
   }
+  const gait = ANIMAL_GAIT[kind] ?? ANIMAL_GAIT.generic;
+  g.userData = { body, legs: legsOut, size: s, kind, walk: gait.walk, run: gait.run, phase: Math.random() * 6, graze: 0 };
   return g;
+}
+
+// 동물의 몸짓: speed는 이번 프레임의 실제 이동 속도. 걸을 때는 대각선 짝 다리를 흔들고 몸을 살짝 오르내리며,
+// 멈춰 있을 때 grazing이면 몸을 앞으로 숙여 풀을 뜯는다. 큰 동물일수록 걸음이 느리고 보폭이 크다.
+export function animateAnimal(an, speed, dt, t, grazing = false) {
+  const u = an.userData;
+  if (!u.legs) return;
+  const k = Math.min(1, speed / u.walk);
+  u.phase += (speed / u.size) * dt * 7;
+  u.legs.forEach((hip, i) => (hip.rotation.z = Math.sin(u.phase + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.5 * k));
+  u.graze += ((grazing && k < 0.05 ? 1 : 0) - u.graze) * Math.min(1, dt * 2);
+  u.body.position.y = Math.abs(Math.sin(u.phase)) * 0.04 * u.size * k + Math.sin(t * 1.6 + u.phase) * 0.006 * u.size;
+  u.body.rotation.z = -0.16 * u.graze + Math.sin(t * 3 + u.phase) * 0.03 * u.graze + Math.sin(u.phase * 2) * 0.02 * k;
 }
 
 export function makeBird() {

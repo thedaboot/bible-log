@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import {
   PAL, mat, makeTree, makeAnimal, makeBird, makeFigure, dressFigure, animateFigure, turnFigure,
-  makeLightPillar, makeSpiritLight, makeSerpent, makeAngel, makeBridge, makeThornBush, makeFruit,
+  makeLightPillar, makeSpiritLight, makeSerpent, makeAngel, makeBridge, makeThornBush, makeFruit, animateAnimal,
 } from './props.js';
 import { tween, easeOut } from './anim.js';
 import { RIVERS, ANIMALS, FRUITS } from './data/eden.js';
@@ -26,15 +26,34 @@ const HIDE_TREE = V(6, -2.2);
 const EVE_AT_TREE = CENTER_KNOWLEDGE.clone().add(V(1.9, 1.7));
 const ADAM_AT_TREE = CENTER_KNOWLEDGE.clone().add(V(3.1, 0.5));
 const HIDE_OUT = [HIDE_TREE.clone().add(V(1.5, 1.2)), HIDE_TREE.clone().add(V(0.7, 1.8))];
+// 연출에서 인물이 서는 자리. 이 자리와 카메라 사이(+x, +z 쪽 띠)에는 나무를 두지 않는다(inFrontOfScene).
+const SCENE_SPOTS = [ADAM_SPOT, EVE_SPOT, EVE_AT_TREE, ADAM_AT_TREE, ...HIDE_OUT, CENTER_KNOWLEDGE];
+export function inFrontOfScene(p) {
+  return SCENE_SPOTS.some((s) => {
+    const dx = p.x - s.x, dz = p.z - s.z;
+    const depth = (dx + dz) / Math.SQRT2, side = Math.abs(dx - dz) / Math.SQRT2;
+    return depth > 0 && depth < 7 && side < 1.4;
+  });
+}
 const EAST_GATE = V(9.5, 6.5);
 const OUT_DIR = EAST_GATE.clone().normalize(); // 동쪽 문 밖으로 나가는 방향
 const WASTE = EAST_GATE.clone().addScaledVector(OUT_DIR, 9); // 동산 밖 거친 땅의 가운데
 // 먹어도 되는 열매 나무(FRUITS와 같은 순서). 대추야자는 키가 커서 하와 장면을 가리지 않게 강 건너에 둔다.
-const FRUIT_SPOTS = [V(3.5, -2.6), V(9.5, 0.5), V(10, -3), V(4.2, 7.8), V(-1.2, 5.2)];
+const FRUIT_SPOTS = [V(3.5, -2.6), V(2, 4.6), V(10, -3), V(4.2, 7.8), V(-1.2, 5.2)];
 // 동물의 터(ANIMALS와 같은 순서). 아담이 지음 받기 전부터 동산을 돌아다닌다(창 1:24~25).
 // 한곳에 몰리지 않게 네 구역에 나눠 두고, 저마다 자기 터 둘레(HOME_RANGE)에서만 돌아다닌다.
-const ANIMAL_SPOTS = [V(5, -8), V(6, 5.8), V(10, 2), V(-3.5, 5), V(-9, -6), V(-1, 8.5)];
+// 터는 연출 지점과 카메라 사이(연출 지점에서 +x, +z 쪽)를 피해서 둔다.
+const ANIMAL_SPOTS = [V(5, -8), V(5.8, 9.6), V(9, -7.6), V(-3.5, 5), V(-9, -6), V(-1, 8.5)];
 const HOME_RANGE = 3.5;
+// 무대: 연출 중에 동물이 들어오지 않는 자리. 카메라가 (+x, +z)에서 내려다보므로 연출 지점보다 카메라 쪽으로 넓게 잡는다.
+const toCam = (p, k = 1.4) => p.clone().add(V(k, k));
+export const STAGES = {
+  adam: { c: toCam(ADAM_SPOT.clone().lerp(EVE_SPOT, 0.5)), r: 3.8 },
+  center: { c: toCam(CENTER), r: 3.8 },
+  knowledge: { c: toCam(EVE_AT_TREE.clone().lerp(ADAM_AT_TREE, 0.5)), r: 4 },
+  hide: { c: toCam(HIDE_TREE, 1.8), r: 4.2 },
+  gate: { c: EAST_GATE.clone(), r: 4.5 },
+};
 
 function closestOnSegment(p, a, b) {
   const ab = b.clone().sub(a), t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / ab.lengthSq()));
@@ -179,7 +198,7 @@ export function makeEden(scene) {
   const clear = (p) => p.length() < 3.4 || keep.some((k) => p.distanceTo(k) < 2.4)
     || BRIDGES.some((b) => p.distanceTo(b.pos) < 2.6)
     || RIVER_SEGMENTS.some(([a, b]) => p.distanceTo(closestOnSegment(p, a, b)) < 1.4)
-    || p.distanceTo(SPLIT) < 2.2 || RIVER_ENDS.some((e) => p.distanceTo(e) < 2.6)
+    || p.distanceTo(SPLIT) < 2.2 || RIVER_ENDS.some((e) => p.distanceTo(e) < 2.6) || inFrontOfScene(p)
     || colliders.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < 1.6);
   let placed = 0;
   for (let tries = 0; placed < 34 && tries < 800; tries++) {
@@ -213,7 +232,11 @@ export function makeEden(scene) {
   const animals = ANIMALS.map((info, i) => {
     const an = makeAnimal(info.color, info.size, info.kind);
     an.position.copy(ANIMAL_SPOTS[i]);
-    an.userData = { name: info.name, radius: 0.45 * info.size, heading: rand() * Math.PI * 2, goal: null, calm: false, home: ANIMAL_SPOTS[i].clone(), best: Infinity, stuck: 0 };
+    const yaw = rand() * Math.PI * 2;
+    Object.assign(an.userData, {
+      name: info.name, radius: 0.45 * info.size, home: ANIMAL_SPOTS[i].clone(),
+      yaw, yawWant: yaw, speed: 0, state: 'idle', wait: rand() * 3, dest: null, goal: null, calm: false, best: Infinity, stuck: 0,
+    });
     group.add(an);
     return an;
   });
@@ -238,13 +261,13 @@ export function makeEden(scene) {
   rib.visible = false;
   const cherubim = [-1.3, 1.3].map((dx) => {
     const c = makeAngel({ cherub: true });
-    c.position.copy(EAST_GATE).addScaledVector(side, dx);
+    c.position.copy(EAST_GATE).addScaledVector(OUT_DIR, 2).addScaledVector(side, dx * 2); // 문기둥(±1.6) 바깥, 문 밖 2만큼
     c.rotation.y = Math.atan2(OUT_DIR.x, OUT_DIR.z);
     c.visible = false;
     return c;
   });
   const sword = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 0.2), mat(0xff8a3a, { emissive: 0xff5a1a, emissiveIntensity: 1 }));
-  sword.position.copy(EAST_GATE).setY(1.6);
+  sword.position.copy(EAST_GATE).addScaledVector(OUT_DIR, 1.1).setY(1.6); // 도는 반지름 1.1: 기둥 사이를 지나지 않는다
   sword.visible = false;
   const swordLight = new THREE.PointLight(0xff7a2a, 10, 8);
   swordLight.position.copy(sword.position);
@@ -264,8 +287,10 @@ export function makeEden(scene) {
   // ---------- 인물 이동: walkTo(fig, 목표) → 도착하면 끝나는 Promise. 장애물은 돌아가고, 막혀서 1.5초 넘게 못 가면 목표에 둔다. ----------
   const movers = new Map();
   function walkTo(fig, to, speed = 1.6) {
+    fig.userData.faceYaw = undefined;
     return new Promise((resolve) => movers.set(fig, { to: to.clone().setY(0), speed, resolve, best: Infinity, stuck: 0 }));
   }
+  const NPC_REF = 1.3; // 아담·하와는 천천히 걸어도 관찰자만큼 흔들리며 걷는다(animateFigure의 ref)
   // 따라다니기: 동물 퀘스트 동안 아담이 관찰자 곁을 따라다닌다.
   let follow = null;
   const FOLLOW_OFFSET = V(-1.1, 1.1);
@@ -273,7 +298,13 @@ export function makeEden(scene) {
   // ---------- 연출 ----------
   const v = new THREE.Vector3();
   const handOf = (fig) => { fig.updateMatrixWorld(true); return fig.localToWorld(v.set(0.36, 0.8, 0.22)).clone(); };
-  const face = (fig, p) => { fig.rotation.y = Math.atan2(p.x - fig.position.x, p.z - fig.position.z); };
+  // 바라보기: 기본은 천천히 돌아선다. instant면 바로 돌린다(손 위치를 바로 써야 할 때).
+  const face = (fig, p, instant = false) => {
+    const yaw = Math.atan2(p.x - fig.position.x, p.z - fig.position.z);
+    if (instant) fig.rotation.y = yaw;
+    fig.userData.faceYaw = yaw;
+  };
+  let stage = null;
   const arc = (obj, from, to, ms, lift = 0.6) => tween(ms, (p) => obj.position.lerpVectors(from, to, easeOut(p)).setY(from.y + (to.y - from.y) * p + Math.sin(p * Math.PI) * lift));
 
   const materials = new Map(); // 타락 연출: 모든 색을 흐리고 차갑게 바꾸기 위해 원래 색을 기억한다
@@ -309,7 +340,7 @@ export function makeEden(scene) {
     gatherAnimals: () => {
       animals.forEach((an, i) => {
         const a = (i / animals.length) * Math.PI * 2;
-        Object.assign(an.userData, { goal: ADAM_SPOT.clone().add(V(Math.cos(a) * 2.8, Math.sin(a) * 2.8)), best: Infinity, stuck: 0 });
+        goTo(an, ADAM_SPOT.clone().add(V(Math.cos(a) * 2.8, Math.sin(a) * 2.8)), false);
       });
       return Promise.race([
         new Promise((r) => { const id = setInterval(() => { if (animals.every((an) => !an.userData.goal)) { clearInterval(id); r(); } }, 100); }),
@@ -317,7 +348,17 @@ export function makeEden(scene) {
       ]);
     },
     // 이름 짓기가 시작되면 동물들이 저마다 자기 터로 돌아간다(관찰자가 동산 곳곳을 다니며 찾는다).
-    releaseAnimals: () => animals.forEach((an) => { Object.assign(an.userData, { goal: an.userData.home.clone(), back: true, calm: false, best: Infinity, stuck: 0 }); }),
+    releaseAnimals: () => sendHome(),
+    // 타락이 시작되면 동물들이 저마다 자기 터로 걸어 돌아간다.
+    sendHome: () => sendHome(),
+    // 연출 무대: 이름(STAGES의 키)을 주면 동물들이 그 자리를 비켜 준다. null이면 푼다.
+    stage: (name) => (stage = name ? STAGES[name] : null),
+    // 대사가 나올 때 말하는 인물이 고개를 끄덕이며 들썩인다.
+    speak: (who) => {
+      const fig = { adam, eve }[who];
+      if (fig?.visible) fig.userData.talk = 1;
+      if (who === 'serpent') serpent.userData.talk = 1;
+    },
     follow: (fig, target) => { follow = target ? { fig, target } : null; },
     walkTo,
     face,
@@ -354,7 +395,6 @@ export function makeEden(scene) {
     },
     gatherAtTree: async () => {
       serpent.visible = true;
-      animals.forEach((an) => { an.userData.goal = null; an.userData.calm = true; });
       await Promise.all([
         walkTo(eve, EVE_AT_TREE),
         walkTo(adam, ADAM_AT_TREE),
@@ -369,14 +409,14 @@ export function makeEden(scene) {
       knowledge.remove(f);
       group.add(f);
       f.scale.setScalar(1.8);
-      face(eve, CENTER_KNOWLEDGE);
+      face(eve, CENTER_KNOWLEDGE, true);
       await arc(f, from, handOf(eve), 900, 0.3);
       held = { fruit: f, fig: eve };
       await tween(500, () => {});
       await tween(400, (p) => f.scale.setScalar(1.8 - 0.5 * p)); // 한 입 먹는다
       await walkTo(adam, eve.position.clone().add(V(0.9, -0.3)), 1.4);
-      face(eve, adam.position);
-      face(adam, eve.position);
+      face(eve, adam.position, true);
+      face(adam, eve.position, true);
       held = null;
       await arc(f, f.position.clone(), handOf(adam), 800, 0.25);
       held = { fruit: f, fig: adam };
@@ -450,6 +490,57 @@ export function makeEden(scene) {
     eve.scale.setScalar(1);
   }
 
+  const inStage = (p, pad = 0) => stage && p.distanceTo(stage.c) < stage.r + pad;
+  // a에서 b로 곧게 가는 길이 강을 건너는지(다리 포함). 동물은 자기 터가 있는 강 이쪽에서만 돌아다닌다.
+  const crossesRiver = (a, b) => {
+    const n = Math.max(1, Math.ceil(a.distanceTo(b) / 0.3));
+    for (let i = 0; i <= n; i++) {
+      const q = a.clone().lerp(b, i / n);
+      if (q.distanceTo(SPLIT) < 1.6 || RIVER_SEGMENTS.some(([s, e]) => q.distanceTo(closestOnSegment(q, s, e)) < RIVER_HALF + 0.2)) return true;
+    }
+    return false;
+  };
+  // 강 건너로 갈 때는 다리 어귀 → 건너편 어귀 → 목표 순서로 간다. 강을 두 번 건너야 하면 다리 두 개를 지난다.
+  // 그래도 길이 없으면 곧장 가고, 막히면 목표에 둔다.
+  const ends = (br) => {
+    const n = V(-Math.sin(br.angle), Math.cos(br.angle)); // 강에 수직인 방향
+    return [[br.pos.clone().addScaledVector(n, 1.7), br.pos.clone().addScaledVector(n, -1.7)], [br.pos.clone().addScaledVector(n, -1.7), br.pos.clone().addScaledVector(n, 1.7)]];
+  };
+  function routeTo(from, to) {
+    if (!crossesRiver(from, to)) return [to.clone()];
+    for (const br of BRIDGES) for (const [a, b] of ends(br)) {
+      if (!crossesRiver(from, a) && !crossesRiver(b, to)) return [a, b, to.clone()];
+    }
+    for (const b1 of BRIDGES) for (const [a1, c1] of ends(b1)) {
+      if (crossesRiver(from, a1)) continue;
+      for (const b2 of BRIDGES) for (const [a2, c2] of ends(b2)) {
+        if (b2 !== b1 && !crossesRiver(c1, a2) && !crossesRiver(c2, to)) return [a1, c1, a2, c2, to.clone()];
+      }
+    }
+    return [to.clone()];
+  }
+  // 돌아다닐 다음 자리: 자기 터 둘레(강 이쪽)에서 장애물·무대·동산 끝을 피해 고른다. 못 고르면 무대 밖이나 터로 간다.
+  function pickDest(an) {
+    const u = an.userData;
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2, r = 0.8 + Math.random() * HOME_RANGE;
+      const p = u.home.clone().add(V(Math.cos(a) * r, Math.sin(a) * r));
+      if (p.length() > EDEN_RADIUS - 1.2 || inStage(p, 0.6) || collide(p.clone(), u.radius) || crossesRiver(u.home, p)) continue;
+      return p;
+    }
+    if (stage) {
+      const out = stage.c.clone().addScaledVector(an.position.clone().sub(stage.c).setY(0).normalize(), stage.r + 1.5);
+      if (!crossesRiver(u.home, out)) return out;
+    }
+    return u.home.clone();
+  }
+  function goTo(an, goal, back) {
+    Object.assign(an.userData, { goal: goal.clone(), route: routeTo(an.position, goal), back, calm: false, best: Infinity, stuck: 0 });
+  }
+  function sendHome() {
+    animals.forEach((an) => goTo(an, an.userData.home, true));
+  }
+
   const tmp = new THREE.Vector3();
   function stepToward(obj, to, speed, dt, r) {
     tmp.subVectors(to, obj.position).setY(0);
@@ -472,26 +563,35 @@ export function makeEden(scene) {
         continue;
       }
       turnFigure(fig, Math.atan2(tmp.x, tmp.z), dt);
-      animateFigure(fig, m.speed, dt, t);
+      animateFigure(fig, m.speed, dt, t, NPC_REF);
     }
     let walking = null; // 이번 프레임에 따라 걸은 인물
     if (follow && !movers.has(follow.fig)) {
+      const fig = follow.fig;
       const goal = follow.target.clone().add(FOLLOW_OFFSET).setY(0);
-      const d = goal.distanceTo(follow.fig.position);
-      // 멀어지거나 강에 막혀 1초 넘게 다가가지 못하면 관찰자 곁으로 옮긴다(다리를 찾아 돌아가지 않는다).
-      follow.stuck = d > 2 && d > (follow.last ?? Infinity) - 0.01 ? (follow.stuck ?? 0) + dt : 0;
+      // 관찰자가 강 건너에 있으면 다리를 지나 따라간다. 관찰자가 또 다른 구역으로 가면 길을 다시 정한다.
+      if (crossesRiver(fig.position, goal)) {
+        if (!follow.route?.length || crossesRiver(follow.route.at(-1), goal)) follow.route = routeTo(fig.position, goal).slice(0, -1);
+      } else follow.route = null;
+      const aim = follow.route?.[0] ?? goal;
+      const d = aim.distanceTo(fig.position), dGoal = goal.distanceTo(fig.position);
+      if (follow.route && d < 0.6) follow.route.shift();
+      follow.stuck = dGoal > 2 && d > (follow.last ?? Infinity) - 0.01 ? (follow.stuck ?? 0) + dt : 0;
       follow.last = d;
-      if (d > 7 || follow.stuck > 1) { follow.fig.position.copy(goal); collide(follow.fig.position, 0.3); follow.stuck = 0; }
-      if (d > 0.6) {
-        const speed = Math.min(4, d * 1.5);
-        stepToward(follow.fig, goal, speed, dt, 0.3);
+      // 안전장치: 아주 멀어지거나 5초 넘게 다가가지 못하면 관찰자 곁으로 옮긴다
+      if (dGoal > 16 || follow.stuck > 5) { fig.position.copy(goal); collide(fig.position, 0.3); follow.stuck = 0; follow.route = null; }
+      if (dGoal > 0.6) {
+        const speed = Math.min(4, Math.max(1.4, dGoal * 1.5));
+        stepToward(follow.fig, aim, speed, dt, 0.3);
         turnFigure(follow.fig, Math.atan2(tmp.x, tmp.z), dt);
-        animateFigure(follow.fig, speed, dt, t);
+        animateFigure(follow.fig, speed, dt, t, NPC_REF);
         walking = follow.fig;
       }
     }
     for (const fig of [adam, eve]) {
-      if (fig.visible && fig !== walking && !movers.has(fig) && fig.userData.pose !== 'lie') animateFigure(fig, 0, dt, t);
+      if (!fig.visible || fig === walking || movers.has(fig) || fig.userData.pose === 'lie') continue;
+      if (fig.userData.faceYaw !== undefined) turnFigure(fig, fig.userData.faceYaw, dt * 0.5);
+      animateFigure(fig, 0, dt, t, NPC_REF);
     }
     if (held) held.fruit.position.copy(handOf(held.fig));
     for (const b of birds) {
@@ -501,41 +601,86 @@ export function makeEden(scene) {
       b.children[1].rotation.x = Math.sin(t * 10 + u.a) * 0.6;
       b.children[2].rotation.x = -Math.sin(t * 10 + u.a) * 0.6;
     }
+    // 동물의 움직임: 걷다가 멈춰 풀을 뜯고, 다시 다음 자리를 골라 걷는다. 방향은 천천히 틀고,
+    // 많이 돌아야 하면 속도를 줄인다. 연출 무대 안에 있으면 서둘러 비켜 준다.
     for (const an of animals) {
       const u = an.userData;
+      const near = playerPos && !u.goal && !u.calm && an.position.distanceTo(playerPos) < 2.6 && !inStage(an.position);
+      let dest = null, want = 0;
       if (u.goal) {
-        const d = stepToward(an, u.goal, 1.8, dt, u.radius);
-        an.rotation.y = -Math.atan2(u.goal.z - an.position.z, u.goal.x - an.position.x);
-        if (d < u.best - 0.02) { u.best = d; u.stuck = 0; } else u.stuck += dt;
-        if (u.stuck > 1.5) an.position.copy(u.goal); // 강에 막혀 못 가면 목표에 둔다(연출이 멈추지 않게)
-        if (d < 0.3 || u.stuck > 1.5) {
-          u.goal = null;
-          if (u.back) u.back = false; // 자기 터에 돌아왔으면 다시 돌아다닌다
-          else { u.calm = true; an.rotation.y = -Math.atan2(ADAM_SPOT.z - an.position.z, ADAM_SPOT.x - an.position.x); }
+        dest = u.route?.[0] ?? u.goal;
+        want = u.walk * 1.4;
+      } else if (u.calm) {
+        want = 0;
+      } else if (inStage(an.position)) {
+        if (!u.dest || inStage(u.dest)) u.dest = pickDest(an);
+        u.state = 'walk';
+        dest = u.dest;
+        want = u.run;
+      } else if (near) {
+        u.yawWant = Math.atan2(playerPos.z - an.position.z, playerPos.x - an.position.x); // 관찰자를 바라본다
+      } else if (u.state === 'walk') {
+        if (!u.dest || an.position.distanceTo(u.dest) < 0.4 || u.stuck > 2) {
+          Object.assign(u, { state: 'idle', wait: 2 + Math.random() * 4, dest: null, stuck: 0 });
+        } else {
+          dest = u.dest;
+          want = u.walk;
         }
-        continue;
+      } else {
+        u.wait -= dt;
+        if (u.wait <= 0) Object.assign(u, { state: 'walk', dest: pickDest(an), best: Infinity, stuck: 0 });
       }
-      // 관찰자가 곁에 오면 멈춰서 바라본다(머무르기 게이지를 채울 수 있게)
-      const near = playerPos && an.position.distanceTo(playerPos) < 2.6;
-      if (u.calm || near) {
-        if (near) an.rotation.y = -Math.atan2(playerPos.z - an.position.z, playerPos.x - an.position.x);
-        continue;
+      if (dest) u.yawWant = Math.atan2(dest.z - an.position.z, dest.x - an.position.x);
+      if (dest && u.side > 0) { u.side -= dt; u.yawWant += u.sideDir * 1.3; } // 막혔을 때 옆으로 비켜 돌아간다
+      const turn = Math.atan2(Math.sin(u.yawWant - u.yaw), Math.cos(u.yawWant - u.yaw));
+      u.yaw += Math.max(-2.2 * dt, Math.min(2.2 * dt, turn));
+      const slow = Math.max(0.2, Math.cos(Math.min(Math.abs(turn), Math.PI / 2)));
+      u.speed += (want * slow - u.speed) * Math.min(1, dt * 2.5);
+      if (u.speed > 0.005) {
+        an.position.x += Math.cos(u.yaw) * u.speed * dt;
+        an.position.z += Math.sin(u.yaw) * u.speed * dt;
+        if (collide(an.position, u.radius) && !u.goal && u.state === 'walk') u.stuck += dt;
       }
-      u.heading += (Math.random() - 0.5) * dt * 2;
-      an.position.x += Math.cos(u.heading) * dt * 0.5;
-      an.position.z += Math.sin(u.heading) * dt * 0.5;
-      const r = Math.hypot(an.position.x, an.position.z);
-      if (collide(an.position, u.radius)) u.heading += Math.PI * (0.5 + Math.random() * 0.5);
-      if (r > EDEN_RADIUS - 1.5) u.heading = Math.atan2(-an.position.z, -an.position.x);
-      else if (an.position.distanceTo(u.home) > HOME_RANGE) u.heading = Math.atan2(u.home.z - an.position.z, u.home.x - an.position.x);
-      an.rotation.y = -u.heading;
+      // 서로 겹치지 않게 살짝 밀어낸다
+      for (const o of animals) {
+        if (o === an) continue;
+        const dx = an.position.x - o.position.x, dz = an.position.z - o.position.z, d = Math.hypot(dx, dz);
+        const min = (u.radius + o.userData.radius) * 1.15;
+        if (d < min && d > 1e-4) { an.position.x += (dx / d) * (min - d) * 0.5; an.position.z += (dz / d) * (min - d) * 0.5; }
+      }
+      an.rotation.y = -u.yaw;
+      // 목표(아담 곁, 자기 터)에 닿았는지, 강에 막혔는지
+      if (dest) {
+        const d = an.position.distanceTo(dest);
+        if (d < u.best - 0.02) { u.best = d; u.stuck = 0; } else u.stuck += dt;
+        if (u.stuck > 1.2 && !(u.side > 0) && Math.floor(u.stuck / 1.2) !== u.sideAt) {
+          u.sideAt = Math.floor(u.stuck / 1.2);
+          u.side = 0.9;
+          u.sideDir = Math.random() < 0.5 ? 1 : -1;
+        }
+        if (u.goal && dest !== u.goal && d < 0.6) { u.route.shift(); u.best = Infinity; u.stuck = 0; } // 다리 어귀를 지났다
+        else if (u.goal && (d < 0.9 || u.stuck > 8)) {
+          if (u.stuck > 8) an.position.copy(u.goal); // 안전장치: 8초 넘게 못 가면 목표에 둔다(연출이 멈추지 않게)
+          u.goal = null;
+          if (u.back) Object.assign(u, { back: false, state: 'idle', wait: 1 + Math.random() * 2 });
+          else { u.calm = true; u.yawWant = Math.atan2(ADAM_SPOT.z - an.position.z, ADAM_SPOT.x - an.position.x); }
+          u.best = Infinity;
+          u.stuck = 0;
+        }
+      }
+      animateAnimal(an, u.speed, dt, t, u.state === 'idle' && !u.goal && !near && !u.calm);
     }
-    if (serpent.visible) serpent.userData.wiggle(t);
+    if (serpent.visible) {
+      const talk = serpent.userData.talk ?? 0;
+      serpent.userData.talk = Math.max(0, talk - dt);
+      serpent.userData.ph = (serpent.userData.ph ?? 0) + dt * (1 + talk * 1.5); // 말할 때 더 빨리 꿈틀거린다
+      serpent.userData.wiggle(serpent.userData.ph);
+    }
     if (sword.visible) sword.rotation.y = t * 4; // 두루 도는 불 칼
   }
 
   return {
-    group, sky, adam, eve, animals, fruitTrees, knowledge, acts, update, skipToFall, collide,
+    group, sky, adam, eve, animals, fruitTrees, knowledge, acts, update, skipToFall, collide, cherubim, pickDest,
     makeFruit,
     riverEnds: RIVERS.map((r, i) => ({ ...r, pos: RIVER_ENDS[i] })),
     spots: { start: EDEN_START, adam: ADAM_SPOT, eve: EVE_SPOT, knowledge: CENTER_KNOWLEDGE, center: CENTER, hide: HIDE_TREE, gate: EAST_GATE, waste: WASTE },
