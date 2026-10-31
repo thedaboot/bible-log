@@ -1,0 +1,59 @@
+import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK } from './props.js';
+import { CHECKPOINTS } from './data/chapters.js';
+
+export { CHECKPOINTS };
+const KEY = 'bible-rpg/save/v1';
+
+// 사생활 보호 모드 등에서는 localStorage 접근 자체가 예외를 던질 수 있다.
+function store() {
+  try { return globalThis.localStorage ?? null; } catch { return null; }
+}
+
+const pick = (list, id, fallback) => (list.some((x) => x.id === id) ? id : fallback);
+// 천국 모습과 지상 모습은 항목이 달라서 각자의 선택지로 검사한다.
+const cleanLook = (look, options, defaults) => Object.fromEntries(
+  Object.entries(defaults).map(([key, fallback]) => [key, pick(options[key], look?.[key], fallback)]),
+);
+// 예전 지상 모습(빛깔 하나로 칠한 형체)은 그 빛깔을 '나를 감싸는 빛'으로 옮긴다.
+const cleanEarth = (look) => cleanLook({ aura: look.color, ...look }, LOOK.earth, DEFAULT_EARTH);
+
+// look: 천국에서의 모습, earthLook: 지상에서의 모습(처음 땅에 내려갈 때 고른다)
+export function newState(prev) {
+  return { name: '', look: { ...DEFAULT_LOOK }, earthLook: null, scene: 'prologue', unlocked: prev?.unlocked ?? ['prologue'] };
+}
+
+export function load(storage = store()) {
+  try {
+    const s = JSON.parse(storage?.getItem(KEY) ?? 'null');
+    if (!s || typeof s.scene !== 'string') return null;
+    let unlocked = Array.isArray(s.unlocked) ? s.unlocked.filter((id) => CHECKPOINTS.includes(id)) : null;
+    if (!unlocked) {
+      // 예전 저장값({scene, seen}) 옮기기
+      const seen = Array.isArray(s.seen) ? s.seen : [];
+      unlocked = ['prologue'];
+      if (s.scene.startsWith('creation') || seen.includes('creation')) unlocked.push('creation-1');
+      if (seen.includes('creation')) unlocked.push('creation-2', 'creation-3', 'creation-4', 'creation-5', 'creation-6', 'creation-7', 'eden');
+    }
+    const scene = s.scene === 'creation' || s.scene === 'creation-1' ? 'creation-1' : s.scene;
+    return {
+      name: String(s.name ?? '').slice(0, 10),
+      look: cleanLook(s.look, LOOK.heaven, DEFAULT_LOOK),
+      earthLook: s.earthLook ? cleanEarth(s.earthLook) : null,
+      scene: CHECKPOINTS.includes(scene) ? scene : unlocked.at(-1),
+      unlocked: CHECKPOINTS.filter((id) => unlocked.includes(id)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function save(data, storage = store()) {
+  try { storage?.setItem(KEY, JSON.stringify(data)); } catch { /* 저장 실패해도 플레이는 계속한다 */ }
+}
+
+// 지점을 열고 지금 위치로 기록한다.
+export function reach(state, id) {
+  if (!state.unlocked.includes(id)) state.unlocked = CHECKPOINTS.filter((c) => c === id || state.unlocked.includes(c));
+  state.scene = id;
+  save(state);
+}

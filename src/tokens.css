@@ -1,0 +1,59 @@
+/* Hallmark · tokens · theme: custom (vibe: "parchment, pixel RPG, warm sanctuary light")
+ * axes: light paper / pixel display + serif body / warm gold accent
+ */
+:root {
+  /* 색: 양피지(hue 80 부근) 기준, 회색도 따뜻하게 물들인다 */
+  --color-paper:   oklch(95% 0.030 85);
+  --color-paper-2: oklch(89% 0.045 80);
+  --color-paper-3: oklch(84% 0.055 78);
+  --color-light:   oklch(98% 0.022 92);
+  --color-ink:     oklch(25% 0.035 55);
+  --color-ink-2:   oklch(44% 0.040 60);
+  --color-frame:   oklch(30% 0.045 50);
+  --color-accent:  oklch(58% 0.140 70);
+  --color-gold:    oklch(80% 0.130 85);
+  --color-focus:   oklch(52% 0.170 45);
+  --color-shadow:  oklch(30% 0.045 50 / 0.35);
+  --color-scrim:   oklch(30% 0.045 50 / 0.45);
+
+  /* 글꼴: 큰 제목만 픽셀, 나머지는 프리텐다드 */
+  --font-display: "Galmuri11", "Galmuri14", monospace; /* 큰 제목 전용(게임 느낌) */
+  --font-body: "Pretendard Variable", "Pretendard", system-ui, sans-serif; /* 읽는 글자 전부 */
+  --font-small: var(--font-body);
+
+  /* 픽셀 제목(Galmuri11)은 12px 배수에서 또렷하다 */
+  --text-label: 0.8125rem;
+  --text-small: 0.9375rem;
+  --text-ui: 1.25rem;
+  --text-title-m: 36px;
+  --text-title: 48px;
+  --text-read: clamp(1.0625rem, 0.45vw + 0.95rem, 1.3125rem);
+  --text-lede: 1.0625rem;
+
+  /* 4pt 간격 */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+
+  /* 픽셀 테두리 한 칸 */
+  --px: 3px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+  --dur-fade: 1200ms;
+}
+
+@media (min-width: 40rem) {
+  :root { --px: 4px; }
+}
+@media (min-width: 90rem) {
+  :root { --text-title: 72px; }
+}

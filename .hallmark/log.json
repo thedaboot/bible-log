@@ -1,0 +1,11 @@
+[
+  {
+    "date": "2026-10-31",
+    "macrostructure": "game HUD (title menu bottom-left over live 3D, pixel panels)",
+    "theme": "custom",
+    "theme_axes": "light / pixel-display + serif-body / warm",
+    "vibe": "parchment, pixel RPG, warm sanctuary light",
+    "enrichment": "none (live Three.js scene is the backdrop)",
+    "brief": "Bible RPG UI redesign: title, dialog, name modal, hint, day title, next button, end card"
+  }
+]

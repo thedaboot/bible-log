@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>바이블로그</title>
+    <!-- 부팅용 최소 스타일: CSS와 글꼴이 준비되기 전에는 빛 화면만 보인다. 색은 tokens.css의 --color-light와 같다. -->
+    <style>
+      html, body { margin: 0; height: 100%; background: oklch(98% 0.022 92); }
+      html:not(.is-ready) body > :not(#fade) { visibility: hidden; }
+      #fade { position: fixed; inset: 0; z-index: 20; pointer-events: none; background: oklch(98% 0.022 92); }
+    </style>
+  </head>
+  <body>
+    <main id="title" class="title">
+      <div class="title__veil" aria-hidden="true"></div>
+      <div class="title__block">
+        <h1 class="title__name reveal" style="--i: 0">바이블로그</h1>
+        <p class="title__lede reveal" style="--i: 1"><span>천국의 부르심을 받아,</span> <span>태초부터 이어진 성경의 순간들을 직접 보고 기록합니다.</span></p>
+        <nav id="menu" class="menu reveal" style="--i: 2" aria-label="시작 메뉴"></nav>
+        <p class="title__note reveal" style="--i: 3">기록은 지금 쓰는 브라우저에 자동으로 저장됩니다.</p>
+      </div>
+    </main>
+
+    <aside id="quest" class="panel quest" hidden aria-live="polite">
+      <p class="quest__label">퀘스트</p>
+      <h2 id="questTitle" class="quest__title"></h2>
+      <ul id="questItems" class="quest__items"></ul>
+    </aside>
+    <div id="controls" class="controls" hidden></div>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <div id="dayTitle" class="day-title" aria-live="polite"></div>
+    <button id="nextBtn" class="btn btn--next" type="button" hidden></button>
+
+    <section id="dialog" class="panel dialog" hidden>
+      <span id="speaker" class="dialog__speaker"></span>
+      <p id="line" class="dialog__line" aria-hidden="true"></p>
+      <p id="srLine" class="sr-only" aria-live="polite"></p>
+      <div class="dialog__foot">
+        <span id="ref" class="dialog__ref"></span>
+        <span class="dialog__next" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <form id="nameForm" class="modal" hidden>
+      <div class="panel modal__panel" role="dialog" aria-labelledby="nameLabel">
+        <label id="nameLabel" for="nameInput" class="modal__title">이름을 알려 주세요</label>
+        <input id="nameInput" class="field" maxlength="10" autocomplete="off" placeholder="최대 10자" />
+        <button type="submit" class="btn">확인</button>
+      </div>
+    </form>
+
+    <form id="lookForm" class="modal modal--side" hidden>
+      <div class="panel modal__panel look" role="dialog" aria-labelledby="lookTitle">
+        <p id="lookKicker" class="quest__label" hidden></p>
+        <h2 id="lookTitle" class="modal__title"></h2>
+        <p id="lookText" class="modal__text"></p>
+        <div id="lookTabs" class="look__tabs" role="tablist" hidden></div>
+        <div id="lookGroups" class="look__groups"></div>
+        <div class="look__actions">
+          <button id="lookRandom" type="button" class="btn btn--quiet">무작위</button>
+          <button id="lookSubmit" type="submit" class="btn">이 모습으로</button>
+        </div>
+      </div>
+    </form>
+
+    <div id="quiz" class="modal" hidden>
+      <div class="panel modal__panel quiz" role="dialog" aria-labelledby="quizQ">
+        <p id="quizCount" class="quest__label"></p>
+        <h2 id="quizQ" class="modal__title"></h2>
+        <div id="quizOptions" class="quiz__options"></div>
+        <p id="quizFeedback" class="modal__text" aria-live="polite"></p>
+        <button id="quizNext" class="btn" type="button" hidden></button>
+      </div>
+    </div>
+
+    <div id="endcard" class="modal" hidden>
+      <div class="panel modal__panel" role="dialog" aria-labelledby="endTitle">
+        <h2 id="endTitle" class="modal__title"></h2>
+        <p id="endText" class="modal__text"></p>
+        <button id="endBtn" class="btn" type="button">처음 화면으로</button>
+      </div>
+    </div>
+
+    <div id="fade" class="fade"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
