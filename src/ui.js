@@ -9,7 +9,8 @@ const TYPE_MS = 32; // 한 글자가 나오는 간격
 
 // 대사 목록을 한 줄씩 보여 준다. 글자가 한 자씩 나오고, 그 사이에 누르면 문장을 바로 끝까지 보여 준다.
 // 대사 창 클릭/탭, Space, Enter로 넘긴다.
-export function say(lines, ctx) {
+// onLine(line, i): 대사가 화면에 나올 때마다 부른다(대사에 맞춰 카메라·연출을 바꿀 때 쓴다).
+export function say(lines, ctx, { onLine } = {}) {
   const box = $('dialog');
   const lineEl = $('line');
   return new Promise((resolve) => {
@@ -34,6 +35,7 @@ export function say(lines, ctx) {
         return;
       }
       const l = lines[i++];
+      onLine?.(l, i - 1);
       full = fill(l.text, ctx);
       box.dataset.who = l.who;
       $('speaker').textContent = SPEAKERS[l.who];
@@ -228,6 +230,29 @@ export function setControls(kind) {
   const box = $('controls');
   box.hidden = !kind;
   if (kind) box.innerHTML = CONTROLS[kind][isTouch() ? 'touch' : 'pc'];
+}
+
+// 머무르기 게이지: p(0~1)만큼 채운다. label이 null이면 숨긴다.
+export function setGauge(label, p = 0) {
+  const el = $('gauge');
+  el.hidden = label === null;
+  if (label === null) return;
+  $('gaugeLabel').textContent = label;
+  $('gaugeFill').style.transform = `scaleX(${Math.max(0, Math.min(1, p))})`;
+}
+
+// 도감 카드: 누르거나 2.8초가 지나면 닫힌다.
+export function showCard({ title, text, count }) {
+  const el = $('dexCard');
+  $('dexTitle').textContent = title;
+  $('dexText').textContent = text;
+  $('dexCount').textContent = count;
+  el.hidden = false;
+  return new Promise((resolve) => {
+    const close = () => { clearTimeout(timer); el.hidden = true; el.onclick = null; resolve(); };
+    const timer = setTimeout(close, reducedMotion() ? 2000 : 2800);
+    el.onclick = close;
+  });
 }
 
 // 짧은 알림. gain이면 획득 강조(체크 표시, 번쩍임, 커졌다 돌아오기)를 함께 준다.

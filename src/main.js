@@ -3,17 +3,17 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import './style.css';
-import { makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turnFigure, makeAngel, makeWaypoint, LOOK, LOOK_TABS, DEFAULT_EARTH, earthSpec, makeDressingRoom } from './props.js';
+import { makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turnFigure, makeAngel, makeWaypoint, LOOK, LOOK_TABS, DEFAULT_EARTH, earthSpec, makeDressingRoom, makeBasket } from './props.js';
 import { makeCreation } from './creation.js';
 import { makeEden, EDEN_RADIUS } from './eden.js';
 import { PROLOGUE } from './data/prologue.js';
 import { CREATION, DAY_NAMES } from './data/creation.js';
-import { EDEN, FALL, QUIZ, FRUITS } from './data/eden.js';
+import { EDEN, FALL, QUIZ, NAMING } from './data/eden.js';
 import { load, save, reach, newState } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
-import { tween, setInstant } from './anim.js';
+import { tween, easeOut, setInstant } from './anim.js';
 import {
-  $, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz,
+  $, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard,
 } from './ui.js';
 
 // ---------- 렌더링: 쿼터뷰 정사영 카메라 + 픽셀화 후처리 ----------
@@ -130,6 +130,7 @@ function movePlayer(dt, t) {
   if (vel.lengthSq() > 1e-4) {
     player.position.addScaledVector(vel, dt);
     if (player.position.length() > walkRadius) player.position.setLength(walkRadius);
+    eden?.collide(player.position, 0.35); // 나무·바위·물은 통과하지 못한다(다리로만 강을 건넌다)
     turnFigure(player, Math.atan2(vel.x, vel.z), dt);
   }
   animateFigure(player, vel.length(), dt, t);
@@ -156,13 +157,29 @@ function stopWalk() {
   target = null;
   triggers = [];
   aimNearest = null;
+  holdQuest = null;
+  setGauge(null);
   setControls(null);
   setQuest(null);
   waypoint.set(null);
 }
 
 // 여러 목표를 순서 없이 찾는 퀘스트. 모두 찾으면 끝난다.
-function questFind({ title, targets, text, radius = 1.6, onFound }) {
+// hold(초)를 주면 다가가기만으로는 끝나지 않고, 목표 곁에 그 시간만큼 머물러 게이지를 채워야 한다.
+let holdQuest = null;
+function holdTick(dt) {
+  const q = holdQuest;
+  if (!q) return;
+  if (mode !== 'walk') { setGauge(null); return; }
+  let near = null, nd = Infinity;
+  for (const x of q.left) { const d = x.pos.distanceTo(player.position); if (d < q.radius && d < nd) { nd = d; near = x; } }
+  if (near !== q.cur) { q.cur = near; q.p = 0; }
+  if (!near) { setGauge(null); return; }
+  q.p += dt / q.hold;
+  setGauge(q.label(near), q.p);
+  if (q.p >= 1) { q.cur = null; q.p = 0; setGauge(null); q.found(near); }
+}
+function questFind({ title, targets, text, radius = 1.6, onFound, hold = 0, holdLabel }) {
   return new Promise((resolve) => {
     const left = new Set(targets);
     const render = () => setQuest({ title, items: targets.map((x) => ({ text: text(x), done: !left.has(x) })) });
@@ -171,17 +188,17 @@ function questFind({ title, targets, text, radius = 1.6, onFound }) {
       for (const x of left) { const d = x.pos.distanceTo(player.position); if (d < bd) { bd = d; best = x; } }
       waypoint.set(best ? best.pos : null);
     };
+    const found = async (x) => {
+      left.delete(x);
+      render();
+      if (onFound) { mode = 'none'; target = null; await onFound(x, targets.length - left.size, targets.length); }
+      if (left.size === 0) { stopWalk(); resolve(); return; }
+      mode = 'walk';
+    };
     render();
     startWalk();
-    for (const x of targets) {
-      addTrigger(x.pos, radius, async () => {
-        left.delete(x);
-        render();
-        if (onFound) { mode = 'none'; target = null; await onFound(x); }
-        if (left.size === 0) { stopWalk(); resolve(); return; }
-        mode = 'walk';
-      });
-    }
+    if (hold) holdQuest = { left, radius, hold, label: holdLabel, found, cur: null, p: 0 };
+    else for (const x of targets) addTrigger(x.pos, radius, () => found(x));
   });
 }
 
@@ -373,7 +390,14 @@ async function runEdenGarden() {
   await fade(0);
   await say(EDEN.arrive, state);
   await eden.acts.formAdam();
-  await say(EDEN.adamAfter, state);
+  // 창 2:9 동산 가운데를 말하는 대사가 나오면 카메라가 가운데로 가고 선악을 알게 하는 나무에 빛이 내린다.
+  let spotOn = false;
+  await say(EDEN.adamAfter, state, {
+    onLine: (l) => {
+      if (l.focus === 'center') { spotOn = true; camFocus = eden.spots.center; setView(10); eden.acts.spotlight(true); }
+      else if (spotOn) { spotOn = false; camFocus = eden.spots.adam; setView(13); eden.acts.spotlight(false); }
+    },
+  });
   camFocus = null;
 
   // 퀘스트 1: 네 강
@@ -388,26 +412,44 @@ async function runEdenGarden() {
   camFocus = eden.spots.adam;
   await say(EDEN.command, state);
 
-  // 퀘스트 2: 동물 도감
-  await eden.acts.showAnimals();
+  // 퀘스트 2: 동물 이름 짓기. 하나님께서 동물들을 아담에게 데려가시고(창 2:19), 아담이 관찰자 곁을 따라다닌다.
+  await eden.acts.gatherAnimals();
   await say(EDEN.animalsIntro, state);
+  eden.acts.releaseAnimals();
+  eden.acts.follow(eden.adam, player.position);
   camFocus = null;
   await questFind({
     title: '아담이 이름 지은 동물',
-    targets: eden.animals.map((an) => ({ name: an.userData.name, pos: an.position })),
-    text: (a) => `${a.name}에게 다가가 이름 듣기`,
-    radius: 2.2,
-    onFound: async (a) => toast(`바이블로그에 기록했어요: ${a.name}`),
+    targets: eden.animals.map((an) => ({ name: an.userData.name, pos: an.position, animal: an })),
+    text: (a) => `${a.name} 곁에 머물러 이름 듣기`,
+    radius: 2.4,
+    hold: 1.6,
+    holdLabel: (a) => `${a.name} 곁에 머무는 중`,
+    onFound: async (a, n, total) => {
+      a.animal.userData.calm = true;
+      eden.acts.face(eden.adam, a.animal.position);
+      camFocus = a.animal.position.clone().lerp(eden.adam.position, 0.5);
+      await say(NAMING, { ...state, animal: a.name });
+      camFocus = null;
+      await showCard({ title: a.name, text: '아담이 지어 준 이름 · 창 2:19', count: `${n} / ${total}` });
+      a.animal.userData.calm = false;
+    },
   });
+  eden.acts.follow(null);
   camFocus = eden.spots.adam;
-  await say(EDEN.animalsDone, state);
-  await fade(1);
-  eden.acts.showEve();
-  await fade(0);
+  await say(EDEN.animalsDone.slice(0, 1), state);
+  // 창 2:21~22 화면 전환 없이: 아담이 잠들고, 옆구리에서 나온 빛이 하와가 된다.
+  await eden.acts.sleep();
+  await say(EDEN.animalsDone.slice(1), state);
+  await eden.acts.formEve();
   await say(EDEN.eveAfter, state);
   camFocus = null;
 
-  // 퀘스트 3: 먹어도 되는 열매. 선악을 알게 하는 나무에 다가가면 대천사가 한 번 알려 준다.
+  // 퀘스트 3: 먹어도 되는 열매. 따면 열매가 관찰자의 바구니로 날아가 담긴다.
+  // 선악을 알게 하는 나무에 다가가면 대천사가 한 번 알려 준다.
+  basket = makeBasket();
+  basket.position.set(-0.48, 0.62, 0.12);
+  player.add(basket);
   const warn = addTrigger(eden.knowledge.position, 2.4, async () => {
     mode = 'none';
     await say(EDEN.forbidden, state);
@@ -415,21 +457,43 @@ async function runEdenGarden() {
   });
   await questFind({
     title: '먹어도 되는 열매',
-    targets: eden.fruitTrees.slice(0, FRUITS.length).map((tree, i) => ({ tree, pos: tree.position, name: FRUITS[i] })),
+    targets: eden.fruitTrees.map((tree) => ({ tree, pos: tree.position, name: tree.userData.fruitName })),
     text: (f) => `${f.name} 따서 바구니에 담기`,
-    radius: 1.8,
-    onFound: async (f) => {
-      f.tree.userData.fruits.forEach((x) => (x.visible = false));
+    radius: 2,
+    onFound: async (f, n) => {
+      const kind = f.tree.userData.fruitKind;
+      const picked = f.tree.userData.fruits.find((x) => x.visible);
+      const from = picked.getWorldPosition(new THREE.Vector3());
+      picked.visible = false;
+      const fly = eden.makeFruit(kind);
+      fly.scale.setScalar(1.6);
+      scene.add(fly);
+      const to = new THREE.Vector3();
+      await tween(800, (p) => {
+        basket.getWorldPosition(to);
+        fly.position.lerpVectors(from, to, easeOut(p));
+        fly.position.y += Math.sin(p * Math.PI) * 0.9;
+      });
+      scene.remove(fly);
+      const inside = eden.makeFruit(kind);
+      inside.position.copy(basket.userData.slots[(n - 1) % basket.userData.slots.length]);
+      inside.scale.setScalar(1.2);
+      basket.add(inside);
       toast(`${f.name}를 바구니에 담았어요`, { gain: true });
+      await tween(320, (p) => basket.scale.setScalar(1 + Math.sin(p * Math.PI) * 0.3));
     },
   });
   triggers = triggers.filter((x) => x !== warn);
   await say(EDEN.fruitDone, state);
 }
 
+let basket = null;
+
 async function runEdenFall() {
   reach(state, 'fall');
   stopWalk();
+  eden.acts.follow(null);
+  if (basket) { player.remove(basket); basket = null; }
   camFocus = eden.spots.knowledge;
   await eden.acts.gatherAtTree();
   await say(FALL.serpent, state);
@@ -440,13 +504,19 @@ async function runEdenFall() {
   await say(FALL.eyes, state);
   camFocus = eden.spots.hide;
   await Promise.all([eden.acts.hide(), eden.acts.presence()]);
-  await say(FALL.trial, state);
+  await say(FALL.trial.slice(0, 1), state); // "네가 어디 있느냐?"
+  await eden.acts.comeOut();
+  await say(FALL.trial.slice(1), state);
   await say(FALL.curse, state);
   await eden.acts.clothe();
   await say(FALL.clothed, state);
-  camFocus = eden.spots.gate;
+  // 추방: 두 사람을 따라 동쪽 문 밖 거친 땅까지 카메라가 간다.
+  camFocus = eden.adam.position;
+  setView(16);
   await eden.acts.expel();
+  camFocus = eden.spots.gate;
   await say(FALL.guarded, state);
+  setView(13);
   await askQuiz(QUIZ);
   await fade(1);
   showEnd();
@@ -566,7 +636,8 @@ function tick() {
   aimNearest?.();
   waypoint.update(t, player.position);
   creation?.update(dt, t);
-  eden?.update(dt, t);
+  eden?.update(dt, t, player.position);
+  holdTick(dt);
   if (heaven.group.visible) heaven.pillar.userData.pulse(t);
   if (titleView) camAngle += dt * 0.06;
   if (mode === 'orbit') camAngle += (held('KeyE') - held('KeyQ')) * dt * 1.5 + dt * 0.05;

@@ -25,6 +25,12 @@ export const PAL = {
   hairBrown: 0x7a4a2a,
   eye: 0x2b2340,
   robe: 0xfffdf4,
+  horn: 0xe2d2a8, // 양각 나팔, 기름 뿔병
+  clay: 0xb8683c, // 물동이
+  wicker: 0xc49a5a, // 바구니
+  plank: 0x9a7048, // 다리 판자
+  waste: 0x8f7a5a, // 동산 밖 거친 땅
+  thorn: 0x5a4632, // 가시덤불
 };
 
 export const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, ...extra });
@@ -84,9 +90,11 @@ const OUTFITS = [
   { id: 'tunic', name: '겉옷' }, { id: 'cape', name: '망토' }, { id: 'robe', name: '두루마기' },
   { id: 'shepherd', name: '목자 옷' }, { id: 'traveler', name: '나그네 옷' },
 ];
+// 소품은 성경에 나오는 물건만 쓴다(docs/standards/art-3d.md). 머리띠·목도리는 근거가 약해 뺐다.
 const ITEMS = [
-  { id: 'none', name: '없음' }, { id: 'staff', name: '지팡이' }, { id: 'band', name: '머리띠' },
-  { id: 'bag', name: '가방' }, { id: 'scarf', name: '목도리' },
+  { id: 'none', name: '없음' }, { id: 'staff', name: '지팡이' }, { id: 'sling', name: '물매' },
+  { id: 'horn', name: '양각 나팔' }, { id: 'oil', name: '기름 뿔병' }, { id: 'jar', name: '물동이' },
+  { id: 'bag', name: '목자 가방' },
 ];
 const SKINS = [
   { id: 's1', name: '밝은 피부', hex: 0xf3d3b5 }, { id: 's2', name: '연한 피부', hex: 0xe8c29c },
@@ -196,11 +204,19 @@ export function dressFigure(fig, spec) {
   }
 
   const cloth = m(spec.outfitColor ?? PAL.robe);
+  // 망토: 목에서 여며 어깨부터 늘어지고 아래로 갈수록 넓어지는 천(원뿔대의 뒤쪽 절반). 목 앞에 여밈 장식.
+  function addCape(material) {
+    const back = material.clone();
+    back.side = THREE.DoubleSide;
+    add(new THREE.CylinderGeometry(0.25, 0.56, 0.98, 10, 1, true, Math.PI / 2, Math.PI), back, 0, 0.6, -0.02);
+    add(new THREE.CylinderGeometry(0.27, 0.3, 0.1, 10), material, 0, 1.06, 0); // 목둘레 깃
+    add(new THREE.IcosahedronGeometry(0.06, 0), m(PAL.gold), 0, 1.04, 0.27);
+  }
   switch (spec.outfit) {
     case 'tunic': add(new THREE.CylinderGeometry(0.31, 0.38, 0.55, 8), cloth, 0, 0.55, 0); break;
     case 'cape':
       add(new THREE.CylinderGeometry(0.31, 0.36, 0.45, 8), cloth, 0, 0.6, 0);
-      add(new THREE.BoxGeometry(0.58, 0.9, 0.05), cloth, 0, 0.72, -0.3, 0.12);
+      addCape(cloth);
       break;
     case 'robe': add(new THREE.ConeGeometry(0.46, 1.08, 8), cloth, 0, 0.54, 0); break;
     case 'shepherd':
@@ -209,7 +225,7 @@ export function dressFigure(fig, spec) {
       break;
     case 'traveler':
       add(new THREE.CylinderGeometry(0.31, 0.38, 0.55, 8), cloth, 0, 0.55, 0);
-      add(new THREE.BoxGeometry(0.58, 0.95, 0.05), cloth, 0, 0.7, -0.3, 0.12);
+      addCape(cloth);
       add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth, 0, 1.25, -0.12, -0.5);
       break;
     case 'leaves': add(new THREE.CylinderGeometry(0.32, 0.4, 0.3, 8), m(PAL.leafLight), 0, 0.5, 0); break;
@@ -223,12 +239,33 @@ export function dressFigure(fig, spec) {
 
   switch (spec.item) {
     case 'staff': add(new THREE.CylinderGeometry(0.035, 0.035, 1.7, 5), m(PAL.bark), 0.42, 0.85, 0.12); break;
-    case 'band': add(new THREE.TorusGeometry(0.27, 0.035, 4, 12), m(PAL.gold), 0, 1.38, 0, Math.PI / 2); break;
-    case 'bag':
+    case 'sling': { // 물매(삼상 17:40): 손에서 늘어진 두 줄과 돌을 담는 가죽 주머니
+      for (const z of [0.06, 0.18]) add(new THREE.BoxGeometry(0.025, 0.36, 0.025), m(PAL.skins), 0.42, 0.6, z);
+      add(new THREE.IcosahedronGeometry(0.08, 0).scale(1, 0.6, 1.2), m(PAL.skins), 0.42, 0.41, 0.12);
+      add(new THREE.IcosahedronGeometry(0.045, 0), m(0x9a9488), 0.42, 0.45, 0.12);
+      break;
+    }
+    case 'horn': { // 양각 나팔(수 6:4): 손에 든 굽은 뿔
+      const h = add(new THREE.TorusGeometry(0.17, 0.045, 5, 8, Math.PI * 0.85), m(PAL.horn), 0.44, 0.9, 0.12);
+      h.rotation.set(0, Math.PI / 2, 0.4);
+      add(new THREE.CylinderGeometry(0.075, 0.03, 0.08, 6), m(PAL.horn), 0.44, 1.05, 0.0);
+      break;
+    }
+    case 'oil': { // 기름 뿔병(삼상 16:13): 허리에 찬 작은 뿔병과 금빛 마개
+      const o = add(new THREE.ConeGeometry(0.07, 0.3, 6), m(PAL.horn), -0.36, 0.56, 0.12);
+      o.rotation.z = Math.PI - 0.3;
+      add(new THREE.CylinderGeometry(0.04, 0.04, 0.05, 6), m(PAL.gold), -0.4, 0.71, 0.12);
+      add(new THREE.BoxGeometry(0.03, 0.3, 0.03), m(PAL.skins), -0.3, 0.82, 0.12, 0.3);
+      break;
+    }
+    case 'jar': // 물동이(창 24:15): 어깨에 멘 항아리
+      add(new THREE.SphereGeometry(0.17, 8, 6), m(PAL.clay), 0.33, 1.13, -0.05);
+      add(new THREE.CylinderGeometry(0.07, 0.09, 0.12, 8), m(PAL.clay), 0.36, 1.32, -0.05);
+      break;
+    case 'bag': // 목자 가방(삼상 17:40)
       add(new THREE.BoxGeometry(0.22, 0.26, 0.12), m(PAL.skins), -0.36, 0.62, 0.05);
       add(new THREE.BoxGeometry(0.05, 0.75, 0.05), m(PAL.skins), -0.05, 0.95, 0.27, 0.15);
       break;
-    case 'scarf': add(new THREE.TorusGeometry(0.22, 0.07, 5, 10), m(PAL.fruit), 0, 1.06, 0, Math.PI / 2); break;
     case 'hood':
       add(new THREE.SphereGeometry(0.31, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.6), cloth, 0, 1.33, -0.03);
       add(new THREE.BoxGeometry(0.5, 0.45, 0.06), cloth, 0, 1.1, -0.26, 0.1);
@@ -317,8 +354,40 @@ export function makeAngel({ cherub = false } = {}) {
 }
 
 // ---------- 나무와 동물: 창조와 에덴이 같은 모양을 쓴다 ----------
+// 열매: 에덴 열매 퀘스트에 쓰는 성경의 열매들(src/data/eden.js의 FRUITS). 지름은 0.2 안팎이다.
+const FRUIT_LOOK = {
+  fig: { color: 0x6b3a5a }, pomegranate: { color: 0xc0303a }, grape: { color: 0x5a2f7a },
+  olive: { color: 0x55682a }, date: { color: 0xb5651d },
+};
+export function makeFruit(kind) {
+  const g = new THREE.Group();
+  const m = mat(FRUIT_LOOK[kind]?.color ?? PAL.fruit);
+  const ball = (r, x, y, z, sx = 1, sy = 1) => {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0).scale(sx, sy, sx), m);
+    b.position.set(x, y, z);
+    g.add(b);
+  };
+  switch (kind) {
+    case 'fig': ball(0.1, 0, 0, 0, 0.9, 1.2); break;
+    case 'pomegranate': {
+      ball(0.11, 0, 0, 0);
+      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.06, 5), m);
+      crown.position.y = 0.12;
+      g.add(crown);
+      break;
+    }
+    case 'grape': for (const [x, y] of [[-0.05, 0.05], [0.05, 0.05], [0, 0.05], [-0.025, -0.02], [0.025, -0.02], [0, -0.08]]) ball(0.045, x, y, (x * 7) % 0.04); break;
+    case 'olive': for (const [x, y] of [[-0.05, 0], [0.04, 0.03], [0, -0.05]]) ball(0.04, x, y, 0, 0.8, 1.2); break;
+    case 'date': for (const [x, y] of [[-0.05, 0], [0, 0.02], [0.05, 0], [-0.025, -0.06], [0.025, -0.06]]) ball(0.035, x, y, 0, 0.8, 1.4); break;
+    default: ball(0.1, 0, 0, 0);
+  }
+  return g;
+}
+
 // kind: 'pine' | 'round' | 'fruit' | 'life'(생명나무) | 'knowledge'(선악을 알게 하는 나무)
-export function makeTree(kind = 'round') {
+// fruit: 'fruit'일 때 달리는 열매 종류(FRUIT_LOOK). 'date'면 대추야자(종려)라 줄기가 긴 야자나무 모양이다.
+export function makeTree(kind = 'round', fruit = null) {
+  if (fruit === 'date') return makePalm();
   const g = new THREE.Group();
   const big = kind === 'life' || kind === 'knowledge';
   const k = big ? 1.8 : 1;
@@ -341,27 +410,206 @@ export function makeTree(kind = 'round') {
     const n = big ? 7 : 4;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
-      const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.09 * k, 0), fruitM);
+      const f = fruit ? makeFruit(fruit) : new THREE.Mesh(new THREE.IcosahedronGeometry(0.09 * k, 0), fruitM);
+      if (fruit) f.scale.setScalar(1.3);
       f.position.set(Math.cos(a) * 0.5 * k, (0.8 + (i % 2) * 0.25) * k, Math.sin(a) * 0.5 * k);
       g.add(f);
       g.userData.fruits.push(f);
     }
   }
+  g.userData.fruitKind = fruit;
   return g;
 }
 
-export function makeAnimal(color, s) {
+// 대추야자(종려, 신 34:3): 긴 줄기 위에 넓게 퍼진 잎, 잎 아래에 열매송이
+function makePalm() {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.13, 1.9, 6), mat(PAL.bark));
+  trunk.position.y = 0.95;
+  g.add(trunk);
+  const leafM = mat(PAL.leafLight);
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    const pivot = new THREE.Group();
+    pivot.position.y = 1.9;
+    pivot.rotation.y = a;
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.04, 0.22), leafM);
+    leaf.position.x = 0.4;
+    leaf.rotation.z = -0.35;
+    pivot.add(leaf);
+    g.add(pivot);
+  }
+  g.userData.fruits = [];
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.4;
+    const f = makeFruit('date');
+    f.scale.setScalar(1.5);
+    f.position.set(Math.cos(a) * 0.22, 1.72, Math.sin(a) * 0.22);
+    g.add(f);
+    g.userData.fruits.push(f);
+  }
+  g.userData.fruitKind = 'date';
+  return g;
+}
+
+// 바구니: 열매 퀘스트 동안 관찰자 옆구리에 든다. slots에 담긴 열매를 차례로 놓는다.
+export function makeBasket() {
+  const g = new THREE.Group();
+  const m = mat(PAL.wicker);
+  m.side = THREE.DoubleSide;
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.17, 0.2, 9, 1, true), m);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(0.17, 9), m);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -0.1;
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 4, 10, Math.PI), m);
+  g.add(wall, floor, handle);
+  g.userData.slots = [[-0.08, -0.03, 0.06], [0.08, -0.03, 0.05], [0, -0.03, -0.09], [-0.09, 0.03, -0.04], [0.09, 0.03, -0.05]]
+    .map(([x, y, z]) => new THREE.Vector3(x, y, z));
+  return g;
+}
+
+// 나무 판자 다리: 로컬 x 방향으로 건넌다(len은 건너는 길이).
+export function makeBridge(len = 2.6, width = 1.2) {
+  const g = new THREE.Group();
+  const m = mat(PAL.plank);
+  const n = 7;
+  for (let i = 0; i < n; i++) {
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(len / n - 0.05, 0.08, width), m);
+    plank.position.set(-len / 2 + (i + 0.5) * (len / n), 0.1 + Math.sin((i / (n - 1)) * Math.PI) * 0.08, 0);
+    g.add(plank);
+  }
+  for (const z of [-width / 2, width / 2]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.06), mat(PAL.bark));
+    rail.position.set(0, 0.42, z);
+    g.add(rail);
+    for (const x of [-len / 2, 0, len / 2]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.08), mat(PAL.bark));
+      post.position.set(x, 0.22, z);
+      g.add(post);
+    }
+  }
+  return g;
+}
+
+// 가시덤불(창 3:18): 마른 가지가 사방으로 뻗은 덤불
+export function makeThornBush(s = 1) {
+  const g = new THREE.Group();
+  const m = mat(PAL.thorn);
+  for (let i = 0; i < 9; i++) {
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05 * s, 0.7 * s, 4), m);
+    const a = (i / 9) * Math.PI * 2;
+    spike.position.set(Math.cos(a) * 0.15 * s, 0.3 * s, Math.sin(a) * 0.15 * s);
+    spike.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9);
+    g.add(spike);
+  }
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.25 * s, 0), m);
+  core.position.y = 0.2 * s;
+  g.add(core);
+  return g;
+}
+
+// 동물: 머리는 +x 쪽이다. kind마다 실루엣 특징을 더해 그 동물로 바로 알아보게 한다(docs/standards/art-3d.md).
+// kind: 'lion' | 'sheep' | 'elephant' | 'deer' | 'horse' | 'bear' | 'generic'
+export function makeAnimal(color, s, kind = 'generic') {
   const g = new THREE.Group();
   const m = mat(color);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1 * s, 0.55 * s, 0.45 * s), m);
-  body.position.y = 0.6 * s;
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.4 * s, 0.4 * s, 0.38 * s), m);
-  head.position.set(0.6 * s, 0.9 * s, 0);
-  g.add(body, head);
-  for (const x of [-0.35, 0.35]) for (const z of [-0.15, 0.15]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12 * s, 0.4 * s, 0.12 * s), m);
-    leg.position.set(x * s, 0.2 * s, z * s);
-    g.add(leg);
+  const dark = mat(new THREE.Color(color).multiplyScalar(0.55));
+  const light = mat(new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.45));
+  const box = (w, h, d, x, y, z, material = m, rz = 0) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w * s, h * s, d * s), material);
+    b.position.set(x * s, y * s, z * s);
+    b.rotation.z = rz;
+    g.add(b);
+    return b;
+  };
+  const legs = (w, h, xs, zs, material = m) => {
+    for (const x of [-xs, xs]) for (const z of [-zs, zs]) box(w, h, w, x, h / 2, z, material);
+  };
+  switch (kind) {
+    case 'deer': { // 가는 다리, 짧은 흰 꼬리, 가지 친 뿔
+      legs(0.07, 0.62, 0.28, 0.11);
+      box(0.78, 0.36, 0.32, 0, 0.8, 0);
+      box(0.15, 0.42, 0.15, 0.4, 1.06, 0, m, -0.45);
+      box(0.32, 0.2, 0.19, 0.58, 1.27, 0);
+      box(0.12, 0.12, 0.13, 0.76, 1.23, 0, dark);
+      box(0.08, 0.13, 0.1, -0.42, 0.9, 0, mat(0xf5f0e6), 0.5);
+      const antler = mat(0xe8d9b5);
+      for (const z of [-0.07, 0.07]) {
+        box(0.035, 0.38, 0.035, 0.52, 1.52, z * 1.6, antler, 0.25);
+        box(0.03, 0.2, 0.03, 0.6, 1.58, z * 2.2, antler, -0.7);
+        box(0.03, 0.18, 0.03, 0.43, 1.68, z * 2.4, antler, 0.8);
+        box(0.08, 0.12, 0.04, 0.5, 1.37, z * 2.6, m, 0.6); // 귀
+      }
+      break;
+    }
+    case 'lion': { // 갈기, 꼬리 끝 술
+      const mane = mat(0x8a5a2a);
+      legs(0.14, 0.45, 0.34, 0.15);
+      box(0.95, 0.48, 0.44, 0, 0.68, 0);
+      const ruff = new THREE.Mesh(new THREE.IcosahedronGeometry(0.44 * s, 0).scale(0.75, 1, 1.05), mane);
+      ruff.position.set(0.5 * s, 0.95 * s, 0);
+      g.add(ruff);
+      box(0.34, 0.34, 0.34, 0.7, 0.93, 0);
+      box(0.14, 0.14, 0.2, 0.86, 0.86, 0, light);
+      box(0.06, 0.55, 0.06, -0.6, 0.68, 0, m, 0.9);
+      box(0.13, 0.13, 0.13, -0.82, 0.55, 0, mane);
+      break;
+    }
+    case 'elephant': { // 큰 귀, 긴 코, 굵은 다리
+      legs(0.26, 0.55, 0.32, 0.18);
+      box(1.1, 0.72, 0.72, 0, 0.9, 0);
+      box(0.44, 0.5, 0.46, 0.7, 1.04, 0);
+      const earM = mat(new THREE.Color(color).multiplyScalar(0.78));
+      for (const z of [-1, 1]) {
+        const ear = box(0.42, 0.66, 0.06, 0.56, 1.06, z * 0.3, earM); // 옆으로 펼친 큰 귀
+        ear.rotation.y = z * 0.35;
+        box(0.26, 0.05, 0.05, 0.98, 0.8, z * 0.12, mat(0xf3ead8), -0.5);
+      }
+      box(0.16, 0.72, 0.16, 0.97, 0.62, 0, m, 0.08); // 긴 코
+      box(0.2, 0.1, 0.16, 1.02, 0.28, 0, m);
+      box(0.05, 0.4, 0.05, -0.58, 0.75, 0, m, 0.4);
+      break;
+    }
+    case 'sheep': { // 둥근 털 덩어리 몸, 작은 머리
+      const face = mat(0x3a3330);
+      legs(0.07, 0.36, 0.26, 0.13, face);
+      const wool = new THREE.Mesh(new THREE.IcosahedronGeometry(0.46 * s, 1).scale(1.25, 0.9, 1), m);
+      wool.position.y = 0.66 * s;
+      g.add(wool);
+      box(0.22, 0.24, 0.2, 0.6, 0.78, 0, face);
+      for (const z of [-1, 1]) box(0.06, 0.06, 0.14, 0.55, 0.86, z * 0.15, face);
+      break;
+    }
+    case 'horse': { // 긴 목, 갈기, 긴 꼬리
+      const hair = mat(0x2e2018);
+      legs(0.1, 0.75, 0.36, 0.13);
+      box(1.05, 0.44, 0.38, 0, 0.98, 0);
+      box(0.2, 0.62, 0.22, 0.56, 1.32, 0, m, -0.5);
+      box(0.44, 0.19, 0.19, 0.84, 1.58, 0, m, -0.45);
+      box(0.06, 0.62, 0.08, 0.48, 1.42, 0, hair, -0.5);
+      box(0.08, 0.66, 0.1, -0.6, 0.78, 0, hair, -0.3);
+      for (const z of [-1, 1]) box(0.05, 0.12, 0.05, 0.7, 1.78, z * 0.06, m);
+      break;
+    }
+    case 'bear': { // 둥근 귀, 묵직한 몸
+      legs(0.2, 0.4, 0.32, 0.18);
+      const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 * s, 1).scale(1.15, 0.75, 0.8), m);
+      body.position.y = 0.72 * s;
+      g.add(body);
+      box(0.4, 0.36, 0.38, 0.62, 0.92, 0);
+      box(0.15, 0.14, 0.18, 0.86, 0.87, 0, light);
+      for (const z of [-1, 1]) {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.08 * s, 6, 5), m);
+        ear.position.set(0.56 * s, 1.13 * s, z * 0.14 * s);
+        g.add(ear);
+      }
+      break;
+    }
+    default: {
+      legs(0.12, 0.4, 0.35, 0.15);
+      box(1, 0.55, 0.45, 0, 0.6, 0);
+      box(0.4, 0.4, 0.38, 0.6, 0.9, 0);
+    }
   }
   return g;
 }
@@ -404,11 +652,14 @@ export function makeWaypoint() {
   const goldM = glowMat(PAL.gold, 0.7);
   const marker = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.7, 4), goldM);
   marker.rotation.x = Math.PI; // 아래를 가리킨다
-  const ringM = new THREE.MeshBasicMaterial({ color: PAL.gold, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false });
+  // 바닥 표시(고리, 화살표)는 물·지형 위에서도 묻히지 않게 깊이 검사를 끄고 맨 나중에 그린다.
+  const ringM = new THREE.MeshBasicMaterial({ color: PAL.gold, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, depthTest: false });
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.8, 16), ringM);
   ring.rotation.x = -Math.PI / 2;
+  ring.renderOrder = 10;
   const shape = new THREE.Shape([new THREE.Vector2(0, 0.45), new THREE.Vector2(0.32, -0.15), new THREE.Vector2(0, 0), new THREE.Vector2(-0.32, -0.15)]);
-  const arrow = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: PAL.gold, side: THREE.DoubleSide }));
+  const arrow = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: PAL.gold, side: THREE.DoubleSide, depthTest: false, depthWrite: false }));
+  arrow.renderOrder = 11;
   arrow.rotation.x = Math.PI / 2; // 모양의 뾰족한 끝(+y)이 진행 방향(+z)을 향하게 눕힌다
   const arrowPivot = new THREE.Group();
   arrowPivot.add(arrow);
@@ -423,7 +674,7 @@ export function makeWaypoint() {
       if (!target) return;
       marker.position.set(target.x, (target.y ?? 0) + 2.6 + Math.sin(t * 3) * 0.2, target.z);
       marker.rotation.y = t * 1.5;
-      ring.position.set(target.x, 0.05, target.z);
+      ring.position.set(target.x, 0.12, target.z);
       ring.scale.setScalar(1 + (t % 1.2) * 0.4);
       ringM.opacity = 0.6 * (1 - (t % 1.2) / 1.2);
       dir.subVectors(target, from).setY(0);
@@ -432,7 +683,7 @@ export function makeWaypoint() {
       if (far) {
         dir.normalize();
         const reach = 1.1 + (t * 1.2 % 1) * 0.4; // 목표 쪽으로 미끄러지듯 움직인다
-        arrowPivot.position.set(from.x + dir.x * reach, 0.06, from.z + dir.z * reach);
+        arrowPivot.position.set(from.x + dir.x * reach, 0.15, from.z + dir.z * reach);
         arrowPivot.rotation.y = Math.atan2(dir.x, dir.z);
       }
     },

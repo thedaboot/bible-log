@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { PROLOGUE } from '../src/data/prologue.js';
 import { CREATION, DAY_NAMES } from '../src/data/creation.js';
 import { EDEN, FALL, RIVERS, ANIMALS, QUIZ } from '../src/data/eden.js';
-import { SPEAKERS, vocative, fill } from '../src/text.js';
+import { SPEAKERS, vocative, fill, withRa } from '../src/text.js';
+import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES } from '../src/eden.js';
 import { load, save, reach, newState } from '../src/save.js';
 import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
@@ -137,3 +138,53 @@ assert.equal(old.earthLook.hair, 'long');
 assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
 
 console.log(`OK: 대사 ${count}줄, 퀴즈 ${QUIZ.length}문제, 저장·하늘 점검 통과`);
+
+// 소품 옮기기: 뺀 소품(머리띠·목도리)은 '없음'으로 바뀐다
+mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { item: 'band' } }));
+assert.equal(load(storage).earthLook.item, 'none', '머리띠 저장값 옮기기 오류');
+mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { item: 'scarf' } }));
+assert.equal(load(storage).earthLook.item, 'none', '목도리 저장값 옮기기 오류');
+assert.ok(!LOOK.earth.item.some((o) => ['band', 'scarf'].includes(o.id)), '성경 근거가 약한 소품이 남아 있음');
+assert.equal(withRa('사자'), '사자라');
+assert.equal(withRa('곰'), '곰이라');
+assert.ok(ANIMALS.every((a) => ['lion', 'sheep', 'elephant', 'deer', 'horse', 'bear'].includes(a.kind)), '동물 모양(kind) 오류');
+
+// 에덴 충돌: 출발점에서 걸어서(나무·바위·물을 피해, 다리로 강을 건너) 모든 목표에 닿는지 격자로 확인한다.
+const eden = makeEden({ background: new THREE.Color() });
+const STEP = 0.25, N = Math.ceil((EDEN_RADIUS * 2) / STEP);
+const cell = (i, j) => new THREE.Vector3(-EDEN_RADIUS + i * STEP, 0, -EDEN_RADIUS + j * STEP);
+const free = (p) => p.length() <= EDEN_RADIUS && !collide(p.clone(), 0.35);
+const seen = new Set();
+const start = [Math.round((EDEN_START.x + EDEN_RADIUS) / STEP), Math.round((EDEN_START.z + EDEN_RADIUS) / STEP)];
+assert.ok(free(cell(...start)), '출발점이 장애물 안에 있음');
+const queue = [start];
+seen.add(start.join());
+while (queue.length) {
+  const [i, j] = queue.pop();
+  for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const k = [i + di, j + dj];
+    if (k[0] < 0 || k[1] < 0 || k[0] > N || k[1] > N || seen.has(k.join()) || !free(cell(...k))) continue;
+    seen.add(k.join());
+    queue.push(k);
+  }
+}
+const reachable = [...seen].map((k) => cell(...k.split(',').map(Number)));
+const reach2 = (pos, r) => reachable.some((c) => c.distanceTo(pos.clone().setY(0)) < r - 0.1);
+for (const r of eden.riverEnds) assert.ok(reach2(r.pos, 2), `${r.name} 강 끝에 닿을 수 없음`);
+for (const t of eden.fruitTrees) assert.ok(reach2(t.position, 2), `${t.userData.fruitName} 나무에 닿을 수 없음`);
+for (const an of eden.animals) assert.ok(reach2(an.position, 2.4), `${an.userData.name}에게 닿을 수 없음`);
+assert.ok(reach2(eden.knowledge.position, 2.4), '선악을 알게 하는 나무에 닿을 수 없음');
+// 다리가 없으면 강을 건널 수 없어야 한다(물 충돌 확인): 강 한가운데 점은 막혀 있다
+const [ra, rb] = RIVER_SEGMENTS[0];
+assert.ok(!free(ra.clone().lerp(rb, 0.5)), '강 위를 걸을 수 있음');
+assert.ok(BRIDGES.every((b) => free(b.pos.clone())), '다리 위가 막혀 있음');
+// 동물은 한곳에 몰리지 않는다: 터끼리 4 이상 떨어져 있고, 강으로 나뉜 구역 세 곳 이상에 흩어져 있다
+const homes = eden.animals.map((an) => an.userData.home);
+for (const [i, h] of homes.entries()) for (const g of homes.slice(i + 1)) assert.ok(h.distanceTo(g) >= 4, '동물 터가 너무 가까움');
+// 구역: 샘에서 본 방향이 어느 두 강 사이에 드는지(강 끝 방향으로 나눈다)
+const splitAt = RIVER_SEGMENTS[0][0];
+const ang = (p) => (Math.atan2(p.z - splitAt.z, p.x - splitAt.x) + Math.PI * 2) % (Math.PI * 2);
+const cuts = RIVER_SEGMENTS.filter((_, i) => i % 2).map(([, end]) => ang(end)).sort((x, y) => x - y);
+const sector = (p) => cuts.filter((c) => ang(p) > c).length % cuts.length;
+assert.ok(new Set(homes.map(sector)).size >= 3, '동물이 한 구역에 몰려 있음');
+console.log(`OK: 에덴 충돌 점검 통과(걸어서 닿는 칸 ${reachable.length}개)`);

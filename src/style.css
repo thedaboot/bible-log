@@ -382,6 +382,43 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
 .gesture--swipe::after { content: '↔'; position: absolute; left: 0; right: 0; bottom: -2px; text-align: center; font-size: var(--text-label); color: var(--color-paper); }
 @keyframes swipe { from { transform: translateX(-10px); } to { transform: translateX(10px); } }
 
+/* 머무르기 게이지: 동물 곁에 머무르는 동안 찬다(움직임은 transform만) */
+.gauge {
+  position: fixed;
+  z-index: 6;
+  left: 50%;
+  bottom: calc(var(--space-xl) * 2.5);
+  display: grid;
+  gap: var(--space-2xs);
+  width: min(18rem, calc(100% - var(--space-md) * 2));
+  padding: var(--space-xs) var(--space-md);
+  transform: translateX(-50%);
+}
+.gauge__label { margin: 0; font-size: var(--text-small); font-weight: 700; color: var(--color-frame); white-space: nowrap; }
+.gauge__track { display: block; height: 10px; background: var(--color-paper-2); box-shadow: inset 0 0 0 2px var(--color-frame); overflow: hidden; }
+.gauge__fill { display: block; height: 100%; background: var(--color-accent); transform-origin: left; transform: scaleX(0); }
+
+/* 도감 카드: 동물 이름을 얻으면 펼쳐진다 */
+.dexcard {
+  position: fixed;
+  z-index: 7;
+  top: 22%;
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3xs);
+  width: min(17rem, calc(100% - var(--space-md) * 2));
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+  text-align: center;
+  transform: translateX(-50%);
+  cursor: pointer;
+  animation: gain-in var(--dur-long) var(--ease-out);
+}
+.dexcard::after { content: ''; position: absolute; inset: 0; background: var(--color-gold); opacity: 0; animation: flash var(--dur-fade) var(--ease-out); pointer-events: none; }
+.dexcard__title { margin: var(--space-2xs) 0 0; font-family: var(--font-display); font-size: var(--text-title-m); line-height: 1.1; color: var(--color-frame); }
+.dexcard__text { margin: 0; font-size: var(--text-small); color: var(--color-ink-2); word-break: keep-all; }
+.dexcard__count { margin: var(--space-2xs) 0 0; font-size: var(--text-label); font-weight: 700; letter-spacing: 0.1em; color: var(--color-accent); }
+
 /* 짧은 알림 */
 .toast {
   position: fixed;

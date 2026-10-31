@@ -29,6 +29,16 @@
     </aside>
     <div id="controls" class="controls" hidden></div>
     <div id="toast" class="toast" role="status" hidden></div>
+    <div id="gauge" class="panel gauge" hidden>
+      <p id="gaugeLabel" class="gauge__label"></p>
+      <span class="gauge__track" aria-hidden="true"><span id="gaugeFill" class="gauge__fill"></span></span>
+    </div>
+    <div id="dexCard" class="panel dexcard" role="status" hidden>
+      <p class="quest__label">바이블로그 도감</p>
+      <p id="dexTitle" class="dexcard__title"></p>
+      <p id="dexText" class="dexcard__text"></p>
+      <p id="dexCount" class="dexcard__count"></p>
+    </div>
     <div id="dayTitle" class="day-title" aria-live="polite"></div>
     <button id="nextBtn" class="btn btn--next" type="button" hidden></button>
 

@@ -8,6 +8,14 @@ export function vocative(name) {
   return name + (code % 28 ? '아' : '야');
 }
 
+// '사자라', '곰이라'처럼 받침에 맞춰 '(이)라'를 붙인다.
+export function withRa(word) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return word + (code >= 0 && code <= 11171 && code % 28 ? '이라' : '라');
+}
+
+// {animalRa}는 ctx.animal에 '(이)라'를 붙인 말로 바뀐다(동물 이름 짓기 장면).
 export function fill(text, ctx) {
-  return text.replaceAll('{nameVoc}', vocative(ctx.name)).replaceAll('{name}', ctx.name);
+  return text.replaceAll('{nameVoc}', vocative(ctx.name)).replaceAll('{name}', ctx.name)
+    .replaceAll('{animalRa}', ctx.animal ? withRa(ctx.animal) : '');
 }

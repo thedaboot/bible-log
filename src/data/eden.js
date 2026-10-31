@@ -17,19 +17,27 @@ export const RIVERS = [
   ] },
 ];
 
-// 아담이 이름을 지어 준 동물(창 2:19~20). 색과 크기는 임시 도형용이다.
+// 아담이 이름을 지어 준 동물(창 2:19~20). kind는 props.js의 makeAnimal 모양, 색과 크기는 임시 도형용이다.
 export const ANIMALS = [
-  { name: '사자', color: 0xc8a165, size: 1.35 },
-  { name: '양', color: 0xf5f5f0, size: 0.9 },
-  { name: '코끼리', color: 0x8d8d95, size: 2.0 },
-  { name: '사슴', color: 0x9a6b3f, size: 1.2 },
-  { name: '말', color: 0x7a5a3a, size: 1.5 },
-  { name: '곰', color: 0x5a3d2b, size: 1.5 },
+  { name: '사자', kind: 'lion', color: 0xc8a165, size: 1.2 },
+  { name: '양', kind: 'sheep', color: 0xf5f5f0, size: 0.95 },
+  { name: '코끼리', kind: 'elephant', color: 0x8d8d95, size: 1.6 },
+  { name: '사슴', kind: 'deer', color: 0x9a6b3f, size: 1.1 },
+  { name: '말', kind: 'horse', color: 0x7a5a3a, size: 1.2 },
+  { name: '곰', kind: 'bear', color: 0x5a3d2b, size: 1.25 },
 ];
 
 // 먹어도 되는 열매. 에덴 열매의 종류는 본문에 없어서, 성경의 다른 곳에 나오는 열매로 채운 각색이다.
 // 무화과(창 3:7), 석류(출 28:33), 포도(민 13:23), 올리브(신 8:8), 대추야자(신 34:3 종려)
-export const FRUITS = ['무화과', '석류', '포도', '올리브', '대추야자'];
+export const FRUITS = [
+  { name: '무화과', kind: 'fig' }, { name: '석류', kind: 'pomegranate' }, { name: '포도', kind: 'grape' },
+  { name: '올리브', kind: 'olive' }, { name: '대추야자', kind: 'date' },
+];
+
+// 동물 곁에 머물렀을 때 아담이 이름을 지어 주는 대사. {animalRa}는 '사자라', '곰이라'로 바뀐다.
+export const NAMING = [
+  { who: 'adam', text: '너를 {animalRa} 부르겠다.', ref: '창 2:19' },
+];
 
 export const EDEN = {
   arrive: [
@@ -40,7 +48,9 @@ export const EDEN = {
   adamAfter: [
     { who: 'narr', text: '생명의 숨을 그 코에 불어넣으시니, 사람이 살아 있는 존재가 되었다.', ref: '창 2:7' },
     { who: 'narr', text: '여호와 하나님께서 동쪽의 에덴에 동산을 일구시고,\n지으신 사람을 그곳에 두셨다.', ref: '창 2:8' },
-    { who: 'narr', text: '보기에 아름답고 먹기에 좋은 나무들이 자라났다.\n동산 가운데에는 생명나무와 선악을 알게 하는 나무가 있었다.', ref: '창 2:9' },
+    { who: 'narr', text: '보기에 아름답고 먹기에 좋은 나무들이 자라났다.', ref: '창 2:9' },
+    // 이 대사가 나오면 카메라가 동산 가운데로 가고 선악을 알게 하는 나무에 빛이 내린다(main.js, focus: 'center').
+    { who: 'narr', text: '동산 가운데에는 생명나무와 선악을 알게 하는 나무가 있었다.', ref: '창 2:9', focus: 'center' },
     { who: 'narr', text: '강 하나가 에덴에서 흘러나와 동산을 적시고,\n거기서 갈라져 네 줄기가 되었다.', ref: '창 2:10' },
     { who: 'angel', text: '{name}님, 네 갈래로 흘러가는 강을 하나씩 찾아가 볼까요?', ref: null },
   ],
@@ -55,7 +65,7 @@ export const EDEN = {
   animalsIntro: [
     { who: 'voice', text: '사람이 혼자 있는 것이 좋지 않으니,\n그에게 꼭 맞는 돕는 이를 지어 주겠다.', ref: '창 2:18' },
     { who: 'narr', text: '여호와 하나님께서 흙으로 들짐승과 새를 지으시고,\n아담이 무엇이라 부르는지 보시려고 그에게 데려가셨다.', ref: '창 2:19' },
-    { who: 'angel', text: '아담이 이름을 지어 준 동물들을 찾아 바이블로그에 기록해 보아요!', ref: null },
+    { who: 'angel', text: '동물 곁에 머무르면 아담이 이름을 지어 줄 거예요.\n함께 다녀 보아요!', ref: null },
   ],
   animalsDone: [
     { who: 'narr', text: '아담이 모든 가축과 새와 들짐승에게 이름을 지어 주었다.\n그러나 아담에게 꼭 맞는 돕는 이는 없었다.', ref: '창 2:20' },

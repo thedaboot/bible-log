@@ -123,11 +123,11 @@ export function makeCreation(scene) {
   }
 
   const ANIMALS = [
-    [0xf5f5f0, 0.6], [0xc8a165, 0.9], [0x8d8d95, 1.4], [0x9a6b3f, 0.8], [0x5a3d2b, 1.0],
-    [0xe0c080, 1.1], [0x3a3a3a, 0.7], [0xd98e4a, 0.5], [0xffffff, 0.4], [0x7a5a3a, 1.0],
+    [0xf5f5f0, 0.6, 'sheep'], [0xc8a165, 0.8, 'lion'], [0x8d8d95, 1.1, 'elephant'], [0x9a6b3f, 0.75, 'deer'], [0x5a3d2b, 0.85, 'bear'],
+    [0xe0c080, 0.8, 'horse'], [0x3a3a3a, 0.65, 'bear'], [0xd98e4a, 0.6, 'deer'], [0xffffff, 0.45, 'sheep'], [0x7a5a3a, 0.85, 'horse'],
   ];
-  const animals = ANIMALS.map(([color, s], i) => {
-    const an = makeAnimal(color, s * 1.7);
+  const animals = ANIMALS.map(([color, s, kind], i) => {
+    const an = makeAnimal(color, s * 1.7, kind);
     const a = (i / ANIMALS.length) * Math.PI * 2;
     an.position.set(Math.cos(a) * 4, 0.5, Math.sin(a) * 4); // 땅이 다 솟은 뒤 윗면 높이
     an.userData = { heading: Math.random() * Math.PI * 2, delay: i * 0.06 };
