@@ -317,6 +317,10 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
 .quest__items li::before { content: ''; position: absolute; left: 0; top: 0.3em; width: 0.75rem; height: 0.75rem; box-shadow: inset 0 0 0 2px var(--color-frame); }
 .quest__items li.is-done { color: var(--color-ink-2); text-decoration: line-through; }
 .quest__items li.is-done::before { background: var(--color-accent); box-shadow: inset 0 0 0 2px var(--color-accent); }
+/* 방금 끝낸 목표: 칸이 커졌다 돌아오고 줄 전체가 금빛으로 한 번 번쩍인다 */
+.quest__items li.is-new::before { animation: bump-box var(--dur-long) var(--ease-out); }
+.quest__items li.is-new::after { content: ''; position: absolute; inset: -2px -4px; background: var(--color-gold); opacity: 0; z-index: -1; animation: flash var(--dur-fade) var(--ease-out); }
+@keyframes bump-box { 40% { transform: scale(1.6); } }
 @media (min-width: 40rem) { .quest { left: auto; right: max(var(--space-md), env(safe-area-inset-right)); width: 19rem; } }
 
 /* ---------- 조작 안내: 퀘스트 창과 따로, 아래쪽에 ---------- */
@@ -396,6 +400,12 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
   animation: toast-in var(--dur-short) var(--ease-out);
 }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+/* 획득 알림: 살짝 커졌다 돌아오고, 금빛이 한 번 번쩍인다 */
+.toast--gain { display: flex; align-items: center; gap: var(--space-2xs); animation: gain-in var(--dur-long) var(--ease-out); }
+.toast--gain::before { content: ''; flex: none; width: 0.55rem; height: 1rem; margin: -0.25rem 0.25rem 0 0; border: solid var(--color-frame); border-width: 0 3px 3px 0; transform: rotate(45deg); animation: check-in var(--dur-long) var(--ease-out); }
+.toast--gain::after { content: ''; position: absolute; inset: 0; background: var(--color-light); opacity: 0; animation: flash var(--dur-long) var(--ease-out); pointer-events: none; }
+@keyframes gain-in { from { opacity: 0; transform: translate(-50%, 8px) scale(0.85); } 60% { opacity: 1; transform: translate(-50%, 0) scale(1.06); } }
+@keyframes flash { 0% { opacity: 0.9; } 100% { opacity: 0; } }
 
 .day-title {
   position: fixed;
@@ -521,6 +531,8 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
   box-shadow: inset 0 -2px 0 var(--color-paper-3);
 }
 .look__picked { font-weight: 600; color: var(--color-ink-2); }
+/* 칩 묶음은 같은 너비 격자: 줄이 바뀌어도 열이 맞는다. 가장 긴 이름(5글자)이 한 줄에 들어가는 너비 */
+.look__group:has(.chip) { display: grid; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); }
 
 /* 빛깔 견본: 큰 색 칸, 고른 칸은 바깥에 금빛 테 */
 .swatch {
@@ -542,6 +554,8 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 0;
   min-height: 40px;
   padding: 0 var(--space-sm);
   cursor: pointer;
@@ -562,11 +576,34 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
 @media (hover: hover) { .btn--quiet:hover { background: var(--color-paper); } }
 
 /* 구절 퀴즈 */
-.quiz__options { display: grid; gap: var(--space-2xs); width: 100%; }
-.btn--option { width: 100%; text-align: left; font-size: 1.0625rem; }
-.btn--option[aria-invalid="true"] { color: var(--color-ink-2); text-decoration: line-through; background: var(--color-paper-2); }
-.btn--option[data-state="success"] { background: var(--color-gold); }
+.modal__panel.quiz { width: min(34rem, 100%); gap: var(--space-md); padding: var(--space-xl) var(--space-lg) var(--space-lg); }
+@media (max-width: 40rem) { .modal__panel.quiz { padding: var(--space-lg) var(--space-md) var(--space-md); } }
+/* 문제는 크게, 어미가 혼자 다음 줄로 떨어지지 않게 균형 있게 나눈다 */
+.quiz .modal__title { font-size: clamp(1.375rem, 1.2vw + 1rem, 1.75rem); line-height: 1.45; word-break: keep-all; text-wrap: balance; }
+.quiz__options { display: grid; gap: var(--space-xs); width: 100%; }
+.btn--option { position: relative; width: 100%; min-height: 56px; padding-right: 3rem; text-align: left; font-size: var(--text-read); white-space: normal; word-break: keep-all; }
+.btn--option[aria-invalid="true"] { color: var(--color-ink-2); text-decoration: line-through; background: var(--color-paper-2); animation: shake var(--dur-long) var(--ease-out); }
+.btn--option[data-state="success"] { background: var(--color-gold); animation: bump var(--dur-long) var(--ease-out); }
 .btn--option[data-state="success"]:disabled { color: var(--color-ink); }
+/* 정답 칸 오른쪽에 체크 표시가 커지며 나타난다 */
+.btn--option[data-state="success"]::after {
+  content: '';
+  position: absolute;
+  right: 1.25rem;
+  top: 50%;
+  width: 0.7rem;
+  height: 1.2rem;
+  margin-top: -0.75rem;
+  border: solid var(--color-frame);
+  border-width: 0 4px 4px 0;
+  transform: rotate(45deg);
+  animation: check-in var(--dur-long) var(--ease-out);
+}
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes bump { 40% { transform: scale(1.04); } }
+@keyframes check-in { from { opacity: 0; transform: rotate(45deg) scale(0.3); } }
+.quiz__feedback { min-height: 1.7em; font-weight: 700; color: var(--color-frame); }
+.quiz__feedback.is-ok { color: var(--color-accent); animation: rise-in var(--dur-short) var(--ease-out); }
 .modal__title { margin: 0; font-family: var(--font-body); font-size: var(--text-ui); font-weight: 700; line-height: 1.3; color: var(--color-frame); }
 .modal__text { margin: 0; font-size: var(--text-read); line-height: 1.7; color: var(--color-ink-2); word-break: keep-all; text-wrap: pretty; white-space: pre-line; }
 .modal__panel .btn { justify-self: end; }

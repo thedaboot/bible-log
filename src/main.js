@@ -420,7 +420,7 @@ async function runEdenGarden() {
     radius: 1.8,
     onFound: async (f) => {
       f.tree.userData.fruits.forEach((x) => (x.visible = false));
-      toast('열매를 모았어요');
+      toast(`${f.name}를 바구니에 담았어요`, { gain: true });
     },
   });
   triggers = triggers.filter((x) => x !== warn);

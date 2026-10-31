@@ -195,16 +195,20 @@ export function askLook(current, onChange, { title, text, options, tabs = null, 
 }
 
 // 퀘스트 창: { title, items: [{ text, done }] } 또는 null(닫기)
+// 방금 끝난 목표에는 is-new를 붙여 한 번만 강조한다.
+let questDone = new Set();
 export function setQuest(quest) {
   const box = $('quest');
   box.hidden = !quest;
-  if (!quest) return;
+  if (!quest) { questDone = new Set(); return; }
   $('questTitle').textContent = quest.title;
   const list = $('questItems');
+  const before = questDone;
+  questDone = new Set(quest.items.filter((it) => it.done).map((it) => it.text));
   list.replaceChildren(...quest.items.map((it) => {
     const li = document.createElement('li');
     li.textContent = it.text;
-    if (it.done) li.className = 'is-done';
+    if (it.done) li.className = before.has(it.text) || before.size + 1 < questDone.size ? 'is-done' : 'is-done is-new';
     return li;
   }));
 }
@@ -226,11 +230,14 @@ export function setControls(kind) {
   if (kind) box.innerHTML = CONTROLS[kind][isTouch() ? 'touch' : 'pc'];
 }
 
-// 짧은 알림(예: 바이블로그에 기록)
+// 짧은 알림. gain이면 획득 강조(체크 표시, 번쩍임, 커졌다 돌아오기)를 함께 준다.
 let toastTimer = null;
-export function toast(text) {
+export function toast(text, { gain = false } = {}) {
   const el = $('toast');
   el.textContent = text;
+  el.classList.toggle('toast--gain', gain);
+  el.hidden = true;
+  void el.offsetWidth; // 연속으로 띄워도 등장 효과가 다시 돌게 한다
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (el.hidden = true), 2200);
@@ -282,6 +289,7 @@ export function askQuiz(questions) {
       $('quizCount').textContent = `${i + 1} / ${questions.length}`;
       $('quizQ').textContent = q.q;
       $('quizFeedback').textContent = '';
+      $('quizFeedback').className = 'modal__text quiz__feedback';
       const next = $('quizNext');
       next.hidden = true;
       const opts = $('quizOptions');
@@ -292,12 +300,16 @@ export function askQuiz(questions) {
         b.textContent = text;
         b.onclick = () => {
           if (n !== q.answer) {
+            b.removeAttribute('aria-invalid');
+            void b.offsetWidth; // 같은 오답을 다시 눌러도 흔들림이 다시 돈다
             b.setAttribute('aria-invalid', 'true');
+            $('quizFeedback').className = 'modal__text quiz__feedback';
             $('quizFeedback').textContent = '다시 골라 보세요.';
             return;
           }
           b.dataset.state = 'success';
           opts.querySelectorAll('button').forEach((x) => (x.disabled = x !== b));
+          $('quizFeedback').className = 'modal__text quiz__feedback is-ok';
           $('quizFeedback').textContent = `정답이에요! (${q.ref})`;
           next.textContent = i < questions.length - 1 ? '다음 문제' : '마치기';
           next.hidden = false;
