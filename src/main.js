@@ -11,6 +11,8 @@ import { CREATION, DAY_NAMES } from './data/creation.js';
 import { EDEN, FALL, QUIZ, NAMING } from './data/eden.js';
 import { load, save, reach, newState } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
+import { REWARDS } from './data/growth.js';
+import { grant, bond, record } from './growth.js';
 import { tween, easeOut, setInstant } from './anim.js';
 import {
   $, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard,
@@ -539,6 +541,22 @@ async function runEden(from = 'eden') {
   await runEdenFall();
 }
 
+// 성장 보상: 같은 보상은 한 번만 받고(key는 'eden/river/pishon'처럼 스테이지로 시작), 받은 것을 획득 알림으로 차례로 보여 준다.
+// entry를 주면 도감에 처음 만난 스테이지를 남긴다.
+function reward(key, kind, entry) {
+  const stage = key.split('/')[0];
+  if (entry) record(state, entry, stage);
+  const msgs = grant(state, key, REWARDS[kind]);
+  save(state);
+  for (const m of msgs) toast(m, { gain: true });
+}
+function meet(who, step) {
+  record(state, `person/${who}`, 'eden');
+  const msgs = bond(state, who, step);
+  save(state);
+  for (const m of msgs) toast(m, { gain: true });
+}
+
 // 에덴의 대사: 말하는 인물이 고개를 끄덕이며 들썩인다(eden.acts.speak).
 function talk(lines, ctx, opts = {}) {
   return say(lines, ctx, { onLine: (l, i) => { eden?.acts.speak(l.who); opts.onLine?.(l, i); } });
@@ -551,6 +569,7 @@ async function runEdenGarden() {
   await fade(0);
   await talk(EDEN.arrive, state);
   await eden.acts.formAdam();
+  meet('adam', 'met'); // 만남은 자동으로 오른다
   // 창 2:9 동산 가운데를 말하는 대사가 나오면 카메라가 가운데로 가고 선악을 알게 하는 나무에 빛이 내린다.
   let spotOn = false;
   await talk(EDEN.adamAfter, state, {
@@ -568,9 +587,10 @@ async function runEdenGarden() {
     targets: eden.riverEnds,
     text: (r) => `${r.name} 강으로 이동하기`,
     radius: 2,
-    onFound: (r) => talk(r.lines, state),
+    onFound: async (r) => { await talk(r.lines, state); reward(`eden/river/${r.id}`, 'river', `place/${r.id}`); },
   });
   await talk(EDEN.riversDone, state);
+  reward('eden/rivers-done', 'riversDone');
   camFocus = eden.spots.adam;
   setStage('adam');
   await talk(EDEN.command, state);
@@ -597,8 +617,11 @@ async function runEdenGarden() {
       camFocus = null;
       await showCard({ title: a.name, text: '아담이 지어 준 이름 · 창 2:19', count: `${n} / ${total}` });
       a.animal.userData.calm = false;
+      const { kind } = a.animal.userData;
+      reward(`eden/animal/${kind}`, 'animal', `creature/${kind}`);
     },
   });
+  reward('eden/animals-done', 'animalsDone');
   eden.acts.follow(null);
   camFocus = eden.spots.adam;
   setStage('adam');
@@ -647,10 +670,12 @@ async function runEdenGarden() {
       inside.scale.setScalar(1.4);
       basket.add(inside);
       toast(`${f.name}를 바구니에 담았어요`, { gain: true });
+      reward(`eden/fruit/${kind}`, 'fruit', `creature/${kind}`);
       await tween(320, (p) => basket.scale.setScalar(BASKET_SIZE * (1 + Math.sin(p * Math.PI) * 0.3)));
     },
   });
   triggers = triggers.filter((x) => x !== warn);
+  reward('eden/fruit-done', 'fruitDone');
   await talk(EDEN.fruitDone, state);
 }
 
@@ -691,6 +716,9 @@ async function runEdenFall() {
   await talk(FALL.guarded, state);
   setView(13);
   await askQuiz(QUIZ);
+  reward('eden/quiz', 'quiz');
+  reward('eden/clear', 'clear');
+  await new Promise((r) => setTimeout(r, 2400)); // 마친 보상 알림을 본 뒤 화면을 덮는다
   await fade(1);
   showEnd();
 }

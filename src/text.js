@@ -19,3 +19,10 @@ export function fill(text, ctx) {
   return text.replaceAll('{nameVoc}', vocative(ctx.name)).replaceAll('{name}', ctx.name)
     .replaceAll('{animalRa}', ctx.animal ? withRa(ctx.animal) : '');
 }
+
+// 받침에 맞춰 조사를 붙인다. josa('인내', '이', '가') → '인내가'. '(으)로'는 ㄹ 받침 뒤에서 '로'다.
+export function josa(word, withFinal, without) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  const fin = code >= 0 && code <= 11171 ? code % 28 : 0;
+  return word + (fin && !(withFinal === '으로' && fin === 8) ? withFinal : without);
+}

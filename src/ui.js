@@ -290,16 +290,25 @@ export function showCard({ title, text, count }) {
 }
 
 // 짧은 알림. gain이면 획득 강조(체크 표시, 번쩍임, 커졌다 돌아오기)를 함께 준다.
-let toastTimer = null;
-export function toast(text, { gain = false } = {}) {
+// 알림은 차례로 띄운다. 뒤에 기다리는 알림이 있으면 1.4초, 마지막 알림은 2.2초 동안 보인다.
+const toasts = [];
+function nextToast() {
   const el = $('toast');
+  const [text, { gain = false } = {}] = toasts[0];
   el.textContent = text;
   el.classList.toggle('toast--gain', gain);
   el.hidden = true;
   void el.offsetWidth; // 연속으로 띄워도 등장 효과가 다시 돌게 한다
   el.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (el.hidden = true), 2200);
+  setTimeout(() => {
+    toasts.shift();
+    if (toasts.length) nextToast();
+    else el.hidden = true;
+  }, toasts.length > 1 ? 1400 : 2200);
+}
+export function toast(text, opts) {
+  toasts.push([text, opts]);
+  if (toasts.length === 1) nextToast();
 }
 
 export function showDayTitle(text) {

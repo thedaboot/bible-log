@@ -10,6 +10,8 @@ import { load, save, reach, newState } from '../src/save.js';
 import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS } from '../src/data/chapters.js';
+import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt } from '../src/data/growth.js';
+import { grant, grow, bond, levelOf, stageOf } from '../src/growth.js';
 
 // 대사 묶음을 [위치, 대사 배열] 목록으로 모은다.
 const groups = [
@@ -136,6 +138,56 @@ const old = load(storage);
 assert.equal(old.earthLook.aura, 'rose');
 assert.equal(old.earthLook.hair, 'long');
 assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
+
+// 성장 기록: 예전 저장값은 기본값으로 채우고, 깨진 값은 걸러 낸다. 보상은 한 번만 받는다.
+{
+  mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'] })); // 성장 기록 없는 예전 형식
+  const g = load(storage);
+  assert.equal(g.xp, 0);
+  assert.equal(g.talents, 0);
+  assert.deepEqual(Object.keys(g.spirit), SPIRIT.map((s) => s.id), '열매 아홉 가지 기본값');
+  assert.ok(Object.values(g.spirit).every((v) => v === 0));
+  assert.deepEqual([g.bonds, g.codex, g.items, g.claimed], [{}, {}, { tools: [], looks: [] }, []]);
+  mem.set('bible-rpg/save/v1', JSON.stringify({
+    name: 'a', scene: 'eden', unlocked: ['prologue'], xp: -5, talents: '많이', spirit: { joy: 7.8, fake: 3 },
+    bonds: { adam: 'talked', eve: 'friend' }, codex: { 'creature/lion': 'eden', 'x/y': 'nowhere' }, items: { tools: [1, 'sling'] }, claimed: 'eden/x',
+  }));
+  const b = load(storage);
+  assert.deepEqual([b.xp, b.talents, b.spirit.joy, 'fake' in b.spirit], [0, 0, 7, false], '숫자 정리 오류');
+  assert.deepEqual(b.bonds, { adam: 'talked' }, '관계 단계 정리 오류');
+  assert.deepEqual(b.codex, { 'creature/lion': 'eden' }, '도감 정리 오류');
+  assert.deepEqual([b.items.tools, b.items.looks, b.claimed], [['sling'], [], []], '인벤토리·보상 정리 오류');
+  // 처음부터를 눌러도 성장 기록은 남는다
+  assert.equal(newState(b).spirit.joy, 7);
+
+  const s = newState();
+  assert.ok(grant(s, 'eden/river/pishon', REWARDS.river).length > 0);
+  assert.deepEqual(grant(s, 'eden/river/pishon', REWARDS.river), [], '같은 보상을 두 번 받음');
+  assert.equal(s.xp, REWARDS.river.xp);
+  assert.deepEqual(grant(s, 'eden/rivers-done', REWARDS.riversDone).at(-1), '기쁨이 자랐어요');
+  assert.equal(s.spirit.joy, SPIRIT_GAIN.quest);
+  // 레벨: 누적 40에서 2, 100에서 3
+  assert.deepEqual([levelOf(39).level, levelOf(40).level, levelOf(99).level, levelOf(100).level], [1, 2, 2, 3]);
+  assert.equal(levelOf(0).title, TITLES[0].title);
+  assert.ok(TITLES.every((t, i) => t.level === i + 1 && REF.test(t.ref)), '칭호 데이터 오류');
+  // 열매 단계와 알림
+  assert.deepEqual([0, 9, 10, 25, 69, 70, 999].map(stageOf), [0, 0, 1, 2, 3, 4, 4]);
+  s.spirit.patience = 8;
+  assert.deepEqual(grow(s, 'patience', 2), ['인내가 새싹으로 자랐어요']);
+  // 관계는 오르기만 하고, 동행에 이르면 열매가 자란다
+  assert.deepEqual(bond(s, 'adam', 'talked'), ['관계: 대화']);
+  assert.deepEqual(bond(s, 'adam', 'met'), [], '관계가 내려감');
+  assert.equal(bond(s, 'adam', 'walked', 'love').length, 2);
+  assert.equal(s.spirit.love, SPIRIT_GAIN.walk);
+  // 보상의 열매 id와 수치
+  for (const [k, r] of Object.entries(REWARDS)) {
+    assert.ok(!r.spirit || SPIRIT.some((x) => x.id === r.spirit), `REWARDS.${k}: 없는 열매 ${r.spirit}`);
+    assert.ok((r.xp ?? 0) >= 0 && (r.talent ?? 0) >= 0, `REWARDS.${k}: 음수`);
+  }
+  assert.equal(STAGE_AT.length, SPIRIT_STAGES.length);
+  assert.equal(slotsAt(1), 4);
+  console.log('OK: 성장 기록 점검 통과(예전 저장값 옮기기, 보상 한 번, 레벨·열매 단계·관계)');
+}
 
 console.log(`OK: 대사 ${count}줄, 퀴즈 ${QUIZ.length}문제, 저장·하늘 점검 통과`);
 

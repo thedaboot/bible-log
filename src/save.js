@@ -1,5 +1,6 @@
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK } from './props.js';
-import { CHECKPOINTS } from './data/chapters.js';
+import { CHECKPOINTS, CHAPTERS } from './data/chapters.js';
+import { SPIRIT, BONDS } from './data/growth.js';
 
 export { CHECKPOINTS };
 const KEY = 'bible-rpg/save/v1';
@@ -17,9 +18,27 @@ const cleanLook = (look, options, defaults) => Object.fromEntries(
 // 예전 지상 모습(빛깔 하나로 칠한 형체)은 그 빛깔을 '나를 감싸는 빛'으로 옮긴다.
 const cleanEarth = (look) => cleanLook({ aura: look.color, ...look }, LOOK.earth, DEFAULT_EARTH);
 
+// 성장 기록: 경험치, 달란트, 열매 점수, 관계 단계, 도감(항목 → 처음 만난 스테이지), 인벤토리, 받은 보상.
+// 예전 저장값이나 깨진 값은 여기서 기본값으로 채운다.
+const nat = (n) => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
+const strs = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []);
+function cleanGrowth(s = {}) {
+  const obj = (o) => (o && typeof o === 'object' && !Array.isArray(o) ? o : {});
+  return {
+    xp: nat(s.xp),
+    talents: nat(s.talents),
+    spirit: Object.fromEntries(SPIRIT.map(({ id }) => [id, nat(obj(s.spirit)[id])])),
+    bonds: Object.fromEntries(Object.entries(obj(s.bonds)).filter(([, v]) => BONDS.includes(v))),
+    codex: Object.fromEntries(Object.entries(obj(s.codex)).filter(([, v]) => CHAPTERS.some((c) => c.id === v))),
+    items: { tools: strs(obj(s.items).tools), looks: strs(obj(s.items).looks) },
+    claimed: strs(s.claimed),
+  };
+}
+
 // look: 천국에서의 모습, earthLook: 지상에서의 모습(처음 땅에 내려갈 때 고른다)
+// 처음부터를 눌러도 열린 지점과 성장 기록은 남는다(받은 보상도 남아서 같은 보상을 두 번 받지 않는다).
 export function newState(prev) {
-  return { name: '', look: { ...DEFAULT_LOOK }, earthLook: null, scene: 'prologue', unlocked: prev?.unlocked ?? ['prologue'] };
+  return { name: '', look: { ...DEFAULT_LOOK }, earthLook: null, scene: 'prologue', unlocked: prev?.unlocked ?? ['prologue'], ...cleanGrowth(prev) };
 }
 
 export function load(storage = store()) {
@@ -41,6 +60,7 @@ export function load(storage = store()) {
       earthLook: s.earthLook ? cleanEarth(s.earthLook) : null,
       scene: CHECKPOINTS.includes(scene) ? scene : unlocked.at(-1),
       unlocked: CHECKPOINTS.filter((id) => unlocked.includes(id)),
+      ...cleanGrowth(s),
     };
   } catch {
     return null;

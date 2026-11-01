@@ -271,7 +271,7 @@ export function makeEden(scene) {
     an.position.copy(ANIMAL_SPOTS[i]);
     const yaw = rand() * Math.PI * 2;
     Object.assign(an.userData, {
-      name: info.name, radius: 0.45 * info.size, home: ANIMAL_SPOTS[i].clone(),
+      name: info.name, kind: info.kind, radius: 0.45 * info.size, home: ANIMAL_SPOTS[i].clone(),
       yaw, yawWant: yaw, speed: 0, state: 'idle', wait: rand() * 3, dest: null, goal: null, calm: false, best: Infinity, stuck: 0,
     });
     group.add(an);
