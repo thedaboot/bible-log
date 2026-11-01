@@ -227,7 +227,6 @@ export function dressFigure(fig, spec) {
       addCape(cloth);
       add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth, 0, 1.25, -0.12, -0.5);
       break;
-    case 'leaves': add(new THREE.CylinderGeometry(0.32, 0.4, 0.3, 8), m(PAL.leafLight), 0, 0.5, 0); break;
     case 'figleaves': add(new THREE.CylinderGeometry(0.33, 0.43, 0.42, 7), m(PAL.fig), 0, 0.48, 0); break;
     case 'skins':
       add(new THREE.CylinderGeometry(0.33, 0.42, 0.78, 7), m(PAL.skins), 0, 0.55, 0);

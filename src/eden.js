@@ -252,8 +252,9 @@ export function makeEden(scene) {
   }
 
   // 사람: 관찰자와 같은 뼈대(makeFigure). 처음에는 잎사귀와 머리카락으로 가린다.
-  const adam = makeFigure({ hair: 'short', hairColor: PAL.hairBrown, outfit: 'leaves' });
-  const eve = makeFigure({ hair: 'long', hairColor: PAL.hairDark, outfit: 'leaves' });
+  // 처음 지음 받은 두 사람은 벌거벗었으나 부끄러워하지 않았다(창 2:25). 로우폴리라 몸의 세부 없이 맨몸으로 둔다.
+  const adam = makeFigure({ hair: 'short', hairColor: PAL.hairBrown });
+  const eve = makeFigure({ hair: 'long', hairColor: PAL.hairDark });
   adam.position.copy(ADAM_SPOT);
   eve.position.copy(EVE_SPOT);
   adam.rotation.y = eve.rotation.y = Math.PI / 4;
