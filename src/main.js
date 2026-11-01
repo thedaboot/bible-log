@@ -342,24 +342,124 @@ async function runCreation(fromDay = 1) {
   runEden('eden');
 }
 
-// 꾸미기에서 고를 때: 바뀐 부위 높이에서 금빛 고리가 퍼지고 캐릭터가 살짝 커졌다 돌아온다(정말 입는 느낌).
-const PART_HEIGHT = { hair: 1.35, hairColor: 1.35, beard: 1.15, item: 0.85, outfit: 0.65, outfitColor: 0.65, color: 0.9, skin: 0.9, aura: 0.1, height: 0.9 };
-function dressFx(key) {
-  if (!key || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const h = (PART_HEIGHT[key] ?? 0.8) * (player.userData.height ?? 1);
-  const m = new THREE.MeshBasicMaterial({ color: PAL.gold, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 24), m);
+// 꾸미기에서 고를 때: 항목마다 그 항목다운 방식으로 바뀐다(정말 입고 물드는 느낌). docs/standards/ui.md '꾸미기 창' 참고.
+//  옷 모양 → 발밑부터 새 옷이 차오른다 / 피부·옷 색·머리색·빛깔 → 새 색이 위에서 아래로 물든다
+//  머리 모양·수염 → 머리에 빛 알갱이가 모였다 흩어지며 새 모양이 나온다 / 소품 → 빛이 손으로 날아와 소품이 된다
+//  키 → 부드럽게 늘고 준다 / 나를 감싸는 빛 → 발밑 고리가 새 색으로 퍼진다 / 무작위 → 이 효과들이 차례로
+const PART_HEIGHT = { hair: 1.4, beard: 1.15 };
+const HAND = new THREE.Vector3(0.42, 0.82, 0.15);
+const glow = (color, opacity = 0.95) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
+const hexOf = (key, id) => (LOOK.earth[key] ?? LOOK.heaven[key])?.find((o) => o.id === id)?.hex;
+let finishWipe = null; // 진행 중인 차오름/물듦을 바로 끝내는 함수(빨리 연달아 고를 때)
+
+// 경계선(높이)이 움직이며 한쪽은 예전 몸, 다른 쪽은 새 몸만 그린다(재질 clippingPlanes, eden.js 가죽옷과 같은 방식).
+function wipe(swap, { up = true, ms = 700, color = PAL.gold }) {
+  finishWipe?.();
+  const { rig } = player.userData;
+  const old = new THREE.Group();
+  old.add(...rig.children);
+  player.add(old);
+  swap();
+  const top = 1.9 * (player.userData.height ?? 1);
+  const showNew = new THREE.Plane(new THREE.Vector3(0, up ? -1 : 1, 0), 0);
+  const showOld = new THREE.Plane(new THREE.Vector3(0, up ? 1 : -1, 0), 0);
+  rig.traverse((o) => o.material && (o.material.clippingPlanes = [showNew]));
+  old.traverse((o) => o.material && (o.material.clippingPlanes = [showOld]));
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.55, 24), glow(color, 0.9));
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = key === 'all' ? 0.05 : h;
   player.add(ring);
-  tween(key === 'all' ? 700 : 450, (p) => {
-    ring.scale.setScalar(1 + p * 0.9);
-    if (key === 'all') ring.position.y = 0.05 + p * 1.6; // 무작위: 발밑에서 머리까지 훑고 올라간다
-    m.opacity = 0.9 * (1 - p);
-    player.scale.setScalar(1 + Math.sin(p * Math.PI) * 0.06);
-  }).then(() => { player.remove(ring); ring.geometry.dispose(); m.dispose(); player.scale.setScalar(1); });
+  let done = false;
+  const end = () => {
+    if (done) return;
+    done = true;
+    player.remove(old, ring);
+    old.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
+    ring.geometry.dispose();
+    ring.material.dispose();
+    rig.traverse((o) => o.material && (o.material.clippingPlanes = null));
+    if (finishWipe === end) finishWipe = null;
+  };
+  finishWipe = end;
+  return tween(ms, (p) => {
+    if (done) return;
+    const k = easeOut(p);
+    const y = up ? k * top : (1 - k) * top;
+    const wy = player.position.y + y;
+    showNew.constant = up ? wy : -wy;
+    showOld.constant = up ? -wy : wy;
+    ring.position.y = y;
+    ring.material.opacity = 0.9 * (1 - p * p);
+    old.position.copy(rig.position);
+    old.rotation.copy(rig.rotation);
+    old.scale.copy(rig.scale);
+  }).then(end);
 }
-const dressWith = (spec) => (look, key) => { dressFigure(player, spec(look)); dressFx(key); };
+
+// 빛 알갱이: 둘레에서 center로 모였다가(이때 바꾼다) 다시 흩어진다.
+function sparkle(center, swap, color = PAL.holy) {
+  const bits = Array.from({ length: 12 }, (_, i) => {
+    const a = (i / 12) * Math.PI * 2, b = (i % 3 - 1) * 0.6;
+    const dir = new THREE.Vector3(Math.cos(a) * Math.cos(b), Math.sin(b), Math.sin(a) * Math.cos(b));
+    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.045, 0), glow(color));
+    player.add(m);
+    return { m, dir };
+  });
+  const at = (r, s) => bits.forEach(({ m, dir }) => { m.position.copy(center).addScaledVector(dir, r); m.scale.setScalar(s); });
+  return tween(260, (p) => at(0.75 * (1 - easeOut(p)), 0.6 + p))
+    .then(() => { swap?.(); return tween(320, (p) => { at(0.1 + easeOut(p) * 0.6, 1.6 * (1 - p) + 0.01); }); })
+    .then(() => bits.forEach(({ m }) => { player.remove(m); m.geometry.dispose(); m.material.dispose(); }));
+}
+
+// 빛 한 덩이가 바깥에서 손으로 날아와 소품이 된다.
+function orbToHand(swap) {
+  const h = player.userData.height ?? 1;
+  const hand = HAND.clone().multiplyScalar(h);
+  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), glow(PAL.holy));
+  player.add(orb);
+  const from = new THREE.Vector3(1.1, 1.9, 0.9);
+  return tween(380, (p) => { orb.position.lerpVectors(from, hand, easeOut(p)); orb.position.y += Math.sin(p * Math.PI) * 0.3; })
+    .then(() => { player.remove(orb); orb.geometry.dispose(); orb.material.dispose(); return sparkle(hand, swap); });
+}
+
+// 발밑 고리가 퍼진다(나를 감싸는 빛).
+function footRing(color) {
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.58, 24), glow(color, 0.9));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.04;
+  player.add(ring);
+  return tween(600, (p) => { ring.scale.setScalar(1 + easeOut(p) * 1.6); ring.material.opacity = 0.9 * (1 - p); })
+    .then(() => { player.remove(ring); ring.geometry.dispose(); ring.material.dispose(); });
+}
+
+function dressFx(key, look, swap) {
+  if (!key || matchMedia('(prefers-reduced-motion: reduce)').matches) { finishWipe?.(); swap(); return; }
+  const h = player.userData.height ?? 1;
+  const head = (k) => new THREE.Vector3(0, PART_HEIGHT[k] * h, 0);
+  switch (key) {
+    case 'outfit': wipe(swap, { up: true }); break;
+    case 'skin': case 'outfitColor': case 'hairColor': case 'color':
+      wipe(swap, { up: false, ms: 650, color: hexOf(key, look[key]) ?? PAL.gold }); break;
+    case 'hair': case 'beard': sparkle(head(key), swap); break;
+    case 'item': orbToHand(swap); break;
+    case 'height': {
+      const from = h;
+      swap();
+      const to = player.userData.height;
+      player.userData.height = from;
+      tween(450, (p) => (player.userData.height = from + (to - from) * easeOut(p)));
+      break;
+    }
+    case 'aura': swap(); footRing(hexOf('aura', look.aura) ?? PAL.gold); break;
+    case 'all': // 무작위: 발밑부터 새 모습이 차오르고, 이어서 머리·손·발밑에 빛이 차례로 지나간다
+      wipe(swap, { up: true, ms: 800 })
+        .then(() => sparkle(head('hair')))
+        .then(() => orbToHand())
+        .then(() => footRing(look.aura ? hexOf('aura', look.aura) ?? PAL.gold : PAL.gold));
+      break;
+    default: swap();
+  }
+}
+const dressWith = (spec) => (look, key) => dressFx(key, look, () => { finishWipe?.(); dressFigure(player, spec(look)); });
 
 // ---------- 꾸미기 방: 처음 땅에 내려가기 전, 지상에서의 모습을 전용 화면에서 고른다 ----------
 async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submit = '이 모습으로 내려가기' } = {}) {
@@ -634,16 +734,14 @@ function showTitle() {
     menu.classList.remove('menu--cards');
     menu.classList.add('menu--list');
     const items = [button('천국 모습 변경하기', begin(() => editLook('heaven')))];
-    if (saved.earthLook) items.push(button('지상 모습 변경하기', begin(() => editLook('earth'))));
+    // 첫 화면(메뉴)이 떠 있는 채로 먼저 빛으로 다 덮은 뒤에 첫 화면을 치운다. 순서가 바뀌면 덮이는 동안 천국 장면이 드러난다.
+    if (saved.earthLook) items.push(button('지상 모습 변경하기', async () => { menu.inert = true; await fade(1); begin(() => editLook('earth'))(); }));
     menu.replaceChildren(head('어느 모습을 바꿀까요?'), ...items, backButton(showMain));
     menu.querySelector('button').focus({ preventScroll: true });
   };
   async function editLook(kind) {
     state = saved;
-    if (kind === 'earth') {
-      await fade(1); // 천국 풍경을 먼저 빛으로 덮고 꾸미기 방으로 옮긴다
-      await runDressingRoom({ kicker: '커스텀 변경하기', submit: '이 모습으로' });
-    }
+    if (kind === 'earth') await runDressingRoom({ kicker: '커스텀 변경하기', submit: '이 모습으로' }); // 화면은 메뉴에서 이미 덮었다
     else {
       camAngle = 0;
       player.visible = true;
