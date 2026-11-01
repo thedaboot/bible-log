@@ -12,10 +12,12 @@ import { EDEN, FALL, QUIZ, NAMING } from './data/eden.js';
 import { load, save, reach, newState } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
 import { REWARDS } from './data/growth.js';
-import { grant, bond, record } from './growth.js';
+import { grant, bond, record, levelOf } from './growth.js';
+import { CODEX } from './data/codex.js';
+import { openMenu, menuIsOpen } from './menu.js';
 import { tween, easeOut, setInstant } from './anim.js';
 import {
-  $, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard,
+  $, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, logGain,
 } from './ui.js';
 
 // ---------- 렌더링: 쿼터뷰 정사영 카메라 + 픽셀화 후처리 ----------
@@ -488,6 +490,7 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
   if (eden) { scene.remove(eden.group); eden = null; }
   dressingRoom.visible = player.visible = true;
+  showHud(false); // 꾸미기 화면에서는 HUD를 숨긴다
   scene.background = new THREE.Color(0xf6efe2);
   setEdges(true);
   player.position.set(0, 0, 0);
@@ -515,6 +518,7 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
   save(state);
   await fade(1);
   dressingRoom.visible = false;
+  showHud(true);
   camOffset = CAM_OFFSET;
   viewShift = null;
 }
@@ -543,12 +547,23 @@ async function runEden(from = 'eden') {
 
 // 성장 보상: 같은 보상은 한 번만 받고(key는 'eden/river/pishon'처럼 스테이지로 시작), 받은 것을 획득 알림으로 차례로 보여 준다.
 // entry를 주면 도감에 처음 만난 스테이지를 남긴다.
+// 경험치·달란트·레벨은 HUD(늘 보임)와 오른쪽 아래 획득 기록(잠깐)으로 보여 주고, 열매 성장만 가운데 획득 알림으로 띄운다.
 function reward(key, kind, entry) {
   const stage = key.split('/')[0];
   if (entry) record(state, entry, stage);
+  const before = levelOf(state.xp).level;
   const msgs = grant(state, key, REWARDS[kind]);
   save(state);
+  if (!msgs) return;
+  const { xp, talent } = REWARDS[kind];
+  const after = levelOf(state.xp);
+  logGain([xp && `경험치 +${xp}`, talent && `달란트 +${talent}`, after.level > before && `레벨 ${after.level} · ${after.title}`].filter(Boolean));
+  refreshHud({ levelUp: after.level > before });
   for (const m of msgs) toast(m, { gain: true });
+}
+function note(entry, stage = 'eden') {
+  record(state, entry, stage);
+  save(state);
 }
 function meet(who, step) {
   record(state, `person/${who}`, 'eden');
@@ -556,6 +571,18 @@ function meet(who, step) {
   save(state);
   for (const m of msgs) toast(m, { gain: true });
 }
+const refreshHud = (gain) => setHud({ ...levelOf(state.xp), talents: state.talents }, gain);
+
+// 메뉴(상태 창·도감): 걷는 중에만 연다(연출 중에는 막는다). M 키나 HUD의 메뉴 버튼.
+async function showMenu() {
+  if (mode !== 'walk' || menuIsOpen()) return;
+  mode = 'none';
+  target = null;
+  await openMenu(state);
+  mode = 'walk';
+}
+$('menuBtn').onclick = showMenu;
+addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat && !menuIsOpen()) showMenu(); });
 
 // 에덴의 대사: 말하는 인물이 고개를 끄덕이며 들썩인다(eden.acts.speak).
 function talk(lines, ctx, opts = {}) {
@@ -567,6 +594,7 @@ async function runEdenGarden() {
   camFocus = eden.spots.adam;
   setStage('adam');
   await fade(0);
+  note('place/eden');
   await talk(EDEN.arrive, state);
   await eden.acts.formAdam();
   meet('adam', 'met'); // 만남은 자동으로 오른다
@@ -615,9 +643,10 @@ async function runEdenGarden() {
       camFocus = a.animal.position.clone().lerp(eden.adam.position, 0.5);
       await talk(NAMING, { ...state, animal: a.name });
       camFocus = null;
-      await showCard({ title: a.name, text: '아담이 지어 준 이름 · 창 2:19', count: `${n} / ${total}` });
-      a.animal.userData.calm = false;
       const { kind } = a.animal.userData;
+      const entry = CODEX.find((c) => c.id === `creature/${kind}`);
+      await showCard({ title: entry.name, text: entry.fact, count: `${n} / ${total}` });
+      a.animal.userData.calm = false;
       reward(`eden/animal/${kind}`, 'animal', `creature/${kind}`);
     },
   });
@@ -692,6 +721,7 @@ async function runEdenFall() {
   setStage('knowledge');
   camFocus = eden.spots.knowledge;
   await eden.acts.gatherAtTree();
+  note('creature/serpent');
   await talk(FALL.serpent, state);
   await eden.acts.eat();
   await talk(FALL.ate, state);
@@ -716,6 +746,9 @@ async function runEdenFall() {
   await talk(FALL.guarded, state);
   setView(13);
   await askQuiz(QUIZ);
+  note('word/gen-2-7');
+  note('word/gen-3-15');
+  note('item/fig-leaf'); // 스테이지 기념물: 인벤토리에 두지 않고 도감에만 남는다
   reward('eden/quiz', 'quiz');
   reward('eden/clear', 'clear');
   await new Promise((r) => setTimeout(r, 2400)); // 마친 보상 알림을 본 뒤 화면을 덮는다
@@ -752,6 +785,8 @@ function showTitle() {
   };
   const begin = (fn) => () => {
     $('title').hidden = true;
+    refreshHud();
+    showHud(true);
     titleView = false;
     viewShift = null;
     resize();
@@ -788,6 +823,7 @@ function showTitle() {
   };
   async function editLook(kind) {
     state = saved;
+    showHud(false);
     if (kind === 'earth') await runDressingRoom({ kicker: '커스텀 변경하기', submit: '이 모습으로' }); // 화면은 메뉴에서 이미 덮었다
     else {
       camAngle = 0;
@@ -860,8 +896,10 @@ function showTitle() {
 
 // ---------- 루프 ----------
 const clock = new THREE.Clock();
+let menuMode = null;
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
+  if (mode !== menuMode) { menuMode = mode; $('menuBtn').disabled = mode !== 'walk'; } // 메뉴는 걷는 중에만
   const t = clock.elapsedTime;
   movePlayer(dt, t);
   if (turntable) player.rotation.y += dt * 0.8;

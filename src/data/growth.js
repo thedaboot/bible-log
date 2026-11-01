@@ -16,7 +16,7 @@ export const SPIRIT = [
 
 // 열매 단계: 점수는 숨기고 단계만 보여 준다(페르소나 5R). STAGE_AT[i]점 이상이면 i단계.
 export const SPIRIT_STAGES = ['씨앗', '새싹', '줄기', '꽃', '결실'];
-export const STAGE_AT = [0, 10, 25, 45, 70]; // ★
+export const STAGE_AT = [0, 5, 25, 45, 70]; // ★ 새싹 경계 5: 에덴에서 막간으로 고른 열매가 첫 새싹이 된다(2026-11-01 A안)
 export const SPIRIT_GAIN = { quest: 4, choice: 2, walk: 3 }; // ★ 퀘스트 완료, 막간 선택, 동행 도달
 
 // 레벨: 다음 레벨까지 필요한 경험치는 40에서 시작해 20씩 는다(누적 40, 100, 180, 280…). ★

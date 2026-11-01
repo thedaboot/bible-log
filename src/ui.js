@@ -402,3 +402,27 @@ export function fade(to) {
   $('fade').style.opacity = String(to);
   return new Promise((r) => setTimeout(r, reducedMotion() ? 160 : 1250));
 }
+
+// HUD: 레벨·경험치 바·달란트를 화면 왼쪽 위에 늘 보여 준다. 레벨이 오르면 레벨 칸이 커졌다 돌아오고 금빛으로 번쩍인다.
+const replay = (node, cls) => { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };
+export function setHud({ level, into, need, talents }, { levelUp = false } = {}) {
+  $('hudLv').textContent = level;
+  $('hudXp').style.transform = `scaleX(${into / need})`;
+  $('hudXpTrack').setAttribute('aria-label', `경험치 ${into} / ${need}`);
+  $('hudTalent').textContent = talents;
+  if (levelUp) replay($('hud'), 'is-levelup');
+}
+export function showHud(on) { $('hud').hidden = !on; }
+
+// 획득 기록: '경험치 +5' 같은 줄이 오른쪽 아래에 작은 회색 글씨로 쌓였다가 2.4초 뒤 사라진다. 최대 5줄.
+export function logGain(lines) {
+  const log = $('gainLog');
+  for (const text of lines) {
+    const li = document.createElement('li');
+    li.className = 'gain-log__line';
+    li.textContent = text;
+    log.append(li);
+    while (log.children.length > 5) log.firstChild.remove();
+    setTimeout(() => li.remove(), 2400);
+  }
+}

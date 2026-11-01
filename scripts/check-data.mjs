@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { PROLOGUE } from '../src/data/prologue.js';
 import { CREATION, DAY_NAMES } from '../src/data/creation.js';
-import { EDEN, FALL, RIVERS, ANIMALS, QUIZ } from '../src/data/eden.js';
+import { EDEN, FALL, RIVERS, ANIMALS, FRUITS, QUIZ } from '../src/data/eden.js';
+import { CODEX, CODEX_TABS, LIKENESS } from '../src/data/codex.js';
 import { SPEAKERS, vocative, fill, withRa } from '../src/text.js';
 import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, STAGES, inFrontOfScene, stepAsideSpots, crossesRiver } from '../src/eden.js';
 import { load, save, reach, newState } from '../src/save.js';
@@ -11,7 +12,7 @@ import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS } from '../src/data/chapters.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt } from '../src/data/growth.js';
-import { grant, grow, bond, levelOf, stageOf } from '../src/growth.js';
+import { grant, grow, bond, levelOf, stageOf, likeness, codexState } from '../src/growth.js';
 
 // 대사 묶음을 [위치, 대사 배열] 목록으로 모은다.
 const groups = [
@@ -161,8 +162,8 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
   assert.equal(newState(b).spirit.joy, 7);
 
   const s = newState();
-  assert.ok(grant(s, 'eden/river/pishon', REWARDS.river).length > 0);
-  assert.deepEqual(grant(s, 'eden/river/pishon', REWARDS.river), [], '같은 보상을 두 번 받음');
+  assert.deepEqual(grant(s, 'eden/river/pishon', REWARDS.river), []);
+  assert.equal(grant(s, 'eden/river/pishon', REWARDS.river), null, '같은 보상을 두 번 받음');
   assert.equal(s.xp, REWARDS.river.xp);
   assert.deepEqual(grant(s, 'eden/rivers-done', REWARDS.riversDone).at(-1), '기쁨이 자랐어요');
   assert.equal(s.spirit.joy, SPIRIT_GAIN.quest);
@@ -171,8 +172,8 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
   assert.equal(levelOf(0).title, TITLES[0].title);
   assert.ok(TITLES.every((t, i) => t.level === i + 1 && REF.test(t.ref)), '칭호 데이터 오류');
   // 열매 단계와 알림
-  assert.deepEqual([0, 9, 10, 25, 69, 70, 999].map(stageOf), [0, 0, 1, 2, 3, 4, 4]);
-  s.spirit.patience = 8;
+  assert.deepEqual([0, 4, 5, 25, 69, 70, 999].map(stageOf), [0, 0, 1, 2, 3, 4, 4]);
+  s.spirit.patience = 3;
   assert.deepEqual(grow(s, 'patience', 2), ['인내가 새싹으로 자랐어요']);
   // 관계는 오르기만 하고, 동행에 이르면 열매가 자란다
   assert.deepEqual(bond(s, 'adam', 'talked'), ['관계: 대화']);
@@ -187,6 +188,47 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
   assert.equal(STAGE_AT.length, SPIRIT_STAGES.length);
   assert.equal(slotsAt(1), 4);
   console.log('OK: 성장 기록 점검 통과(예전 저장값 옮기기, 보상 한 번, 레벨·열매 단계·관계)');
+}
+
+// 도감: 항목 id가 겹치지 않고, 분류는 다섯 가지 안이며, 게임이 기록하는 항목(동물·열매나무·강·인물)이 모두 도감에 있다.
+{
+  const ids = CODEX.map((c) => c.id);
+  assert.equal(new Set(ids).size, ids.length, '도감 id 중복');
+  for (const c of CODEX) {
+    assert.ok(CODEX_TABS.some((t) => c.id.startsWith(`${t.id}/`)), `${c.id}: 없는 분류`);
+    assert.ok(CHAPTERS.some((ch) => ch.id === c.stage), `${c.id}: 없는 스테이지 ${c.stage}`);
+    assert.ok(c.name && c.fact && c.memo, `${c.id}: 이름·사실·메모가 필요함`);
+    assert.ok(/ · [가-힣]+ \d+:\d+(~\d+)?$/.test(c.fact), `${c.id}: 사실 끝에 장절이 필요함`);
+  }
+  const need = [
+    ...ANIMALS.map((a) => `creature/${a.kind}`), ...FRUITS.map((f) => `creature/${f.kind}`),
+    ...RIVERS.map((r) => `place/${r.id}`), 'place/eden', 'creature/serpent', 'person/adam', 'item/fig-leaf', 'word/gen-2-7', 'word/gen-3-15',
+    ...Object.keys(LIKENESS).map((w) => `person/${w}`),
+  ];
+  for (const id of need) assert.ok(ids.includes(id), `도감에 없는 항목: ${id}`);
+  for (const [who, l] of Object.entries(LIKENESS)) {
+    assert.equal(l.fruits.length, 2, `LIKENESS.${who}: 열매 두 가지`);
+    assert.ok(l.fruits.every((f) => SPIRIT.some((s) => s.id === f)), `LIKENESS.${who}: 없는 열매`);
+    assert.deepEqual(wrapErrors(l.text), [], `LIKENESS.${who}: 줄바꿈 2판 위반`);
+  }
+  // 닮은 인물: 만난 인물만, 열매가 없으면 없음, 점수 합이 큰 인물
+  const s = newState();
+  assert.equal(likeness(s), null);
+  s.spirit.joy = 4;
+  assert.equal(likeness(s), null, '만나지 않은 인물이 나옴');
+  s.codex['person/adam'] = 'eden';
+  s.codex['person/eve'] = 'eden';
+  assert.equal(likeness(s).who, 'adam');
+  s.spirit.love = 6;
+  assert.equal(likeness(s).who, 'eve');
+  // 칸 상태: 만남 / 놓침(스테이지를 마침) / 미발견
+  const lion = CODEX.find((c) => c.id === 'creature/lion');
+  assert.equal(codexState(s, lion), 'unknown');
+  s.claimed.push('eden/clear');
+  assert.equal(codexState(s, lion), 'missed');
+  s.codex['creature/lion'] = 'eden';
+  assert.equal(codexState(s, lion), 'met');
+  console.log(`OK: 도감 점검 통과(항목 ${CODEX.length}개, 닮은 인물 ${Object.keys(LIKENESS).length}명)`);
 }
 
 console.log(`OK: 대사 ${count}줄, 퀴즈 ${QUIZ.length}문제, 저장·하늘 점검 통과`);
