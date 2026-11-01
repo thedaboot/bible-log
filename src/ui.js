@@ -320,10 +320,11 @@ export function setGauge(label, p = 0) {
 }
 
 // 도감 카드: 누르거나 2.8초가 지나면 닫힌다.
-export function showCard({ title, text, count }) {
+export function showCard({ title, text, ref, count }) {
   const el = $('dexCard');
   $('dexTitle').textContent = title;
   $('dexText').textContent = text;
+  $('dexRef').textContent = ref ?? '';
   $('dexCount').textContent = count;
   el.hidden = false;
   return new Promise((resolve) => {

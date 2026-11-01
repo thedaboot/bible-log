@@ -243,7 +243,7 @@ function shopView(state, ctx) {
   const purse = el('p', 'shop__purse');
   const icon = el('span', 'shop__coin');
   icon.innerHTML = TALENT;
-  purse.append(el('span', 'shop__greet', '하늘의 달란트로 바꿀 수 있어요.'), icon, el('span', 'stat__num', state.talents), el('span', 'stat__unit', '달란트'));
+  purse.append(el('span', 'shop__greet', '하늘의 달란트로 꾸미기를 살 수 있어요.'), icon, el('span', 'stat__num', state.talents), el('span', 'stat__unit', '달란트'));
   const box = el('div', 'codex__box');
   let picked = null;
   const render = () => {

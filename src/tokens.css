@@ -11,6 +11,7 @@
   --color-ink-2:   oklch(44% 0.040 60);
   --color-frame:   oklch(30% 0.045 50);
   --color-accent:  oklch(58% 0.140 70);
+  --color-accent-ink: oklch(47% 0.120 62); /* 금빛 글자: 밝은 바탕 위 작은 글씨도 대비 4.5:1 이상 */
   --color-gold:    oklch(80% 0.130 85);
   --color-focus:   oklch(52% 0.170 45);
   --color-shadow:  oklch(30% 0.045 50 / 0.35);

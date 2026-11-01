@@ -13,6 +13,7 @@ import { EDEN, FALL, QUIZ, NAMING, INTERLUDE, EVE_GREETING } from './data/eden.j
 import { CAIN, CAIN_QUIZ, CAIN_INTERLUDE, CAIN_GREETING } from './data/cain.js';
 import { load, save, reach, newState, openNext } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
+import { josa } from './text.js';
 import { REWARDS, SPIRIT } from './data/growth.js';
 import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook } from './growth.js';
 import { ITEMS } from './data/items.js';
@@ -318,7 +319,7 @@ async function runPrologue() {
     turntable = true;
     state.look = await askLook(state.look, dressWith(lookSpec), {
       title: '천국에서의 내 모습',
-      text: '고르는 대로 적용됩니다.',
+      text: '고르는 대로 바로 바뀌어요.',
       options: LOOK.heaven,
     });
     turntable = false;
@@ -698,7 +699,7 @@ async function runEdenGarden() {
       camFocus = null;
       const { kind } = a.animal.userData;
       const entry = CODEX.find((c) => c.id === `creature/${kind}`);
-      await showCard({ title: entry.name, text: `${entry.fact} · ${entry.ref}`, count: `${n} / ${total}` });
+      await showCard({ title: entry.name, text: entry.fact, ref: entry.ref, count: `${n} / ${total}` });
       a.animal.userData.calm = false;
       reward(`eden/animal/${kind}`, 'animal', `creature/${kind}`);
     },
@@ -765,7 +766,7 @@ async function runEdenGarden() {
       inside.position.copy(basket.userData.slots[(n - 1) % basket.userData.slots.length]);
       inside.scale.setScalar(1.4);
       basket.add(inside);
-      toast(`${f.name}를 바구니에 담았어요`, { gain: true });
+      toast(`${josa(f.name, '을', '를')} 바구니에 담았어요`, { gain: true });
       reward(`eden/fruit/${kind}`, 'fruit', `creature/${kind}`);
       await tween(320, (p) => basket.scale.setScalar(BASKET_SIZE * (1 + Math.sin(p * Math.PI) * 0.3)));
     },
@@ -870,7 +871,7 @@ async function runCain() {
   await questFind({
     title: '아벨의 양 떼',
     targets: cain.sheep.map((an) => ({ an, pos: an.position, name: an.userData.name })),
-    text: (s) => `${s.name} 우리로 몰기`,
+    text: (s) => `${s.name} 곁에 머물러 우리로 보내기`,
     radius: 1.8,
     hold: 1.2,
     holdLabel: (s) => `${s.name} 곁에 머무르기`,
@@ -1033,12 +1034,11 @@ function startAt(id) {
 function showTitle() {
   const menu = $('menu');
   const saved = load();
-  const button = (label, fn, extra = {}) => {
+  const button = (label, fn) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'menu__item';
     b.textContent = label;
-    if (extra.recent) b.dataset.recent = '';
     b.onclick = fn;
     return b;
   };
@@ -1058,27 +1058,26 @@ function showTitle() {
     return p;
   };
   const showMain = () => {
-    menu.classList.remove('menu--list', 'menu--cards');
+    menu.classList.remove('menu--list');
     menu.replaceChildren(button('처음부터', begin(() => { state = newState(saved); dressFigure(player, lookSpec(state.look)); runPrologue(); })));
     if (saved) menu.append(button('이어하기', begin(() => { state = saved; runShelter(); }))); // 이어하기는 쉼터에서 시작한다
-    if (saved?.name) menu.append(button('커스텀 변경하기', showLooks)); // 천국 꾸미기를 마친 사용자만
+    if (saved?.name) menu.append(button('모습 바꾸기', showLooks)); // 천국 꾸미기를 마친 사용자만
     if (saved) menu.append(button('도감', () => openMenu(saved, { only: 'codex', stage: chapterOf(saved.scene) }).then(() => menu.querySelector('button').focus({ preventScroll: true }))));
     menu.querySelector('button').focus({ preventScroll: true });
   };
-  // 커스텀 변경하기: 천국 모습은 옆 창, 지상 모습은 전용 꾸미기 화면. 저장한 뒤 첫 화면으로 돌아온다.
+  // 모습 바꾸기: 천국 모습은 옆 창, 지상 모습은 전용 꾸미기 화면. 저장한 뒤 첫 화면으로 돌아온다.
   const showLooks = () => {
-    menu.classList.remove('menu--cards');
     menu.classList.add('menu--list');
-    const items = [button('천국 모습 변경하기', begin(() => editLook('heaven')))];
+    const items = [button('천국 모습 바꾸기', begin(() => editLook('heaven')))];
     // 첫 화면(메뉴)이 떠 있는 채로 먼저 빛으로 다 덮은 뒤에 첫 화면을 치운다. 순서가 바뀌면 덮이는 동안 천국 장면이 드러난다.
-    if (saved.earthLook) items.push(button('지상 모습 변경하기', async () => { menu.inert = true; await fade(1); begin(() => editLook('earth'))(); }));
+    if (saved.earthLook) items.push(button('지상 모습 바꾸기', async () => { menu.inert = true; await fade(1); begin(() => editLook('earth'))(); }));
     menu.replaceChildren(head('어느 모습을 바꿀까요?'), ...items, backButton(showMain));
     menu.querySelector('button').focus({ preventScroll: true });
   };
   async function editLook(kind) {
     state = saved;
     showHud(false);
-    if (kind === 'earth') await runDressingRoom({ kicker: '커스텀 변경하기', submit: '이 모습으로' }); // 화면은 메뉴에서 이미 덮었다
+    if (kind === 'earth') await runDressingRoom({ kicker: '모습 바꾸기', submit: '이 모습으로' }); // 화면은 메뉴에서 이미 덮었다
     else {
       camAngle = 0;
       player.visible = true;
@@ -1089,7 +1088,7 @@ function showTitle() {
       turntable = true;
       state.look = await askLook(state.look, dressWith(lookSpec), {
         title: '천국에서의 내 모습',
-        text: '고르는 대로 적용됩니다.',
+        text: '고르는 대로 바로 바뀌어요.',
         options: LOOK.heaven,
       });
       turntable = false;
