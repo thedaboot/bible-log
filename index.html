@@ -23,11 +23,14 @@
     </main>
 
     <header id="hud" class="hud" hidden>
-      <button id="menuBtn" class="hud__menu" type="button" aria-keyshortcuts="M" title="메뉴 (M)">메뉴</button>
-      <p class="hud__lv" aria-live="polite"><span class="hud__lvword">레벨</span> <span id="hudLv">1</span></p>
-      <span class="gauge__track hud__track" role="img" id="hudXpTrack"><span id="hudXp" class="gauge__fill"></span></span>
-      <p class="hud__talent" title="달란트"><span class="hud__coin" aria-hidden="true"></span><span class="sr-only">달란트</span> <span id="hudTalent">0</span></p>
+      <p class="hud__lv" aria-live="polite"><span class="hud__lvword">Lv.</span><span id="hudLv">1</span></p>
+      <div class="hud__xp">
+        <span class="gauge__track hud__track" role="img" id="hudXpTrack"><span id="hudXp" class="gauge__fill"></span></span>
+        <span id="hudXpText" class="hud__xptext"></span>
+      </div>
+      <p class="hud__talent"><span id="hudTalentIcon" class="hud__icon"></span><span id="hudTalent" class="hud__num">0</span><span class="hud__unit">달란트</span></p>
     </header>
+    <button id="menuBtn" class="menu-btn" type="button" aria-keyshortcuts="M" title="메뉴 (M)" hidden><span class="menu-btn__icon" aria-hidden="true"></span><span class="menu-btn__label">메뉴</span><kbd class="menu-btn__key">M</kbd></button>
     <ol id="gainLog" class="gain-log" aria-live="polite"></ol>
 
     <aside id="quest" class="panel quest" hidden aria-live="polite">
@@ -96,6 +99,7 @@
     <div id="menuBox" class="modal" hidden>
       <div class="panel modal__panel menu-panel" role="dialog" aria-label="메뉴">
         <div class="menu-panel__top">
+          <h2 id="menuTitle" class="modal__title menu-panel__title" hidden>바이블로그 도감</h2>
           <div id="menuTabs" class="look__tabs" role="tablist"></div>
           <button id="menuClose" class="btn btn--quiet menu-panel__close" type="button" title="닫기 (Esc)">닫기</button>
         </div>

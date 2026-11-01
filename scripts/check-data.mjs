@@ -11,7 +11,7 @@ import { load, save, reach, newState } from '../src/save.js';
 import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS } from '../src/data/chapters.js';
-import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt } from '../src/data/growth.js';
+import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL } from '../src/data/growth.js';
 import { grant, grow, bond, levelOf, stageOf, likeness, codexState } from '../src/growth.js';
 
 // 대사 묶음을 [위치, 대사 배열] 목록으로 모은다.
@@ -170,9 +170,20 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
   // 레벨: 누적 40에서 2, 100에서 3
   assert.deepEqual([levelOf(39).level, levelOf(40).level, levelOf(99).level, levelOf(100).level], [1, 2, 2, 3]);
   assert.equal(levelOf(0).title, TITLES[0].title);
-  assert.ok(TITLES.every((t, i) => t.level === i + 1 && REF.test(t.ref)), '칭호 데이터 오류');
+  assert.equal(TITLES[0].level, 1, '첫 칭호는 레벨 1');
+  assert.ok(TITLES.every((t, i) => REF.test(t.ref) && (i === 0 || t.level > TITLES[i - 1].level)), '칭호 데이터 오류');
+  // 성장 속도(PLAN 가정): 에덴을 마치면 레벨 3~4, 요한계시록에서도 최고 레벨 아래, 마지막 칭호는 끝 무렵에 열린다
+  const lvAt = (k) => levelOf(PLAN.xpPerStage * k).level;
+  assert.ok(lvAt(1) >= 3 && lvAt(1) <= 4, `에덴 뒤 레벨 ${lvAt(1)}`);
+  assert.ok(lvAt(PLAN.stages) < MAX_LEVEL, `끝 레벨 ${lvAt(PLAN.stages)}`);
+  assert.ok(lvAt(PLAN.stages * 0.8) < TITLES.at(-1).level && lvAt(PLAN.stages) >= TITLES.at(-1).level, '마지막 칭호가 너무 일찍 또는 늦게 열림');
+  // 열매: 고르게 키우면 끝까지 결실에 못 이르고, 한 열매를 평균의 두 배로 키워도 결실은 전체의 60% 뒤에 온다
+  const avg = (k) => (PLAN.spiritPerStage * k) / SPIRIT.length;
+  assert.ok(stageOf(avg(PLAN.stages)) < SPIRIT_STAGES.length - 1, '고른 열매가 결실에 이름');
+  assert.ok(stageOf(avg(PLAN.stages * 0.6) * 2) < SPIRIT_STAGES.length - 1, '가장 큰 열매가 너무 일찍 결실에 이름');
+  assert.ok(stageOf(avg(PLAN.stages) * 2) === SPIRIT_STAGES.length - 1, '가장 큰 열매가 끝까지 결실에 못 이름');
   // 열매 단계와 알림
-  assert.deepEqual([0, 4, 5, 25, 69, 70, 999].map(stageOf), [0, 0, 1, 2, 3, 4, 4]);
+  assert.deepEqual([0, 4, 5, 30, 89, 90, 200, 999].map(stageOf), [0, 0, 1, 2, 2, 3, 4, 4]);
   s.spirit.patience = 3;
   assert.deepEqual(grow(s, 'patience', 2), ['인내가 새싹으로 자랐어요']);
   // 관계는 오르기만 하고, 동행에 이르면 열매가 자란다
@@ -198,7 +209,8 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
     assert.ok(CODEX_TABS.some((t) => c.id.startsWith(`${t.id}/`)), `${c.id}: 없는 분류`);
     assert.ok(CHAPTERS.some((ch) => ch.id === c.stage), `${c.id}: 없는 스테이지 ${c.stage}`);
     assert.ok(c.name && c.fact && c.memo, `${c.id}: 이름·사실·메모가 필요함`);
-    assert.ok(/ · [가-힣]+ \d+:\d+(~\d+)?$/.test(c.fact), `${c.id}: 사실 끝에 장절이 필요함`);
+    assert.ok(REF.test(c.ref), `${c.id}: 장절 형식 오류 ${c.ref}`);
+    assert.ok(!c.fact.includes('·'), `${c.id}: 장절은 ref에 따로 둔다`);
   }
   const need = [
     ...ANIMALS.map((a) => `creature/${a.kind}`), ...FRUITS.map((f) => `creature/${f.kind}`),
@@ -209,7 +221,7 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
   for (const [who, l] of Object.entries(LIKENESS)) {
     assert.equal(l.fruits.length, 2, `LIKENESS.${who}: 열매 두 가지`);
     assert.ok(l.fruits.every((f) => SPIRIT.some((s) => s.id === f)), `LIKENESS.${who}: 없는 열매`);
-    assert.deepEqual(wrapErrors(l.text), [], `LIKENESS.${who}: 줄바꿈 2판 위반`);
+    assert.ok(!l.text.includes('\n'), `LIKENESS.${who}: 줄바꿈 기호 없이 쓴다(상태 창 폭에 맞춰 나뉜다)`);
   }
   // 닮은 인물: 만난 인물만, 열매가 없으면 없음, 점수 합이 큰 인물
   const s = newState();

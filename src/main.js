@@ -139,6 +139,7 @@ function movePlayer(dt, t) {
       }
     }
     if (want.lengthSq() > 0) want.setLength(SPEED);
+    if (mode === 'walk' && want.lengthSq() > 0) practiced('walk', dt);
   }
   vel.lerp(want, Math.min(1, dt * 10));
   prevPos.copy(player.position);
@@ -190,7 +191,20 @@ function checkTriggers() {
 }
 
 let aimNearest = null; // 퀘스트 중이면 가장 가까운 목표로 길 안내를 맞춘다
-function startWalk() { mode = 'walk'; playerFace = null; setControls('walk'); }
+function startWalk() { mode = 'walk'; playerFace = null; showControls('walk'); }
+
+// 조작 안내: 그 조작을 게임 시간으로 6초쯤 직접 써 보면 익힌 것으로 보고 다시 띄우지 않는다(state.learned).
+const LEARN_SEC = 6;
+const practice = { walk: 0, look: 0 };
+function showControls(kind) { setControls(kind && !state.learned.includes(kind) ? kind : null); }
+function practiced(kind, dt) {
+  if (state.learned.includes(kind)) return;
+  practice[kind] += dt;
+  if (practice[kind] < LEARN_SEC) return;
+  state.learned.push(kind);
+  save(state);
+  setControls(null);
+}
 function stopWalk() {
   mode = 'none';
   target = null;
@@ -356,7 +370,7 @@ async function runCreation(fromDay = 1) {
       if (step.act) await creation.acts[step.act]();
     }
     mode = 'orbit';
-    setControls('look');
+    showControls('look');
     await waitButton(day < 7 ? `${DAY_NAMES[day + 1]}로` : '에덴 동산으로');
     mode = 'none';
     setControls(null);
@@ -578,10 +592,11 @@ async function showMenu() {
   if (mode !== 'walk' || menuIsOpen()) return;
   mode = 'none';
   target = null;
-  await openMenu(state);
+  await openMenu(state, { stage: chapterOf(state.scene) });
   mode = 'walk';
 }
 $('menuBtn').onclick = showMenu;
+const chapterOf = (scene) => CHAPTERS.find((ch) => ch.points.some((p) => p.id === scene))?.id;
 addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat && !menuIsOpen()) showMenu(); });
 
 // 에덴의 대사: 말하는 인물이 고개를 끄덕이며 들썩인다(eden.acts.speak).
@@ -645,7 +660,7 @@ async function runEdenGarden() {
       camFocus = null;
       const { kind } = a.animal.userData;
       const entry = CODEX.find((c) => c.id === `creature/${kind}`);
-      await showCard({ title: entry.name, text: entry.fact, count: `${n} / ${total}` });
+      await showCard({ title: entry.name, text: `${entry.fact} · ${entry.ref}`, count: `${n} / ${total}` });
       a.animal.userData.calm = false;
       reward(`eden/animal/${kind}`, 'animal', `creature/${kind}`);
     },
@@ -809,6 +824,7 @@ function showTitle() {
     menu.replaceChildren(button('처음부터', begin(() => { state = newState(saved); dressFigure(player, lookSpec(state.look)); runPrologue(); })));
     if (saved) menu.append(button('이어하기', showContinue));
     if (saved?.name) menu.append(button('커스텀 변경하기', showLooks)); // 천국 꾸미기를 마친 사용자만
+    if (saved) menu.append(button('도감', () => openMenu(saved, { only: 'codex', stage: chapterOf(saved.scene) }).then(() => menu.querySelector('button').focus({ preventScroll: true }))));
     menu.querySelector('button').focus({ preventScroll: true });
   };
   // 커스텀 변경하기: 천국 모습은 옆 창, 지상 모습은 전용 꾸미기 화면. 저장한 뒤 첫 화면으로 돌아온다.
@@ -899,7 +915,8 @@ const clock = new THREE.Clock();
 let menuMode = null;
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
-  if (mode !== menuMode) { menuMode = mode; $('menuBtn').disabled = mode !== 'walk'; } // 메뉴는 걷는 중에만
+  const canMenu = mode === 'walk' && !$('hud').hidden;
+  if (canMenu !== menuMode) { menuMode = canMenu; $('menuBtn').hidden = !canMenu; } // 메뉴 버튼은 걷는 중에만 보인다
   const t = clock.elapsedTime;
   movePlayer(dt, t);
   if (turntable) player.rotation.y += dt * 0.8;
@@ -912,7 +929,10 @@ function tick() {
   holdTick(dt);
   if (heaven.group.visible) heaven.pillar.userData.pulse(t);
   if (titleView) camAngle += dt * 0.06;
-  if (mode === 'orbit') camAngle += (held('KeyE') - held('KeyQ')) * dt * 1.5 + dt * 0.05;
+  if (mode === 'orbit') {
+    camAngle += (held('KeyE') - held('KeyQ')) * dt * 1.5 + dt * 0.05;
+    if (dragX !== null || held('KeyQ', 'KeyE')) practiced('look', dt);
+  }
   camTarget.lerp(camFocus ?? camFollow, Math.min(1, dt * 4));
   camera.position.copy(camTarget).add(camOffset.clone().applyAxisAngle(Y_AXIS, camAngle));
   camera.lookAt(camTarget);

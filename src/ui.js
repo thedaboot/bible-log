@@ -1,3 +1,4 @@
+import { TALENT } from './icons.js';
 import { SPEAKERS, fill } from './text.js';
 import { LOOK_LABELS } from './props.js';
 
@@ -404,11 +405,14 @@ export function fade(to) {
 }
 
 // HUD: 레벨·경험치 바·달란트를 화면 왼쪽 위에 늘 보여 준다. 레벨이 오르면 레벨 칸이 커졌다 돌아오고 금빛으로 번쩍인다.
+// 메뉴 버튼은 HUD와 떨어진 오른쪽 아래에 따로 두고, 걷는 중에만 보인다(main.js tick).
 const replay = (node, cls) => { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };
 export function setHud({ level, into, need, talents }, { levelUp = false } = {}) {
+  if (!$('hudTalentIcon').firstChild) $('hudTalentIcon').innerHTML = TALENT;
   $('hudLv').textContent = level;
   $('hudXp').style.transform = `scaleX(${into / need})`;
   $('hudXpTrack').setAttribute('aria-label', `경험치 ${into} / ${need}`);
+  $('hudXpText').textContent = `${Math.floor((into / need) * 100)}%`;
   $('hudTalent').textContent = talents;
   if (levelUp) replay($('hud'), 'is-levelup');
 }

@@ -32,6 +32,7 @@ function cleanGrowth(s = {}) {
     codex: Object.fromEntries(Object.entries(obj(s.codex)).filter(([, v]) => CHAPTERS.some((c) => c.id === v))),
     items: { tools: strs(obj(s.items).tools), looks: strs(obj(s.items).looks) },
     claimed: strs(s.claimed),
+    learned: strs(s.learned).filter((k) => ['walk', 'look'].includes(k)), // 익힌 조작(안내를 다시 띄우지 않는다)
   };
 }
 
