@@ -1,5 +1,5 @@
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK } from './props.js';
-import { CHECKPOINTS, CHAPTERS } from './data/chapters.js';
+import { CHECKPOINTS, CHAPTERS, WORLDS } from './data/chapters.js';
 import { SPIRIT, BONDS } from './data/growth.js';
 import { ITEMS } from './data/items.js';
 import { ownsLook } from './growth.js';
@@ -91,4 +91,21 @@ export function reach(state, id) {
   if (!state.unlocked.includes(id)) state.unlocked = CHECKPOINTS.filter((c) => c === id || state.unlocked.includes(c));
   state.scene = id;
   save(state);
+}
+
+// 앞 스테이지를 마쳤으면 다음 스테이지의 첫 지점을 연다. 곁길은 갈라지는 본 스테이지를 마치면 열린다.
+// 쉼터에 들어올 때마다 부르므로, 다음 스테이지가 생기기 전에 마친 예전 저장값도 여기서 맞춰진다.
+export function openNext(state) {
+  for (const w of WORLDS) {
+    let prev = null;
+    for (const id of w.stages) {
+      const ch = CHAPTERS.find((c) => c.id === id);
+      const from = ch.side ?? prev;
+      if (!ch.side) prev = id;
+      const first = ch.points[0]?.id;
+      if (first && from && state.claimed.includes(`${from}/clear`) && !state.unlocked.includes(first)) {
+        state.unlocked = CHECKPOINTS.filter((c) => c === first || state.unlocked.includes(c));
+      }
+    }
+  }
 }

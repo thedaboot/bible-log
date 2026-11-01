@@ -2,6 +2,7 @@
 // 장절 없는 대사, 막간(선택지와 자라는 열매 포함), 짧은 인사, 도감 메모, 닮은 인물 문장. 실행: npm run review
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { EDEN, FALL, RIVERS, NAMING, INTERLUDE, EVE_GREETING } from '../src/data/eden.js';
+import { CAIN, CAIN_INTERLUDE, CAIN_GREETING } from '../src/data/cain.js';
 import { CODEX, LIKENESS } from '../src/data/codex.js';
 import { SPIRIT, SPIRIT_STAGES } from '../src/data/growth.js';
 import { CHAPTERS } from '../src/data/chapters.js';
@@ -13,6 +14,11 @@ const STAGES = {
     lines: { ...Object.fromEntries(Object.entries(EDEN).map(([k, v]) => [`EDEN.${k}`, v])), ...Object.fromEntries(Object.entries(FALL).map(([k, v]) => [`FALL.${k}`, v])), ...Object.fromEntries(RIVERS.map((r) => [`RIVERS.${r.id}`, r.lines])), NAMING },
     interludes: [INTERLUDE],
     greetings: { EVE_GREETING },
+  },
+  cain: {
+    lines: Object.fromEntries(Object.entries(CAIN).map(([k, v]) => [`CAIN.${k}`, v])),
+    interludes: [CAIN_INTERLUDE],
+    greetings: { CAIN_GREETING },
   },
 };
 

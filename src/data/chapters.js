@@ -12,7 +12,7 @@ export const CHAPTERS = [
     id: 'eden', title: '에덴', range: '창세기 2:4~3:24',
     points: [{ id: 'eden', title: '동산의 사람' }, { id: 'fall', title: '타락과 추방' }],
   },
-  { id: 'cain', title: '가인과 아벨', range: '창세기 4장', points: [] },
+  { id: 'cain', title: '가인과 아벨', range: '창세기 4장', points: [{ id: 'cain', title: '들판의 두 형제' }] },
   // 곁길(side): 본 스테이지(값)에서 갈라지는 짧은 스테이지. 지도에서 본 길 아래에 작게 놓인다.
   { id: 'enoch', title: '에녹의 동행', range: '창세기 5:21~24', points: [], side: 'cain' },
   { id: 'noah', title: '노아의 방주', range: '창세기 6~9장', points: [] },

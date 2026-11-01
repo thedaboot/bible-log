@@ -5,11 +5,13 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import './style.css';
 import { PAL, makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turnFigure, makeAngel, makeWaypoint, LOOK, LOOK_TABS, DEFAULT_EARTH, earthSpec, makeDressingRoom, makeBasket } from './props.js';
 import { makeCreation } from './creation.js';
-import { makeEden, EDEN_RADIUS, stepAsideSpots } from './eden.js';
+import { makeEden, EDEN_RADIUS } from './eden.js';
+import { makeCain, CAIN_RADIUS } from './cain.js';
 import { PROLOGUE } from './data/prologue.js';
 import { CREATION, DAY_NAMES } from './data/creation.js';
 import { EDEN, FALL, QUIZ, NAMING, INTERLUDE, EVE_GREETING } from './data/eden.js';
-import { load, save, reach, newState } from './save.js';
+import { CAIN, CAIN_QUIZ, CAIN_INTERLUDE, CAIN_GREETING } from './data/cain.js';
+import { load, save, reach, newState, openNext } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
 import { REWARDS, SPIRIT } from './data/growth.js';
 import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook } from './growth.js';
@@ -83,6 +85,8 @@ const dressingRoom = makeDressingRoom();
 scene.add(heaven.group, player, angel, waypoint.group, dressingRoom);
 let creation = null;
 let eden = null;
+let cain = null;
+const land = () => eden ?? cain; // 지금 걷는 지상 장면(에덴, 가인과 아벨의 들판)
 
 // ---------- 입력 ----------
 // mode: 'none'(대사·연출 중) | 'walk'(걷기) | 'orbit'(창조를 둘러보기)
@@ -148,7 +152,7 @@ function movePlayer(dt, t) {
   if (vel.lengthSq() > 1e-4) {
     player.position.addScaledVector(vel, dt);
     if (player.position.length() > walkRadius) player.position.setLength(walkRadius);
-    eden?.collide(player.position, 0.35); // 나무·바위·물은 통과하지 못한다(다리로만 강을 건넌다)
+    land()?.collide(player.position, 0.35); // 나무·바위·물은 통과하지 못한다(다리로만 강을 건넌다)
     turnFigure(player, Math.atan2(vel.x, vel.z), dt);
   } else if (mode === 'none' && playerFace) {
     turnFigure(player, Math.atan2(playerFace.x - player.position.x, playerFace.z - player.position.z), dt); // 비킨 뒤 장면 쪽을 본다
@@ -168,10 +172,10 @@ function nextAside() {
   if (!target) mode = 'none';
 }
 function setStage(name) {
-  const st = eden.acts.stage(name);
+  const st = land().acts.stage(name);
   playerFace = null;
   if (!st || mode !== 'none' || player.position.distanceTo(st.c) >= st.r) return;
-  autoQueue = stepAsideSpots(name, player.position);
+  autoQueue = land().stepAside(name, player.position);
   playerFace = st.c;
   autoLeft = 4;
   mode = 'auto';
@@ -588,8 +592,8 @@ function note(entry, stage = 'eden') {
   record(state, entry, stage);
   save(state);
 }
-function meet(who, step) {
-  record(state, `person/${who}`, 'eden');
+function meet(who, step, stage = 'eden') {
+  record(state, `person/${who}`, stage);
   const msgs = bond(state, who, step);
   save(state);
   for (const m of msgs) toast(m, { gain: true });
@@ -602,7 +606,7 @@ async function showMenu() {
   mode = 'none';
   target = null;
   // 손에 들기: 지상에서만(천국 모습에는 손에 드는 물건이 없다). 빛이 손으로 날아와 물건이 된다(dressFx 'item').
-  const onHold = state.earthLook && eden ? (id) => {
+  const onHold = state.earthLook && land() ? (id) => {
     state.earthLook = { ...state.earthLook, item: id };
     save(state);
     dressWith(earthSpec)(state.earthLook, 'item');
@@ -616,7 +620,7 @@ addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat && !menu
 
 // 에덴의 대사: 말하는 인물이 고개를 끄덕이며 들썩인다(eden.acts.speak).
 function talk(lines, ctx, opts = {}) {
-  return say(lines, ctx, { choices: opts.choices, onLine: (l, i) => { eden?.acts.speak(l.who); opts.onLine?.(l, i); } });
+  return say(lines, ctx, { choices: opts.choices, onLine: (l, i) => { land()?.acts.speak(l.who); opts.onLine?.(l, i); } });
 }
 
 // 막간: say 다음에 choose가 오면 그 say의 마지막 대사에서 선택지를 띄운다. 고른 뒤 자라는 열매를 획득 효과로 보여 주고 답을 듣는다.
@@ -819,12 +823,155 @@ async function runEdenFall() {
   runShelter();
 }
 
+// ---------- 장면: 가인과 아벨(창 4장) ----------
+// 양 치기(퀘스트) → 저녁 막간(아벨) → 첫 새끼 데려가기(퀘스트) → 제사와 창 4:7 → 들(멀리서) → 심문과 놋 땅 → 셋 → 퀴즈
+async function runCain() {
+  if (!state.earthLook) await runDressingRoom({ kicker: '들판으로 내려가기 전' });
+  heaven.group.visible = false;
+  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
+  if (eden) { scene.remove(eden.group); eden = null; }
+  if (cain) scene.remove(cain.group);
+  cain = makeCain(scene);
+  scene.add(cain.group);
+  scene.background = cain.sky.clone();
+  setEdges(true);
+  setView(13);
+  camAngle = 0;
+  walkRadius = CAIN_RADIUS;
+  placeCompanions(cain.spots.start);
+  dressFigure(player, earthSpec(state.earthLook));
+  mode = 'none';
+  reach(state, 'cain');
+  const { adam, eve, abel } = cain.people;
+  const cainFig = cain.people.cain;
+
+  camFocus = cain.spots.home;
+  setStage('home');
+  cain.acts.face(adam, eve.position);
+  cain.acts.face(eve, adam.position);
+  await fade(0);
+  await talk(CAIN.arrive.slice(0, 2), state);
+  camFocus = cain.spots.fold.clone().lerp(cain.spots.cain, 0.5); // 두 형제가 일하는 들판을 비춘다
+  setView(16);
+  await talk(CAIN.arrive.slice(2, 4), state);
+  camFocus = null;
+  setView(13);
+  setStage(null);
+  await talk(CAIN.arrive.slice(4), state);
+
+  // 퀘스트 1: 양 치기(창 4:2). 양 곁에 머무르면 그 양이 우리로 걸어 들어간다. 가인 곁을 지나가면 짧은 인사를 듣는다.
+  const greet = addTrigger(cainFig.position, 2.2, async () => {
+    mode = 'none';
+    cain.acts.face(cainFig, player.position);
+    await talk(CAIN_GREETING, state);
+    meet('cain', 'met', 'cain');
+    mode = 'walk';
+  });
+  await questFind({
+    title: '아벨의 양 떼',
+    targets: cain.sheep.map((an) => ({ an, pos: an.position, name: an.userData.name })),
+    text: (s) => `${s.name} 우리로 몰기`,
+    radius: 1.8,
+    hold: 1.2,
+    holdLabel: (s) => `${s.name} 곁에 머무르기`,
+    onFound: async (s) => {
+      cain.acts.pen(s.an);
+      reward(`cain/sheep/${s.an.userData.id}`, 'sheep');
+    },
+  });
+  triggers = triggers.filter((x) => x !== greet);
+  reward('cain/sheep-done', 'sheepDone');
+
+  // 막간(창 4:3 "세월이 지난 후" 앞): 해 질 녘 우리 앞에서 아벨과 끝까지 대화한다.
+  camFocus = cain.spots.abel;
+  setStage('fold');
+  await cain.acts.dusk(true);
+  await talk(CAIN.sheepDone, state);
+  cain.acts.face(abel, player.position);
+  playerFace = abel.position;
+  await runInterlude(CAIN_INTERLUDE, 'cain/interlude');
+  reward('cain/interlude', 'interlude');
+  meet('abel', 'talked', 'cain');
+  await cain.acts.dusk(false); // 다음 날 아침
+
+  // 퀘스트 2: 제물 준비(창 4:3~4). 어린양 곁에 머무르면 따라오고, 돌무더기 앞의 아벨에게 데려간다.
+  setStage(null);
+  camFocus = null;
+  await talk(CAIN.offering, state);
+  cain.acts.walkTo(abel, cain.spots.abelAltar.clone().add(new THREE.Vector3(-0.8, 0, 0.8)));
+  await questFind({
+    title: '첫 새끼',
+    targets: [{ pos: cain.lamb.position, name: '어린양' }],
+    text: () => '어린양 곁에 머무르기',
+    radius: 2.2,
+    hold: 1.5,
+    holdLabel: () => '어린양 곁에 머무르기',
+    onFound: async () => { cain.acts.lambFollow(player.position); note('creature/lamb', 'cain'); },
+  });
+  await questFind({
+    title: '첫 새끼',
+    targets: [{ pos: abel.position, name: '아벨' }],
+    text: () => '어린양을 아벨에게 데려가기',
+    radius: 1.8,
+  });
+  await cain.acts.lambToAltar();
+  reward('cain/offering', 'offering');
+
+  // 제사(창 4:3~7): 받으신 제물에 빛이 내리고, 가인이 고개를 떨군다. 하나님께서 형상 없는 빛으로 말씀하신다.
+  camFocus = cain.spots.altars;
+  setView(11);
+  setStage('altars');
+  note('person/cain', 'cain');
+  await cain.acts.toAltars();
+  await talk(CAIN.offered, state, { onLine: (l, i) => {
+    if (l.focus === 'abel') cain.acts.accept();
+    if (i === 2) cain.acts.sulk();
+    if (i === 3) cain.acts.presence(cainFig);
+  } });
+  cain.acts.acceptEnd();
+
+  // 창 4:8: 멀리서 비춘다. 가인이 다가가고 아벨이 쓰러지는 데까지만 보인다.
+  setStage('field');
+  await talk(CAIN.field, state);
+  camFocus = cain.spots.fieldView; // 들보다 카메라 쪽을 비춰 땅 끝 너머 하늘이 덜 보이게 한다
+  setView(14);
+  await cain.acts.toField();
+  await cain.acts.approach();
+  await talk(CAIN.fallen, state);
+  // 창 4:9~16: 빛이 가인 곁에 머문다. 표를 주시고, 가인은 동쪽으로 떠난다.
+  camFocus = cainFig.position;
+  setView(15);
+  await cain.acts.presence(cainFig);
+  await talk(CAIN.trial, state, { onLine: (l) => {
+    if (l.ref === '창 4:15' && l.who === 'narr') cain.acts.mark();
+    if (l.ref === '창 4:16') note('place/nod', 'cain');
+  } });
+  await cain.acts.leave();
+  cain.acts.hideField();
+
+  // 창 4:25~26 셋. 퀴즈(창 4:7).
+  camFocus = cain.spots.home;
+  setView(13);
+  setStage('home');
+  note('person/seth', 'cain');
+  await talk(CAIN.seth, state);
+  await askQuiz(CAIN_QUIZ);
+  note('word/gen-4-7', 'cain');
+  note('item/wool', 'cain'); // 스테이지 기념물: 도감에만 남는다
+  reward('cain/quiz', 'quiz');
+  reward('cain/clear', 'clear');
+  await new Promise((r) => setTimeout(r, 2400));
+  await fade(1);
+  runShelter();
+}
+
 // ---------- 쉼터: 천국을 넓힌 광장. 스테이지를 마치면 돌아오고, 이어하기도 여기서 시작한다 ----------
 // 빛의 문 → 월드 지도, 기록대 → 도감, 상점 천사 → 상점. 걸어서 닿으면 열리고, 닫으면 한 걸음 물러난다.
 async function runShelter() {
   stopWalk();
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
   if (eden) { scene.remove(eden.group); eden = null; }
+  if (cain) { scene.remove(cain.group); cain = null; }
   if (basket) { player.remove(basket); basket = null; }
   scene.background = new THREE.Color(0xfdf3d8);
   setEdges(true);
@@ -835,6 +982,8 @@ async function runShelter() {
   walkRadius = 8.5;
   placeCompanions(new THREE.Vector3(0, 0, 3));
   mode = 'none';
+  openNext(state); // 마친 스테이지 다음을 연다
+  save(state);
   await fade(0);
   const spots = [
     { pos: heaven.gatePos, r: 1.6, open: async () => {
@@ -877,6 +1026,7 @@ async function runShelter() {
 function startAt(id) {
   if (id === 'prologue') return runPrologue();
   if (id.startsWith('creation-')) return runCreation(Number(id.split('-')[1]));
+  if (id === 'cain') return runCain();
   return runEden(id);
 }
 
@@ -980,6 +1130,7 @@ function tick() {
   waypoint.update(t, player.position);
   creation?.update(dt, t);
   eden?.update(dt, t, player.position);
+  cain?.update(dt, t, player.position);
   holdTick(dt);
   if (heaven.group.visible) heaven.pillar.userData.pulse(t);
   if (titleView) camAngle += dt * 0.06;
@@ -995,7 +1146,7 @@ function tick() {
 }
 
 // 개발 서버에서만: 브라우저 점검용으로 캐릭터와 세계에 접근한다(배포 빌드에는 빠진다).
-if (import.meta.env.DEV) globalThis.__dev = { player, get eden() { return eden; }, get mode() { return mode; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude') };
+if (import.meta.env.DEV) globalThis.__dev = { player, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude') };
 
 scene.background = new THREE.Color(0xfdf3d8);
 player.position.set(0, 0, -3);

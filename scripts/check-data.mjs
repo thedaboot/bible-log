@@ -5,9 +5,11 @@ import { PROLOGUE } from '../src/data/prologue.js';
 import { CREATION, DAY_NAMES } from '../src/data/creation.js';
 import { EDEN, FALL, RIVERS, ANIMALS, FRUITS, QUIZ, INTERLUDE, EVE_GREETING } from '../src/data/eden.js';
 import { CODEX, CODEX_TABS, LIKENESS } from '../src/data/codex.js';
+import { CAIN, CAIN_QUIZ, CAIN_INTERLUDE, CAIN_GREETING, FLOCK } from '../src/data/cain.js';
 import { SPEAKERS, vocative, fill, withRa } from '../src/text.js';
 import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, STAGES, inFrontOfScene, stepAsideSpots, crossesRiver } from '../src/eden.js';
-import { load, save, reach, newState } from '../src/save.js';
+import { load, save, reach, newState, openNext } from '../src/save.js';
+import { makeCain, collide as cainCollide, stepAsideSpots as cainAside, STAGES as CAIN_STAGES } from '../src/cain.js';
 import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
@@ -26,6 +28,9 @@ const groups = [
   ...RIVERS.map((r) => [`RIVERS.${r.id}`, r.lines]),
   ...INTERLUDE.steps.flatMap((st, i) => (st.say ? [[`INTERLUDE.steps[${i}]`, st.say]] : st.choose.map((c, j) => [`INTERLUDE.steps[${i}].choose[${j}]`, c.reply]))),
   ['EVE_GREETING', EVE_GREETING],
+  ...Object.entries(CAIN).map(([k, v]) => [`CAIN.${k}`, v]),
+  ...CAIN_INTERLUDE.steps.flatMap((st, i) => (st.say ? [[`CAIN_INTERLUDE.steps[${i}]`, st.say]] : st.choose.map((c, j) => [`CAIN_INTERLUDE.steps[${i}].choose[${j}]`, c.reply]))),
+  ['CAIN_GREETING', CAIN_GREETING],
 ];
 const { acts } = makeCreation({ background: new THREE.Color() });
 for (let day = 1; day <= 7; day++) {
@@ -84,17 +89,18 @@ for (const [where, lines] of groups) {
     assert.ok(l.ref === null || REF.test(l.ref), `${at}: 장절 형식 오류 ${l.ref}`);
     for (const e of wrapErrors(l.text)) problems.push(`${at}: ${e}`);
     // 창 1:1~2:3은 엘로힘, 창 2:4부터는 YHWH(이름표 규칙)
-    if (l.ref?.startsWith('창 2:') || l.ref?.startsWith('창 3:')) assert.notEqual(l.who, 'elohim', `${at}: 창 2:4 이후는 YHWH`);
+    if (l.ref?.startsWith('창 ') && !l.ref.startsWith('창 1:')) assert.notEqual(l.who, 'elohim', `${at}: 창 2:4 이후는 YHWH`);
     count++;
   }
 }
 assert.deepEqual(problems, [], '줄바꿈 2판 위반');
 assert.equal(RIVERS.length, 4, '강은 네 줄기');
 assert.ok(ANIMALS.every((a) => a.name && a.size > 0), '동물 데이터 오류');
-for (const [i, q] of QUIZ.entries()) {
+for (const [i, q] of [...QUIZ, ...CAIN_QUIZ].entries()) {
   assert.ok(q.options[q.answer], `QUIZ[${i}]: 정답 번호 오류`);
   assert.ok(REF.test(q.ref), `QUIZ[${i}]: 장절 형식 오류`);
 }
+assert.ok(FLOCK.length >= 4 && FLOCK.every((f) => f.id && f.name && f.size > 0), '양 떼 데이터 오류');
 
 assert.equal(vocative('요한'), '요한아');
 assert.equal(vocative('지수'), '지수야');
@@ -169,18 +175,18 @@ assert.equal(load(null), null);
 
 // 막간: say와 choose가 번갈아 오고 choose 앞에는 반드시 say가 있다(그 마지막 대사에서 고른다).
 // choose마다 기본 선택지 셋(need 없음)과 열매 단계로 열리는 선택지 0~1개. 열매가 모두 다르고, 각색 대사에는 근거(basis)가 있다.
-{
-  const { steps } = INTERLUDE;
-  assert.ok(INTERLUDE.who in SPEAKERS, '막간 인물');
+for (const [name, it, greet] of [['INTERLUDE', INTERLUDE, EVE_GREETING], ['CAIN_INTERLUDE', CAIN_INTERLUDE, CAIN_GREETING]]) {
+  const { steps } = it;
+  assert.ok(it.who in SPEAKERS, `${name}: 막간 인물`);
   let exchanges = 0;
   for (const [i, st] of steps.entries()) {
-    assert.ok(!!st.say !== !!st.choose, `INTERLUDE.steps[${i}]: say나 choose 하나만`);
+    assert.ok(!!st.say !== !!st.choose, `${name}.steps[${i}]: say나 choose 하나만`);
     if (!st.choose) continue;
-    assert.ok(steps[i - 1]?.say, `INTERLUDE.steps[${i}]: choose 앞에 say가 필요함`);
+    assert.ok(steps[i - 1]?.say, `${name}.steps[${i}]: choose 앞에 say가 필요함`);
     const basic = st.choose.filter((c) => !c.need), extra = st.choose.filter((c) => c.need);
-    assert.equal(basic.length, 3, `INTERLUDE.steps[${i}]: 기본 선택지는 셋`);
-    assert.ok(extra.length <= 1, `INTERLUDE.steps[${i}]: 열매로 열리는 선택지는 하나까지`);
-    assert.equal(new Set(st.choose.map((c) => c.fruit)).size, st.choose.length, `INTERLUDE.steps[${i}]: 열매가 겹침`);
+    assert.equal(basic.length, 3, `${name}.steps[${i}]: 기본 선택지는 셋`);
+    assert.ok(extra.length <= 1, `${name}.steps[${i}]: 열매로 열리는 선택지는 하나까지`);
+    assert.equal(new Set(st.choose.map((c) => c.fruit)).size, st.choose.length, `${name}.steps[${i}]: 열매가 겹침`);
     for (const c of st.choose) {
       assert.ok(SPIRIT.some((f) => f.id === c.fruit), `${c.text}: 없는 열매`);
       for (const [id, stage] of Object.entries(c.need ?? {})) assert.ok(SPIRIT.some((f) => f.id === id) && stage >= 1 && stage < SPIRIT_STAGES.length, `${c.text}: need 오류`);
@@ -190,10 +196,13 @@ assert.equal(load(null), null);
     exchanges++;
   }
   const lines = steps.flatMap((st) => st.say ?? st.choose.flatMap((c) => c.reply));
-  for (const l of [...lines, ...EVE_GREETING]) assert.ok(l.ref !== null || l.basis, `근거(basis)가 없는 각색 대사: ${l.text}`);
+  for (const l of [...lines, ...greet]) assert.ok(l.ref !== null || l.basis, `근거(basis)가 없는 각색 대사: ${l.text}`);
   // 막간 분량: 주고받기 5~8번(대사 묶음과 선택을 합쳐 센다)
   const turns = steps.length;
-  assert.ok(turns >= 5 && turns <= 8, `막간 주고받기 ${turns}번`);
+  assert.ok(turns >= 5 && turns <= 8, `${name}: 막간 주고받기 ${turns}번`);
+}
+{
+  const { steps } = INTERLUDE;
   // 열매 단계로 열리는 선택지: 처음 에덴(퀘스트 열매만 4점)에서는 닫혀 있고, 새싹이면 열린다
   const s = newState();
   s.spirit.joy = 4;
@@ -205,7 +214,7 @@ assert.equal(load(null), null);
   s.spirit.joy = 4;
   assert.deepEqual(chooseFruit(s, 'eden/interlude/1', 'joy'), ['기쁨이 새싹으로 자랐어요']);
   assert.deepEqual(chooseFruit(s, 'eden/interlude/1', 'joy'), [], '같은 막간 선택에서 두 번 자람');
-  console.log(`OK: 막간 점검 통과(주고받기 ${turns}번, 선택 ${exchanges}번)`);
+  console.log(`OK: 막간 점검 통과(에덴·가인과 아벨, 에덴 주고받기 ${steps.length}번)`);
 }
 
 // 하늘: 한낮엔 별이 없고, 한밤엔 햇빛이 없고, 해돋이엔 노을빛(붉은 기)이 돈다
@@ -326,6 +335,7 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
   const need = [
     ...ANIMALS.map((a) => `creature/${a.kind}`), ...FRUITS.map((f) => `creature/${f.kind}`),
     ...RIVERS.map((r) => `place/${r.id}`), 'place/eden', 'creature/serpent', 'person/adam', 'item/fig-leaf', 'word/gen-2-7', 'word/gen-3-15',
+    'person/cain', 'person/abel', 'person/seth', 'creature/lamb', 'place/nod', 'item/wool', 'word/gen-4-7',
     ...Object.keys(LIKENESS).map((w) => `person/${w}`),
   ];
   for (const id of need) assert.ok(ids.includes(id), `도감에 없는 항목: ${id}`);
@@ -504,4 +514,21 @@ console.log('OK: 동물이 고르는 자리 점검 통과(자기 구역 유지)'
     }
   }
   console.log(`OK: 관찰자 비키기 점검 통과(시작점 ${tried}곳)`);
+}
+
+// 가인과 아벨: 마친 스테이지 다음이 열리고(예전 저장값 포함), 들판의 양 터·연출 자리가 장애물 밖이며, 무대마다 비킬 자리가 있다.
+{
+  const s = newState();
+  s.claimed.push('eden/clear');
+  openNext(s);
+  assert.ok(s.unlocked.includes('cain'), '에덴을 마치면 가인과 아벨이 열린다');
+  const f = makeCain({ background: new THREE.Color() });
+  for (const an of [...f.sheep, f.lamb]) assert.ok(!cainCollide(an.position.clone(), an.userData.radius), `${an.userData.name}: 장애물 위에 섬`);
+  for (const [k, p] of Object.entries(f.spots)) if (!['fold', 'altars', 'abelAltar'].includes(k)) assert.ok(!cainCollide(p.clone(), 0.3), `들판 자리 ${k}: 장애물 위`);
+  for (const name of Object.keys(CAIN_STAGES)) {
+    for (const from of [CAIN_STAGES[name].c, CAIN_STAGES[name].c.clone().add(new THREE.Vector3(1, 0, -1))]) {
+      assert.ok(cainAside(name, from).length, `${name}: 비킬 자리가 없음`);
+    }
+  }
+  console.log('OK: 가인과 아벨 점검 통과(다음 지점 열기, 양 터, 비킬 자리)');
 }

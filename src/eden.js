@@ -755,7 +755,7 @@ export function makeEden(scene) {
   }
 
   return {
-    group, sky, adam, eve, animals, fruitTrees, knowledge, acts, update, skipToFall, collide, cherubim, pickDest,
+    group, sky, adam, eve, animals, fruitTrees, knowledge, acts, update, skipToFall, collide, cherubim, pickDest, stepAside: stepAsideSpots,
     makeFruit,
     riverEnds: RIVERS.map((r, i) => ({ ...r, pos: RIVER_ENDS[i] })),
     spots: { start: EDEN_START, adam: ADAM_SPOT, eve: EVE_SPOT, knowledge: CENTER_KNOWLEDGE, center: CENTER, hide: HIDE_TREE, gate: EAST_GATE, waste: WASTE },

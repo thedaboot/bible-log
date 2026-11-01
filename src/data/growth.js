@@ -61,6 +61,11 @@ export const REWARDS = {
   riversDone: { xp: 10, spirit: 'joy' }, // ★
   animalsDone: { xp: 10, spirit: 'patience' }, // ★
   fruitDone: { xp: 10, spirit: 'control' }, // ★
+  // 가인과 아벨: 양 치기는 어린 양을 품에 안고 젖 먹이는 양을 온순히 이끄는 목자(사 40:11, 온유),
+  // 첫 새끼를 데려가는 제물 준비는 믿음으로 드린 더 나은 제사(히 11:4, 신실).
+  sheep: { xp: 6, talent: 1 }, // ★ 양 한 마리를 우리로 데려감(다섯 마리)
+  sheepDone: { xp: 10, spirit: 'gentle' }, // ★
+  offering: { xp: 15, talent: 2, spirit: 'faith' }, // ★ 첫 새끼를 아벨에게 데려감
   interlude: { xp: 10 }, // ★ 막간 대화를 끝까지 마침(열매는 선택마다 SPIRIT_GAIN.choice)
   quiz: { xp: 15, talent: 5 }, // ★ 장 끝 구절 퀴즈
   clear: { xp: 20, talent: 10 }, // ★ 스테이지 마침
