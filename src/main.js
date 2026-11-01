@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import './style.css';
-import { makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turnFigure, makeAngel, makeWaypoint, LOOK, LOOK_TABS, DEFAULT_EARTH, earthSpec, makeDressingRoom, makeBasket } from './props.js';
+import { PAL, makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turnFigure, makeAngel, makeWaypoint, LOOK, LOOK_TABS, DEFAULT_EARTH, earthSpec, makeDressingRoom, makeBasket } from './props.js';
 import { makeCreation } from './creation.js';
 import { makeEden, EDEN_RADIUS } from './eden.js';
 import { PROLOGUE } from './data/prologue.js';
@@ -273,7 +273,7 @@ async function runPrologue() {
     setView(7);
     player.rotation.y = Math.PI / 4;
     turntable = true;
-    state.look = await askLook(state.look, (look) => dressFigure(player, lookSpec(look)), {
+    state.look = await askLook(state.look, dressWith(lookSpec), {
       title: '천국에서의 내 모습',
       text: '고르는 대로 적용됩니다.',
       options: LOOK.heaven,
@@ -342,6 +342,25 @@ async function runCreation(fromDay = 1) {
   runEden('eden');
 }
 
+// 꾸미기에서 고를 때: 바뀐 부위 높이에서 금빛 고리가 퍼지고 캐릭터가 살짝 커졌다 돌아온다(정말 입는 느낌).
+const PART_HEIGHT = { hair: 1.35, hairColor: 1.35, beard: 1.15, item: 0.85, outfit: 0.65, outfitColor: 0.65, color: 0.9, skin: 0.9, aura: 0.1, height: 0.9 };
+function dressFx(key) {
+  if (!key || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const h = (PART_HEIGHT[key] ?? 0.8) * (player.userData.height ?? 1);
+  const m = new THREE.MeshBasicMaterial({ color: PAL.gold, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 24), m);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = key === 'all' ? 0.05 : h;
+  player.add(ring);
+  tween(key === 'all' ? 700 : 450, (p) => {
+    ring.scale.setScalar(1 + p * 0.9);
+    if (key === 'all') ring.position.y = 0.05 + p * 1.6; // 무작위: 발밑에서 머리까지 훑고 올라간다
+    m.opacity = 0.9 * (1 - p);
+    player.scale.setScalar(1 + Math.sin(p * Math.PI) * 0.06);
+  }).then(() => { player.remove(ring); ring.geometry.dispose(); m.dispose(); player.scale.setScalar(1); });
+}
+const dressWith = (spec) => (look, key) => { dressFigure(player, spec(look)); dressFx(key); };
+
 // ---------- 꾸미기 방: 처음 땅에 내려가기 전, 지상에서의 모습을 전용 화면에서 고른다 ----------
 async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submit = '이 모습으로 내려가기' } = {}) {
   heaven.group.visible = angel.visible = false;
@@ -359,9 +378,10 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
   camOffset = ROOM_OFFSET;
   viewShift = { x: 0.2, y: 0.24 }; // 패널이 오른쪽(휴대폰은 아래)에 있으니 캐릭터를 반대쪽에 크게 둔다
   setView(4.2);
+  dressFigure(player, earthSpec(state.earthLook ?? DEFAULT_EARTH)); // 화면을 걷기 전에 지상 모습을 입힌다
   await fade(0);
   turntable = true;
-  state.earthLook = await askLook(state.earthLook ?? DEFAULT_EARTH, (look) => dressFigure(player, earthSpec(look)), {
+  state.earthLook = await askLook(state.earthLook ?? DEFAULT_EARTH, dressWith(earthSpec), {
     kicker,
     title: '지상에서의 내 모습',
     text: '땅에서도 사람들 눈에는 보이지 않아요.\n여러 시대를 함께 걸을 모습을 골라 주세요.',
@@ -606,21 +626,24 @@ function showTitle() {
     menu.classList.remove('menu--list', 'menu--cards');
     menu.replaceChildren(button('처음부터', begin(() => { state = newState(saved); dressFigure(player, lookSpec(state.look)); runPrologue(); })));
     if (saved) menu.append(button('이어하기', showContinue));
-    if (saved?.name) menu.append(button('모습 바꾸기', showLooks)); // 천국 꾸미기를 마친 사용자만
+    if (saved?.name) menu.append(button('커스텀 변경하기', showLooks)); // 천국 꾸미기를 마친 사용자만
     menu.querySelector('button').focus({ preventScroll: true });
   };
-  // 모습 바꾸기: 천국 모습은 옆 창, 지상 모습은 전용 꾸미기 화면. 저장한 뒤 첫 화면으로 돌아온다.
+  // 커스텀 변경하기: 천국 모습은 옆 창, 지상 모습은 전용 꾸미기 화면. 저장한 뒤 첫 화면으로 돌아온다.
   const showLooks = () => {
     menu.classList.remove('menu--cards');
     menu.classList.add('menu--list');
-    const items = [button('천국 모습', begin(() => editLook('heaven')))];
-    if (saved.earthLook) items.push(button('지상 모습', begin(() => editLook('earth'))));
+    const items = [button('천국 모습 변경하기', begin(() => editLook('heaven')))];
+    if (saved.earthLook) items.push(button('지상 모습 변경하기', begin(() => editLook('earth'))));
     menu.replaceChildren(head('어느 모습을 바꿀까요?'), ...items, backButton(showMain));
     menu.querySelector('button').focus({ preventScroll: true });
   };
   async function editLook(kind) {
     state = saved;
-    if (kind === 'earth') await runDressingRoom({ kicker: '모습 바꾸기', submit: '이 모습으로' });
+    if (kind === 'earth') {
+      await fade(1); // 천국 풍경을 먼저 빛으로 덮고 꾸미기 방으로 옮긴다
+      await runDressingRoom({ kicker: '커스텀 변경하기', submit: '이 모습으로' });
+    }
     else {
       camAngle = 0;
       player.visible = true;
@@ -629,7 +652,7 @@ function showTitle() {
       camFollow = player.position;
       setView(7);
       turntable = true;
-      state.look = await askLook(state.look, (look) => dressFigure(player, lookSpec(look)), {
+      state.look = await askLook(state.look, dressWith(lookSpec), {
         title: '천국에서의 내 모습',
         text: '고르는 대로 적용됩니다.',
         options: LOOK.heaven,

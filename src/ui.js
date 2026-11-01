@@ -127,11 +127,13 @@ export function askLook(current, onChange, { title, text, options, tabs = null, 
   const legends = {};
   const radios = {};
   const pickName = (key) => options[key].find((o) => o.id === look[key])?.name ?? '';
+  // onChange(look, key): key는 방금 바꾼 항목('all'은 무작위, 처음 한 번은 null). 3D 쪽 강조 연출에 쓴다.
   const choose = (key, id) => {
     look[key] = id;
     legends[key].lastChild.textContent = pickName(key);
-    onChange({ ...look });
+    onChange({ ...look }, key);
   };
+  const pressed = (el) => { el.classList.remove('is-picked'); void el.offsetWidth; el.classList.add('is-picked'); };
   body.replaceChildren();
   const sets = {};
   for (const [key, list] of Object.entries(options)) {
@@ -152,7 +154,7 @@ export function askLook(current, onChange, { title, text, options, tabs = null, 
       input.name = key;
       input.value = opt.id;
       input.checked = look[key] === opt.id;
-      input.onchange = () => choose(key, opt.id);
+      input.onchange = () => { pressed(wrap); choose(key, opt.id); };
       const label = document.createElement('span');
       label.textContent = opt.name;
       if (opt.hex !== undefined) {
@@ -173,9 +175,21 @@ export function askLook(current, onChange, { title, text, options, tabs = null, 
   tabBar.hidden = !tabs;
   tabBar.replaceChildren();
   if (tabs) {
+    // 고른 탭 밑줄은 하나의 막대가 옆으로 미끄러져 옮겨 가고, 새 항목은 탭 방향에서 짧게 들어온다.
+    const line = document.createElement('span');
+    line.className = 'look__tabline';
+    tabBar.style.setProperty('--tabs', tabs.length);
+    let current = -1;
     const showTab = (i) => {
-      tabs.forEach((tab, n) => tab.keys.forEach((key) => (sets[key].hidden = n !== i)));
-      [...tabBar.children].forEach((b, n) => b.setAttribute('aria-selected', String(n === i)));
+      const dir = i > current ? 1 : -1;
+      tabs.forEach((tab, n) => tab.keys.forEach((key) => {
+        const set = sets[key];
+        set.hidden = n !== i;
+        if (n === i && current >= 0) { set.dataset.dir = dir; set.classList.remove('is-entering'); void set.offsetWidth; set.classList.add('is-entering'); }
+      }));
+      [...tabBar.querySelectorAll('.tab')].forEach((b, n) => b.setAttribute('aria-selected', String(n === i)));
+      line.style.transform = `translateX(${i * 100}%)`;
+      current = i;
     };
     tabs.forEach((tab, i) => {
       const b = document.createElement('button');
@@ -186,9 +200,10 @@ export function askLook(current, onChange, { title, text, options, tabs = null, 
       b.onclick = () => showTab(i);
       tabBar.append(b);
     });
+    tabBar.append(line);
     showTab(0);
   }
-  onChange({ ...look });
+  onChange({ ...look }, null);
   // 무작위: 항목마다 아무거나 하나 고른다
   $('lookRandom').onclick = () => {
     for (const [key, list] of Object.entries(options)) {
@@ -197,7 +212,9 @@ export function askLook(current, onChange, { title, text, options, tabs = null, 
       look[key] = list[n].id;
       legends[key].lastChild.textContent = list[n].name;
     }
-    onChange({ ...look });
+    pressed($('lookRandom'));
+    body.querySelectorAll('.look__group:not([hidden]) label:has(input:checked)').forEach(pressed);
+    onChange({ ...look }, 'all');
   };
   form.hidden = false;
   form.querySelector('input:checked')?.focus();

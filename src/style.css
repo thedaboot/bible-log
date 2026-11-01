@@ -273,6 +273,10 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
 .dialog__back {
   grid-row: 1;
   grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
   min-height: 32px;
   padding: 0 var(--space-xs);
   border: 0;
@@ -285,7 +289,8 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
   box-shadow: inset 0 0 0 2px var(--color-paper-3);
   cursor: pointer;
 }
-.dialog__back::before { content: '◀ '; font-size: 0.7em; }
+/* 왼쪽 화살표: 글자 기호(◀)는 글꼴마다 기준선이 달라 처져 보이므로 CSS 삼각형으로 그려 글자와 같은 세로 중심에 둔다 */
+.dialog__back::before { content: ''; flex: none; width: 7px; height: 9px; background: currentColor; clip-path: polygon(100% 0, 100% 100%, 0 50%); }
 @media (hover: hover) { .dialog__back:hover { color: var(--color-frame); background: var(--color-paper-3); } }
 .dialog__back:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 .dialog__next {
@@ -552,7 +557,26 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
 @media (min-width: 40rem) { .modal--page .look { width: min(38rem, 50vw); } }
 
 /* 꾸미기 탭 */
-.look__tabs { display: flex; width: 100%; box-shadow: inset 0 -2px 0 var(--color-paper-3); }
+.look__tabs { position: relative; display: flex; width: 100%; box-shadow: inset 0 -2px 0 var(--color-paper-3); }
+/* 고른 탭 밑줄: 막대 하나가 탭 사이를 미끄러져 옮겨 간다 */
+.look__tabline {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(100% / var(--tabs, 4));
+  height: 3px;
+  background: var(--color-accent);
+  pointer-events: none;
+  transition: transform var(--dur-short) var(--ease-out);
+}
+/* 탭을 바꾸면 새 항목이 탭 방향에서 짧게 들어온다 */
+.look__group.is-entering { animation: tab-in var(--dur-short) var(--ease-out); }
+.look__group.is-entering[data-dir="-1"] { animation-name: tab-in-left; }
+@keyframes tab-in { from { opacity: 0; transform: translateX(12px); } }
+@keyframes tab-in-left { from { opacity: 0; transform: translateX(-12px); } }
+/* 고른 칩·견본·무작위 버튼: 짧게 눌렸다 튀어 오른다 */
+.is-picked { animation: picked var(--dur-long) var(--ease-out); }
+@keyframes picked { 30% { transform: scale(0.92); } 65% { transform: scale(1.05); } }
 .tab {
   flex: 1;
   min-height: 44px;
@@ -560,13 +584,13 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
   border: 0;
   cursor: pointer;
   white-space: nowrap;
-  font: 700 var(--text-small) / 1 var(--font-body);
+  font: 700 var(--text-lede) / 1 var(--font-body);
   color: var(--color-ink-2);
   background: none;
   transition: color var(--dur-micro) var(--ease-out);
 }
 @media (hover: hover) { .tab:hover { color: var(--color-ink); } }
-.tab[aria-selected="true"] { color: var(--color-frame); box-shadow: inset 0 -3px 0 var(--color-accent); }
+.tab[aria-selected="true"] { color: var(--color-frame); }
 .tab:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
 .look { width: min(23rem, 100%); max-height: calc(100dvh - var(--space-md) * 2); overflow-y: auto; gap: var(--space-md); }
 .look--wide { width: min(36rem, 100%); }
