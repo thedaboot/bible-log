@@ -108,6 +108,43 @@ export function collide(p, r = 0.35) {
   return hit;
 }
 
+// a에서 b로 곧게 가는 길이 강(샘 포함, 다리도 강으로 본다)을 건너는지. 동물은 자기 터가 있는 강 이쪽에서만 돌아다닌다.
+export function crossesRiver(a, b) {
+  const n = Math.max(1, Math.ceil(a.distanceTo(b) / 0.3));
+  for (let i = 0; i <= n; i++) {
+    const q = a.clone().lerp(b, i / n);
+    if (q.distanceTo(SPLIT) < 1.6 || RIVER_SEGMENTS.some(([s, e]) => q.distanceTo(closestOnSegment(q, s, e)) < RIVER_HALF + 0.2)) return true;
+  }
+  return false;
+}
+
+// 연출 중 관찰자가 비켜 설 자리 후보(가까운 순). 무대 바깥이고, 설 수 있으며(장애물·물 아님, 동산 안),
+// 아담·하와가 나가는 길(숨는 나무 → 동쪽 문 → 문 밖)과 떨어져 있고, from에서 곧게 걸어 막힘없이 닿는 자리만 고른다.
+// 다른 무대를 피한 자리가 없으면 그 조건만 풀고 다시 고른다. makeEden이 장애물을 채운 뒤에 쓴다.
+export function stepAsideSpots(name, from, r = 0.35) {
+  const st = STAGES[name];
+  if (!st) return [];
+  const exit = [HIDE_OUT[0], EAST_GATE, EAST_GATE.clone().addScaledVector(OUT_DIR, 6.5)];
+  const nearExit = (p) => [[exit[0], exit[1]], [exit[1], exit[2]]].some(([a, b]) => p.distanceTo(closestOnSegment(p, a, b)) < 1.5);
+  const reachable = (p) => {
+    const n = Math.ceil(from.distanceTo(p) / 0.25);
+    for (let i = 1; i <= n; i++) if (collide(from.clone().lerp(p, i / n).setY(0), r * 0.8)) return false;
+    return !crossesRiver(from, p);
+  };
+  for (const strict of [true, false]) {
+    const spots = [];
+    for (const k of [0.8, 1.6, 2.4]) for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const p = st.c.clone().add(V(Math.cos(a) * (st.r + k), Math.sin(a) * (st.r + k)));
+      if (p.length() > EDEN_RADIUS - 0.5 || collide(p.clone(), r) || nearExit(p)) continue;
+      if (strict && Object.values(STAGES).some((o) => o !== st && p.distanceTo(o.c) < o.r)) continue;
+      if (reachable(p)) spots.push(p);
+    }
+    if (spots.length) return spots.sort((a, b) => a.distanceTo(from) - b.distanceTo(from));
+  }
+  return [];
+}
+
 export function makeEden(scene) {
   colliders.length = 0;
   const rand = seeded(20261101);
@@ -537,15 +574,6 @@ export function makeEden(scene) {
   }
 
   const inStage = (p, pad = 0) => stage && p.distanceTo(stage.c) < stage.r + pad;
-  // a에서 b로 곧게 가는 길이 강을 건너는지(다리 포함). 동물은 자기 터가 있는 강 이쪽에서만 돌아다닌다.
-  const crossesRiver = (a, b) => {
-    const n = Math.max(1, Math.ceil(a.distanceTo(b) / 0.3));
-    for (let i = 0; i <= n; i++) {
-      const q = a.clone().lerp(b, i / n);
-      if (q.distanceTo(SPLIT) < 1.6 || RIVER_SEGMENTS.some(([s, e]) => q.distanceTo(closestOnSegment(q, s, e)) < RIVER_HALF + 0.2)) return true;
-    }
-    return false;
-  };
   // 강 건너로 갈 때는 다리 어귀 → 건너편 어귀 → 목표 순서로 간다. 강을 두 번 건너야 하면 다리 두 개를 지난다.
   // 그래도 길이 없으면 곧장 가고, 막히면 목표에 둔다.
   const ends = (br) => {

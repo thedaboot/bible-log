@@ -5,7 +5,7 @@ import { PROLOGUE } from '../src/data/prologue.js';
 import { CREATION, DAY_NAMES } from '../src/data/creation.js';
 import { EDEN, FALL, RIVERS, ANIMALS, QUIZ } from '../src/data/eden.js';
 import { SPEAKERS, vocative, fill, withRa } from '../src/text.js';
-import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, STAGES, inFrontOfScene } from '../src/eden.js';
+import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, STAGES, inFrontOfScene, stepAsideSpots, crossesRiver } from '../src/eden.js';
 import { load, save, reach, newState } from '../src/save.js';
 import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
@@ -263,4 +263,28 @@ console.log('OK: 동물이 고르는 자리 점검 통과(자기 구역 유지)'
   assert.ok(e4.adam.position.distanceTo(target) < 3, `아담이 따라오지 못함(거리 ${e4.adam.position.distanceTo(target).toFixed(1)})`);
   assert.equal(jumps, 0, `아담이 ${jumps}번 순간 이동함`);
   console.log('OK: 아담 따라오기 점검 통과(다리로 건넘)');
+}
+
+// 관찰자 비키기: 무대마다 무대 안의 여러 시작점에서 고른 첫 자리가 설 수 있고(장애물·물 아님), 무대 밖이며,
+// 곧게 걸어 막힘없이(장애물·강 없이) 닿는지 본다
+{
+  makeEden({ background: new THREE.Color() });
+  let tried = 0;
+  for (const [name, st] of Object.entries(STAGES)) {
+    for (let i = 0; i < 12; i++) for (const k of [0.3, 0.7]) {
+      const a = (i / 12) * Math.PI * 2;
+      const from = st.c.clone().add(new THREE.Vector3(Math.cos(a) * st.r * k, 0, Math.sin(a) * st.r * k));
+      if (from.length() > EDEN_RADIUS || collide(from.clone(), 0.35)) continue; // 설 수 없는 시작점은 건너뛴다
+      tried++;
+      const [spot] = stepAsideSpots(name, from);
+      const at = `${name} (${from.x.toFixed(1)}, ${from.z.toFixed(1)})`;
+      assert.ok(spot, `비킬 자리가 없음: ${at}`);
+      assert.ok(!collide(spot.clone(), 0.35), `비킬 자리가 장애물·물 위: ${at}`);
+      assert.ok(spot.distanceTo(st.c) >= st.r, `비킬 자리가 무대 안: ${at}`);
+      assert.ok(!crossesRiver(from, spot), `비키는 길이 강을 건넘: ${at}`);
+      const n = Math.ceil(from.distanceTo(spot) / 0.25);
+      for (let j = 1; j <= n; j++) assert.ok(!collide(from.clone().lerp(spot, j / n), 0.28), `비키는 길이 장애물에 막힘: ${at}`);
+    }
+  }
+  console.log(`OK: 관찰자 비키기 점검 통과(시작점 ${tried}곳)`);
 }

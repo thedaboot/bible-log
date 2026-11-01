@@ -5,7 +5,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import './style.css';
 import { PAL, makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turnFigure, makeAngel, makeWaypoint, LOOK, LOOK_TABS, DEFAULT_EARTH, earthSpec, makeDressingRoom, makeBasket } from './props.js';
 import { makeCreation } from './creation.js';
-import { makeEden, EDEN_RADIUS } from './eden.js';
+import { makeEden, EDEN_RADIUS, stepAsideSpots } from './eden.js';
 import { PROLOGUE } from './data/prologue.js';
 import { CREATION, DAY_NAMES } from './data/creation.js';
 import { EDEN, FALL, QUIZ, NAMING } from './data/eden.js';
@@ -115,8 +115,9 @@ const vel = new THREE.Vector3();
 const want = new THREE.Vector3();
 function movePlayer(dt, t) {
   want.set(0, 0, 0);
-  // 'auto': 연출 중에 관찰자가 장면 앞을 비켜 걸어 나간다(키 입력은 받지 않는다). 4초 안에 못 닿으면 그 자리에 선다.
-  if (mode === 'auto' && (!target || performance.now() > autoUntil)) { target = null; mode = 'none'; }
+  // 'auto': 연출 중에 관찰자가 장면 앞을 비켜 걸어 나간다(키 입력은 받지 않는다). 게임 시간 4초 안에 못 닿으면 그 자리에 선다.
+  if (mode === 'auto') autoLeft -= dt;
+  if (mode === 'auto' && (!target || autoLeft <= 0)) { target = null; mode = 'none'; }
   if (mode === 'walk' || mode === 'auto') {
     const f = mode === 'walk' ? held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown') : 0;
     const r = mode === 'walk' ? held('KeyD', 'ArrowRight') - held('KeyA', 'ArrowLeft') : 0;
@@ -125,31 +126,49 @@ function movePlayer(dt, t) {
     if (want.lengthSq() > 0) target = null;
     else if (target) {
       want.subVectors(target, player.position).setY(0);
-      if (want.length() < 0.15) { target = null; want.set(0, 0, 0); }
+      const d = want.length();
+      if (d < 0.15) { target = null; want.set(0, 0, 0); }
+      else if (mode === 'auto') {
+        // 비키는 중 0.5초 넘게 가까워지지 않으면(막힘) 다음 후보로 가고, 후보가 없으면 그 자리에 선다
+        if (d < autoBest - 0.02) { autoBest = d; autoStuck = 0; } else autoStuck += dt;
+        if (autoStuck > 0.5) { nextAside(); if (!target) want.set(0, 0, 0); }
+      }
     }
     if (want.lengthSq() > 0) want.setLength(SPEED);
   }
   vel.lerp(want, Math.min(1, dt * 10));
+  prevPos.copy(player.position);
   if (vel.lengthSq() > 1e-4) {
     player.position.addScaledVector(vel, dt);
     if (player.position.length() > walkRadius) player.position.setLength(walkRadius);
     eden?.collide(player.position, 0.35); // 나무·바위·물은 통과하지 못한다(다리로만 강을 건넌다)
     turnFigure(player, Math.atan2(vel.x, vel.z), dt);
+  } else if (mode === 'none' && playerFace) {
+    turnFigure(player, Math.atan2(playerFace.x - player.position.x, playerFace.z - player.position.z), dt); // 비킨 뒤 장면 쪽을 본다
   }
-  animateFigure(player, vel.length(), dt, t);
+  // 걷는 몸짓은 실제로 움직인 거리로 정한다(장애물에 막혀 제자리 걸음을 하지 않게)
+  animateFigure(player, dt > 0 ? player.position.distanceTo(prevPos) / dt : 0, dt, t);
 }
+const prevPos = new THREE.Vector3();
 
 // 연출 무대: 동물과 관찰자가 장면 앞(카메라 쪽)을 비켜 준다. 연출 중에 관찰자가 무대 안에 있으면 가장자리로 걸어 나간다.
-let autoUntil = 0;
+// 비킬 자리는 실제로 설 수 있고 곧게 걸어 닿는 후보(stepAsideSpots, 가까운 순)에서 고르고, 막히면 다음 후보로 간다.
+let autoLeft = 0, autoQueue = [], autoBest = Infinity, autoStuck = 0, playerFace = null;
+function nextAside() {
+  target = autoQueue.shift() ?? null;
+  autoBest = Infinity;
+  autoStuck = 0;
+  if (!target) mode = 'none';
+}
 function setStage(name) {
   const st = eden.acts.stage(name);
-  if (!st || mode !== 'none') return;
-  const away = player.position.clone().sub(st.c).setY(0);
-  if (away.length() >= st.r) return;
-  if (away.lengthSq() < 1e-4) away.set(1, 0, -1);
-  target = st.c.clone().addScaledVector(away.normalize(), st.r + 0.8);
-  autoUntil = performance.now() + 4000;
+  playerFace = null;
+  if (!st || mode !== 'none' || player.position.distanceTo(st.c) >= st.r) return;
+  autoQueue = stepAsideSpots(name, player.position);
+  playerFace = st.c;
+  autoLeft = 4;
   mode = 'auto';
+  nextAside();
 }
 
 // 걸어서 닿으면 실행되는 지점들(문, 강 끝, 동물, 열매 나무)
@@ -167,7 +186,7 @@ function checkTriggers() {
 }
 
 let aimNearest = null; // 퀘스트 중이면 가장 가까운 목표로 길 안내를 맞춘다
-function startWalk() { mode = 'walk'; setControls('walk'); }
+function startWalk() { mode = 'walk'; playerFace = null; setControls('walk'); }
 function stopWalk() {
   mode = 'none';
   target = null;
