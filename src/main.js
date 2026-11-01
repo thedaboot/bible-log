@@ -8,11 +8,11 @@ import { makeCreation } from './creation.js';
 import { makeEden, EDEN_RADIUS, stepAsideSpots } from './eden.js';
 import { PROLOGUE } from './data/prologue.js';
 import { CREATION, DAY_NAMES } from './data/creation.js';
-import { EDEN, FALL, QUIZ, NAMING } from './data/eden.js';
+import { EDEN, FALL, QUIZ, NAMING, INTERLUDE, EVE_GREETING } from './data/eden.js';
 import { load, save, reach, newState } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
-import { REWARDS } from './data/growth.js';
-import { grant, bond, record, levelOf, looksOpened } from './growth.js';
+import { REWARDS, SPIRIT } from './data/growth.js';
+import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit } from './growth.js';
 import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
 import { tween, easeOut, setInstant } from './anim.js';
@@ -612,7 +612,26 @@ addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat && !menu
 
 // 에덴의 대사: 말하는 인물이 고개를 끄덕이며 들썩인다(eden.acts.speak).
 function talk(lines, ctx, opts = {}) {
-  return say(lines, ctx, { onLine: (l, i) => { eden?.acts.speak(l.who); opts.onLine?.(l, i); } });
+  return say(lines, ctx, { choices: opts.choices, onLine: (l, i) => { eden?.acts.speak(l.who); opts.onLine?.(l, i); } });
+}
+
+// 막간: say 다음에 choose가 오면 그 say의 마지막 대사에서 선택지를 띄운다. 고른 뒤 자라는 열매를 획득 효과로 보여 주고 답을 듣는다.
+// 열매 단계로 열린 선택지(need)에는 그 열매 이름과 새싹 표시를 단다. key/번호마다 열매는 한 번만 자란다.
+async function runInterlude(data, key) {
+  const { steps } = data;
+  for (let i = 0; i < steps.length; i++) {
+    const { say: lines } = steps[i];
+    const next = steps[i + 1]?.choose;
+    if (!next) { await talk(lines, state); continue; }
+    const open = next.filter((c) => choiceOpen(state, c));
+    const mark = (c) => c.need && SPIRIT.find((f) => f.id === Object.keys(c.need)[0]).name;
+    const n = await talk(lines, state, { choices: open.map((c) => ({ text: c.text, mark: mark(c) })) });
+    const picked = open[n];
+    for (const m of chooseFruit(state, `${key}/${i + 1}`, picked.fruit)) toast(m, { gain: true });
+    save(state);
+    await talk(picked.reply, state);
+    i++;
+  }
 }
 
 async function runEdenGarden() {
@@ -681,6 +700,12 @@ async function runEdenGarden() {
   camFocus = eden.spots.adam;
   setStage('adam');
   await talk(EDEN.animalsDone.slice(0, 1), state);
+  // 막간(창 2:20 뒤, 창 2:21 앞): 아담이 관찰자를 알아보고 끝까지 대화한다. 사건의 흐름은 바뀌지 않는다.
+  eden.acts.face(eden.adam, player.position);
+  playerFace = eden.adam.position;
+  await runInterlude(INTERLUDE, 'eden/interlude');
+  reward('eden/interlude', 'interlude');
+  meet('adam', 'talked');
   // 창 2:21~22 화면 전환 없이: 아담이 잠들고, 옆구리에서 나온 빛이 하와가 된다.
   await eden.acts.sleep();
   await talk(EDEN.animalsDone.slice(1), state);
@@ -695,6 +720,14 @@ async function runEdenGarden() {
   basket.position.set(-0.6, 0.55, 0.15);
   basket.scale.setScalar(BASKET_SIZE);
   player.add(basket);
+  // 하와와는 열매를 모으는 동안 다가가면 짧게 인사한다(막간의 짧은 인사, 관계 "만남").
+  const greet = addTrigger(eden.eve.position, 2.2, async () => {
+    mode = 'none';
+    eden.acts.face(eden.eve, player.position);
+    await talk(EVE_GREETING, state);
+    meet('eve', 'met');
+    mode = 'walk';
+  });
   const warn = addTrigger(eden.knowledge.position, 2.4, async () => {
     mode = 'none';
     await talk(EDEN.forbidden, state);
@@ -729,7 +762,7 @@ async function runEdenGarden() {
       await tween(320, (p) => basket.scale.setScalar(BASKET_SIZE * (1 + Math.sin(p * Math.PI) * 0.3)));
     },
   });
-  triggers = triggers.filter((x) => x !== warn);
+  triggers = triggers.filter((x) => x !== warn && x !== greet);
   reward('eden/fruit-done', 'fruitDone');
   await talk(EDEN.fruitDone, state);
 }
@@ -952,7 +985,7 @@ function tick() {
 }
 
 // 개발 서버에서만: 브라우저 점검용으로 캐릭터와 세계에 접근한다(배포 빌드에는 빠진다).
-if (import.meta.env.DEV) globalThis.__dev = { player, get eden() { return eden; }, get mode() { return mode; } };
+if (import.meta.env.DEV) globalThis.__dev = { player, get eden() { return eden; }, get mode() { return mode; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude') };
 
 scene.background = new THREE.Color(0xfdf3d8);
 player.position.set(0, 0, -3);

@@ -61,6 +61,7 @@ export const REWARDS = {
   riversDone: { xp: 10, spirit: 'joy' }, // ★
   animalsDone: { xp: 10, spirit: 'patience' }, // ★
   fruitDone: { xp: 10, spirit: 'control' }, // ★
+  interlude: { xp: 10 }, // ★ 막간 대화를 끝까지 마침(열매는 선택마다 SPIRIT_GAIN.choice)
   quiz: { xp: 15, talent: 5 }, // ★ 장 끝 구절 퀴즈
   clear: { xp: 20, talent: 10 }, // ★ 스테이지 마침
 };

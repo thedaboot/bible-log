@@ -137,3 +137,15 @@ export const ITEM_ICONS = {
   ], '두루마리'),
   bag: BAG,
 };
+
+// 새싹: 열매 단계로 열린 선택지에 다는 표시(docs/design.md "막간 화면")
+export const SPROUT = pixel([
+  '.oo..oo.',
+  'oggoogo.',
+  'ogggo.o.',
+  '.oogo...',
+  '...oo...',
+  '...ob...',
+  '..obbo..',
+  '.oooooo.',
+], '새싹');

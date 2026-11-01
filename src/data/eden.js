@@ -136,3 +136,58 @@ export const QUIZ = [
   { q: '에덴에서 흘러나온 강은 몇 줄기로 갈라졌나요?', options: ['두 줄기', '세 줄기', '네 줄기'], answer: 2, ref: '창 2:10' },
   { q: '하나님께서 먹지 말라고 하신 나무는 무엇인가요?', options: ['생명나무', '선악을 알게 하는 나무', '무화과나무'], answer: 1, ref: '창 2:17' },
 ];
+
+// 막간: 아담과 끝까지 하는 대화(docs/design.md "에덴의 막간"). 동물 이름 짓기를 마친 직후, 아담이 잠들기(창 2:21) 전이다.
+// 본문에 없는 각색이라 모든 대사는 ref: null이고, 근거 장절은 basis에 둔다(npm run review가 감수 목록에 뽑는다).
+// 대화는 사건의 흐름을 바꾸지 않는다. 선택지는 모두 좋은 행동이고 자라는 열매(fruit)만 다르다.
+// need: { 열매: 단계 }를 채워야 열리는 네 번째 선택지. 고른 뒤에만 자라는 열매를 획득 효과로 보여 준다.
+export const INTERLUDE = {
+  who: 'adam',
+  steps: [
+    { say: [
+      { who: 'narr', text: '해가 기울 무렵, 아담이 강가에 앉아 동물들을 바라보았다.', ref: null, basis: '창 2:20' },
+      { who: 'adam', text: '거기 누구요? 오늘 내내 내 곁에 있었던 것 같은데.', ref: null, basis: '막간: 인물이 관찰자를 알아본다' },
+      { who: 'adam', text: '하나님께서 데려오신 짐승마다 이름을 지어 주었소.\n부를 때마다 마음이 벅찼소.', ref: null, basis: '창 2:19~20' },
+    ] },
+    { choose: [
+      { text: '이름마다 꼭 어울렸어요!', fruit: 'joy', reply: [
+        { who: 'adam', text: '그렇지? 사자라고 부르니 정말 사자처럼 고개를 들더군!', ref: null, basis: '창 2:19' },
+      ] },
+      { text: '(말없이 곁에 앉는다)', fruit: 'peace', reply: [
+        { who: 'narr', text: '두 사람은 한동안 말없이 흐르는 강을 바라보았다.', ref: null, basis: '창 2:10' },
+      ] },
+      { text: '오래 바라보고 지어 주셨죠.', fruit: 'patience', reply: [
+        { who: 'adam', text: '서두르고 싶지 않았소. 하나님께서 보고 계셨으니까.', ref: null, basis: '창 2:19 "무엇이라 부르는지 보시려고"' },
+      ] },
+      { text: '이름들을 함께 불러 봐요!', fruit: 'love', need: { joy: 1 }, reply: [
+        { who: 'adam', text: '사자야, 양아, 코끼리야! 하하, 둘이 부르니 더 즐겁구려.', ref: null, basis: '창 2:19~20' },
+      ] },
+    ] },
+    { say: [
+      { who: 'adam', text: '그런데 짐승들은 저마다 짝이 있더군.\n사자 곁엔 암사자가, 양 곁엔 양이.', ref: null, basis: '창 1:24~25 "그 종류대로"' },
+      { who: 'adam', text: '나와 꼭 맞는 이는 아직 없소.', ref: null, basis: '창 2:20' },
+    ] },
+    { choose: [
+      { text: '오늘 하루는 참 좋았어요.', fruit: 'joy', reply: [
+        { who: 'adam', text: '맞소. 하나님께서 지으신 것은 모두 좋았지.', ref: null, basis: '창 1:31' },
+      ] },
+      { text: '지금은 제가 곁에 있을게요.', fruit: 'peace', reply: [
+        { who: 'adam', text: '고맙소. 혼자라는 마음이 조금 가벼워졌소.', ref: null, basis: '창 2:18' },
+      ] },
+      { text: '하나님께서 하실 일을 기다려 봐요.', fruit: 'patience', reply: [
+        { who: 'adam', text: '그래. 혼자 있는 것이 좋지 않다고 하신 분이시니.', ref: null, basis: '창 2:18' },
+      ] },
+      { text: '하나님은 말씀하신 대로 하세요.', fruit: 'faith', need: { patience: 1 }, reply: [
+        { who: 'adam', text: '꼭 맞는 돕는 이를 지어 주겠다고 하셨지. 믿고 기다리겠소.', ref: null, basis: '창 2:18' },
+      ] },
+    ] },
+    { say: [
+      { who: 'adam', text: '눈꺼풀이 무거워지는구려. 내일은 무엇을 보게 될까.', ref: null, basis: '창 2:21 잠들기 직전' },
+    ] },
+  ],
+};
+
+// 열매 모으기 때 하와와 나누는 짧은 인사(관계 단계 "만남"을 기록한다)
+export const EVE_GREETING = [
+  { who: 'eve', text: '당신도 열매를 따고 있군요. 이 무화과, 정말 달아요!', ref: null, basis: '창 2:16 막간 짧은 인사' },
+];

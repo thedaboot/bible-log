@@ -956,6 +956,47 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
 .modal__panel .inv__hold { justify-self: stretch; min-height: 40px; font-size: var(--text-small); }
 .inv__lock { margin: 0; padding: var(--space-2xs) var(--space-sm); font-size: var(--text-small); font-weight: 800; white-space: nowrap; color: var(--color-ink-2); box-shadow: inset 0 0 0 2px var(--color-paper-3); }
 
+/* ---------- 막간 선택지: 대사 창 위, 오른쪽에 붙은 패널(페르소나 방식) ---------- */
+.choices {
+  position: fixed;
+  z-index: 6;
+  right: max(calc((100% - min(46rem, 100% - var(--space-md) * 2)) / 2), var(--space-md));
+  display: grid;
+  gap: var(--space-2xs);
+  width: min(26rem, calc(100% - var(--space-md) * 2));
+}
+.choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 48px;
+  padding: var(--space-2xs) var(--space-sm);
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font: 600 var(--text-lede) / 1.3 var(--font-body);
+  color: var(--color-ink);
+  background: var(--color-paper);
+  box-shadow: 0 0 0 var(--px) var(--color-frame), 0 calc(var(--px) * 2) 0 0 var(--color-shadow);
+  animation: choice-in var(--dur-short) var(--ease-out) backwards;
+  transition: transform var(--dur-micro) var(--ease-out), background-color var(--dur-micro) var(--ease-out);
+}
+.choice:nth-child(2) { animation-delay: 60ms; }
+.choice:nth-child(3) { animation-delay: 120ms; }
+.choice:nth-child(4) { animation-delay: 180ms; }
+@keyframes choice-in { from { opacity: 0; transform: translateX(16px); } }
+@media (hover: hover) { .choice:hover { background: var(--color-paper-2); transform: translateX(-4px); } }
+.choice:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; background: var(--color-paper-2); }
+.choice:active { transform: translateY(var(--px)); }
+.choice__key { display: grid; place-items: center; width: 24px; height: 24px; font: 800 var(--text-label) / 1 var(--font-body); color: var(--color-paper); background: var(--color-frame); }
+.choice__text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: keep-all; }
+/* 열매 단계로 열린 선택지: 새싹 표시와 열매 이름 */
+.choice__mark { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 4px; font-size: var(--text-label); font-weight: 800; white-space: nowrap; color: var(--color-frame); background: var(--color-gold); }
+.choice__mark .px-icon { width: 16px; height: 16px; }
+.choice:has(.choice__mark) { box-shadow: 0 0 0 var(--px) var(--color-accent), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); }
+@media (hover: none), (pointer: coarse) { .choice__key { display: none; } .choices { left: var(--space-md); right: var(--space-md); width: auto; } }
+
 /* ---------- 조작 안내: 정한 두 줄 말고는 꺾이지 않는다. 좁은 화면에서는 키캡과 글자를 줄여 넣는다 ---------- */
 .controls p { white-space: nowrap; }
 @media (max-width: 39.99rem) {
@@ -986,3 +1027,5 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
   }
   .reveal { transform: none; animation-delay: 0ms; }
 }
+/* 고르는 동안에는 대사 창의 '다음' 표시를 숨긴다(선택지가 다음 행동이다) */
+body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }

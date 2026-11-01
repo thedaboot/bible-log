@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { PROLOGUE } from '../src/data/prologue.js';
 import { CREATION, DAY_NAMES } from '../src/data/creation.js';
-import { EDEN, FALL, RIVERS, ANIMALS, FRUITS, QUIZ } from '../src/data/eden.js';
+import { EDEN, FALL, RIVERS, ANIMALS, FRUITS, QUIZ, INTERLUDE, EVE_GREETING } from '../src/data/eden.js';
 import { CODEX, CODEX_TABS, LIKENESS } from '../src/data/codex.js';
 import { SPEAKERS, vocative, fill, withRa } from '../src/text.js';
 import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, STAGES, inFrontOfScene, stepAsideSpots, crossesRiver } from '../src/eden.js';
@@ -12,7 +12,7 @@ import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS } from '../src/data/chapters.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL } from '../src/data/growth.js';
-import { grant, grow, bond, levelOf, stageOf, likeness, codexState, ownsLook, looksOpened, addTool, useTool, canHold } from '../src/growth.js';
+import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold } from '../src/growth.js';
 import { ITEMS } from '../src/data/items.js';
 import { ITEM_ICONS } from '../src/icons.js';
 
@@ -23,6 +23,8 @@ const groups = [
   ...Object.entries(EDEN).map(([k, v]) => [`EDEN.${k}`, v]),
   ...Object.entries(FALL).map(([k, v]) => [`FALL.${k}`, v]),
   ...RIVERS.map((r) => [`RIVERS.${r.id}`, r.lines]),
+  ...INTERLUDE.steps.flatMap((st, i) => (st.say ? [[`INTERLUDE.steps[${i}]`, st.say]] : st.choose.map((c, j) => [`INTERLUDE.steps[${i}].choose[${j}]`, c.reply]))),
+  ['EVE_GREETING', EVE_GREETING],
 ];
 const { acts } = makeCreation({ background: new THREE.Color() });
 for (let day = 1; day <= 7; day++) {
@@ -152,6 +154,47 @@ assert.equal(load(null), null);
   mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { item: 'horn' } }));
   assert.equal(load(storage).earthLook.item, 'none', '얻지 않은 도구를 손에 듦');
   console.log(`OK: 손에 드는 물건 점검 통과(도구 ${ITEMS.length - looks.length}개, 꾸미기 ${looks.length}개)`);
+}
+
+// 막간: say와 choose가 번갈아 오고 choose 앞에는 반드시 say가 있다(그 마지막 대사에서 고른다).
+// choose마다 기본 선택지 셋(need 없음)과 열매 단계로 열리는 선택지 0~1개. 열매가 모두 다르고, 각색 대사에는 근거(basis)가 있다.
+{
+  const { steps } = INTERLUDE;
+  assert.ok(INTERLUDE.who in SPEAKERS, '막간 인물');
+  let exchanges = 0;
+  for (const [i, st] of steps.entries()) {
+    assert.ok(!!st.say !== !!st.choose, `INTERLUDE.steps[${i}]: say나 choose 하나만`);
+    if (!st.choose) continue;
+    assert.ok(steps[i - 1]?.say, `INTERLUDE.steps[${i}]: choose 앞에 say가 필요함`);
+    const basic = st.choose.filter((c) => !c.need), extra = st.choose.filter((c) => c.need);
+    assert.equal(basic.length, 3, `INTERLUDE.steps[${i}]: 기본 선택지는 셋`);
+    assert.ok(extra.length <= 1, `INTERLUDE.steps[${i}]: 열매로 열리는 선택지는 하나까지`);
+    assert.equal(new Set(st.choose.map((c) => c.fruit)).size, st.choose.length, `INTERLUDE.steps[${i}]: 열매가 겹침`);
+    for (const c of st.choose) {
+      assert.ok(SPIRIT.some((f) => f.id === c.fruit), `${c.text}: 없는 열매`);
+      for (const [id, stage] of Object.entries(c.need ?? {})) assert.ok(SPIRIT.some((f) => f.id === id) && stage >= 1 && stage < SPIRIT_STAGES.length, `${c.text}: need 오류`);
+      assert.ok(len(c.text) <= 18, `선택지는 18자 이하(한 줄): ${c.text}`);
+      assert.ok(c.reply?.length, `${c.text}: 답이 없음`);
+    }
+    exchanges++;
+  }
+  const lines = steps.flatMap((st) => st.say ?? st.choose.flatMap((c) => c.reply));
+  for (const l of [...lines, ...EVE_GREETING]) assert.ok(l.ref !== null || l.basis, `근거(basis)가 없는 각색 대사: ${l.text}`);
+  // 막간 분량: 주고받기 5~8번(대사 묶음과 선택을 합쳐 센다)
+  const turns = steps.length;
+  assert.ok(turns >= 5 && turns <= 8, `막간 주고받기 ${turns}번`);
+  // 열매 단계로 열리는 선택지: 처음 에덴(퀘스트 열매만 4점)에서는 닫혀 있고, 새싹이면 열린다
+  const s = newState();
+  s.spirit.joy = 4;
+  const extra = steps[1].choose.find((c) => c.need);
+  assert.equal(choiceOpen(s, extra), false);
+  s.spirit.joy = 6;
+  assert.equal(choiceOpen(s, extra), true);
+  // 고른 열매는 한 번만 자라고, 퀘스트 열매와 같으면 새싹이 된다(A안)
+  s.spirit.joy = 4;
+  assert.deepEqual(chooseFruit(s, 'eden/interlude/1', 'joy'), ['기쁨이 새싹으로 자랐어요']);
+  assert.deepEqual(chooseFruit(s, 'eden/interlude/1', 'joy'), [], '같은 막간 선택에서 두 번 자람');
+  console.log(`OK: 막간 점검 통과(주고받기 ${turns}번, 선택 ${exchanges}번)`);
 }
 
 // 하늘: 한낮엔 별이 없고, 한밤엔 햇빛이 없고, 해돋이엔 노을빛(붉은 기)이 돈다

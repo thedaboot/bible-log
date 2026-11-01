@@ -1,4 +1,4 @@
-import { TALENT } from './icons.js';
+import { TALENT, SPROUT } from './icons.js';
 import { SPEAKERS, fill } from './text.js';
 import { LOOK_LABELS } from './props.js';
 
@@ -11,7 +11,9 @@ const TYPE_MS = 32; // 한 글자가 나오는 간격
 // 대사 목록을 한 줄씩 보여 준다. 글자가 한 자씩 나오고, 그 사이에 누르면 문장을 바로 끝까지 보여 준다.
 // 대사 창 클릭/탭, Space, Enter로 넘긴다.
 // onLine(line, i): 대사가 화면에 나올 때마다 부른다(대사에 맞춰 카메라·연출을 바꿀 때 쓴다).
-export function say(lines, ctx, { onLine } = {}) {
+// choices: 마지막 대사가 다 나오면 대사 창 위에 선택지 패널을 띄우고, 고른 번호(0부터)로 끝난다.
+// 선택지는 [{ text, mark }]이고 mark(열매 이름)가 있으면 새싹 표시를 단다. PC는 1~4 키로도 고른다.
+export function say(lines, ctx, { onLine, choices = null } = {}) {
   const box = $('dialog');
   const lineEl = $('line');
   return new Promise((resolve) => {
@@ -19,11 +21,53 @@ export function say(lines, ctx, { onLine } = {}) {
     let timer = null;
     let full = '';
 
+    let choosing = false;
     const finishTyping = () => {
       clearInterval(timer);
       timer = null;
       lineEl.textContent = full;
       delete box.dataset.typing;
+      if (choices && i >= lines.length) openChoices();
+    };
+    const done = (value) => {
+      box.hidden = true;
+      back.hidden = true;
+      $('choices').hidden = true;
+      box.removeEventListener('click', onClick);
+      back.onclick = null;
+      removeEventListener('keydown', onKey);
+      resolve(value);
+    };
+    const openChoices = () => {
+      if (choosing) return;
+      choosing = true;
+      back.hidden = true;
+      const panel = $('choices');
+      panel.replaceChildren(...choices.map((c, n) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'choice';
+        const key = document.createElement('kbd');
+        key.className = 'choice__key';
+        key.textContent = n + 1;
+        const text = document.createElement('span');
+        text.className = 'choice__text';
+        text.textContent = fill(c.text, ctx);
+        b.append(key, text);
+        if (c.mark) {
+          const mark = document.createElement('span');
+          mark.className = 'choice__mark';
+          mark.innerHTML = SPROUT;
+          mark.append(c.mark);
+          b.append(mark);
+        }
+        b.onclick = (e) => { e.stopPropagation(); done(n); };
+        return b;
+      }));
+      // 대사 창 바로 위에 띄운다(대사 창 높이는 대사마다 달라서 그때 잰다)
+      panel.style.bottom = `${innerHeight - box.getBoundingClientRect().top + 28}px`; // 이름표가 대사 창 위로 솟아 있어서 그만큼 띄운다
+      panel.hidden = false;
+      panel.querySelector('button').focus({ preventScroll: true });
     };
 
     const back = $('dialogBack');
@@ -32,12 +76,8 @@ export function say(lines, ctx, { onLine } = {}) {
     const show = (instant = false) => {
       if (timer) { finishTyping(); return; }
       if (i >= lines.length) {
-        box.hidden = true;
-        back.hidden = true;
-        box.removeEventListener('click', onClick);
-        back.onclick = null;
-        removeEventListener('keydown', onKey);
-        resolve();
+        if (choices) { openChoices(); return; } // 선택지가 있으면 고를 때까지 마지막 대사에 머문다
+        done();
         return;
       }
       const l = lines[i++];
@@ -48,7 +88,7 @@ export function say(lines, ctx, { onLine } = {}) {
       $('speaker').textContent = SPEAKERS[l.who];
       $('ref').textContent = l.ref ?? '';
       $('srLine').textContent = `${SPEAKERS[l.who] ? SPEAKERS[l.who] + ': ' : ''}${full}`;
-      if (instant === true || reducedMotion()) { lineEl.textContent = full; return; }
+      if (instant === true || reducedMotion()) { lineEl.textContent = full; if (choices && i >= lines.length) openChoices(); return; }
       // 아직 안 나온 글자(rest)도 숨긴 채 자리를 차지하게 해서, 줄바꿈 위치가 처음부터 고정된다
       let n = 0;
       const typed = document.createElement('span');
@@ -69,12 +109,17 @@ export function say(lines, ctx, { onLine } = {}) {
 
     // 이전 대사: 이 섹션(say 한 번) 안에서만 돌아간다. onLine을 다시 불러 카메라·연출을 그 대사에 맞춘다.
     const goBack = () => {
-      if (i < 2) return;
+      if (i < 2 || choosing) return;
       if (timer) finishTyping();
       i -= 2;
       show(true);
     };
     const onKey = (e) => {
+      if (choosing) {
+        const n = Number(e.key) - 1;
+        if (n >= 0 && n < choices.length) { e.preventDefault(); done(n); }
+        return; // 고르는 동안 Space·Enter는 포커스된 선택지 버튼이 받는다
+      }
       if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); show(); }
       if (e.code === 'ArrowLeft' || e.code === 'Backspace') { e.preventDefault(); goBack(); }
     };

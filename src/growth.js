@@ -91,3 +91,13 @@ export function useTool(state, id) {
 }
 // 손에 들 수 있는지: 맨손, 가진 꾸미기, 가진 도구
 export const canHold = (state, id) => id === 'none' || ownsLook(state, id) || state.items.tools.includes(id);
+
+// ---------- 막간 선택 ----------
+// 열매 단계로 열리는 선택지: need { 열매 id: 단계 }를 모두 채워야 보인다.
+export const choiceOpen = (state, c) => !c.need || Object.entries(c.need).every(([id, st]) => stageOf(state.spirit[id]) >= st);
+// 고른 선택지의 열매를 키운다. 같은 자리(key)에서는 한 번만 자란다(다시 플레이해도 대화는 하지만 열매는 그대로).
+export function chooseFruit(state, key, fruit) {
+  if (state.claimed.includes(key)) return [];
+  state.claimed.push(key);
+  return grow(state, fruit, SPIRIT_GAIN.choice);
+}
