@@ -245,8 +245,9 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
 .dialog__rest { visibility: hidden; }
 .dialog__foot {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
+  column-gap: var(--space-sm);
   min-height: 24px;
   margin-top: var(--space-xs);
   padding-top: var(--space-2xs);
@@ -268,9 +269,28 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
 .dialog__foot:has(.dialog__ref:empty) { box-shadow: none; } /* 장절이 없으면 구분선도 숨긴다 */
 /* 장절 앞의 작은 책갈피 */
 .dialog__ref::before { content: ''; width: 7px; height: 11px; background: var(--color-accent); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); }
-.dialog__next {
+/* 이전 대사 버튼: 같은 섹션 안에서만 돌아간다. 첫 대사에서는 숨긴다 */
+.dialog__back {
   grid-row: 1;
   grid-column: 2;
+  min-height: 32px;
+  padding: 0 var(--space-xs);
+  border: 0;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-ink-2);
+  background: var(--color-paper-2);
+  box-shadow: inset 0 0 0 2px var(--color-paper-3);
+  cursor: pointer;
+}
+.dialog__back::before { content: '◀ '; font-size: 0.7em; }
+@media (hover: hover) { .dialog__back:hover { color: var(--color-frame); background: var(--color-paper-3); } }
+.dialog__back:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.dialog__next {
+  grid-row: 1;
+  grid-column: 3;
   width: 12px;
   height: 9px;
   background: var(--color-frame);

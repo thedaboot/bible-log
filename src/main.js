@@ -19,6 +19,7 @@ import {
 // ---------- 렌더링: 쿼터뷰 정사영 카메라 + 픽셀화 후처리 ----------
 const renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.setPixelRatio(1);
+renderer.localClippingEnabled = true; // 가죽옷이 발밑부터 차오르는 연출(eden.js acts.clothe)
 document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -342,7 +343,7 @@ async function runCreation(fromDay = 1) {
 }
 
 // ---------- 꾸미기 방: 처음 땅에 내려가기 전, 지상에서의 모습을 전용 화면에서 고른다 ----------
-async function runDressingRoom() {
+async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submit = '이 모습으로 내려가기' } = {}) {
   heaven.group.visible = angel.visible = false;
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
   if (eden) { scene.remove(eden.group); eden = null; }
@@ -361,13 +362,13 @@ async function runDressingRoom() {
   await fade(0);
   turntable = true;
   state.earthLook = await askLook(state.earthLook ?? DEFAULT_EARTH, (look) => dressFigure(player, earthSpec(look)), {
-    kicker: '에덴으로 내려가기 전',
+    kicker,
     title: '지상에서의 내 모습',
     text: '땅에서도 사람들 눈에는 보이지 않아요.\n여러 시대를 함께 걸을 모습을 골라 주세요.',
     options: LOOK.earth,
     tabs: LOOK_TABS.earth,
     page: true,
-    submit: '이 모습으로 내려가기',
+    submit,
   });
   turntable = false;
   save(state);
@@ -605,8 +606,40 @@ function showTitle() {
     menu.classList.remove('menu--list', 'menu--cards');
     menu.replaceChildren(button('처음부터', begin(() => { state = newState(saved); dressFigure(player, lookSpec(state.look)); runPrologue(); })));
     if (saved) menu.append(button('이어하기', showContinue));
+    if (saved?.name) menu.append(button('모습 바꾸기', showLooks)); // 천국 꾸미기를 마친 사용자만
     menu.querySelector('button').focus({ preventScroll: true });
   };
+  // 모습 바꾸기: 천국 모습은 옆 창, 지상 모습은 전용 꾸미기 화면. 저장한 뒤 첫 화면으로 돌아온다.
+  const showLooks = () => {
+    menu.classList.remove('menu--cards');
+    menu.classList.add('menu--list');
+    const items = [button('천국 모습', begin(() => editLook('heaven')))];
+    if (saved.earthLook) items.push(button('지상 모습', begin(() => editLook('earth'))));
+    menu.replaceChildren(head('어느 모습을 바꿀까요?'), ...items, backButton(showMain));
+    menu.querySelector('button').focus({ preventScroll: true });
+  };
+  async function editLook(kind) {
+    state = saved;
+    if (kind === 'earth') await runDressingRoom({ kicker: '모습 바꾸기', submit: '이 모습으로' });
+    else {
+      camAngle = 0;
+      player.visible = true;
+      player.position.set(0, 0, -3);
+      player.rotation.y = Math.PI / 4;
+      camFollow = player.position;
+      setView(7);
+      turntable = true;
+      state.look = await askLook(state.look, (look) => dressFigure(player, lookSpec(look)), {
+        title: '천국에서의 내 모습',
+        text: '고르는 대로 적용됩니다.',
+        options: LOOK.heaven,
+      });
+      turntable = false;
+      save(state);
+      await fade(1);
+    }
+    location.reload();
+  }
   const backButton = (fn) => {
     const back = button('돌아가기', fn);
     back.classList.add('menu__item--sub');

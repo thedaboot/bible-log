@@ -309,6 +309,16 @@ export function makeEden(scene) {
 
   const materials = new Map(); // 타락 연출: 모든 색을 흐리고 차갑게 바꾸기 위해 원래 색을 기억한다
   const fallTint = C(0x7d8797);
+  // 타락 뒤에 새로 입힌 옷(무화과 잎, 가죽옷)의 재질도 fall과 같은 만큼 흐리고 차갑게 맞춘다.
+  function tintNew(fig) {
+    if (!materials.size) return;
+    fig.traverse((o) => {
+      const m = o.material;
+      if (!m?.color || materials.has(m)) return;
+      materials.set(m, m.color.clone());
+      m.color.lerp(fallTint, 0.35).multiplyScalar(0.85);
+    });
+  }
   let held = null; // 하와와 아담이 손에 든 열매 { fruit, fig }
 
   const acts = {
@@ -440,6 +450,8 @@ export function makeEden(scene) {
     figLeaves: () => {
       dressFigure(adam, { hair: 'short', hairColor: PAL.hairBrown, outfit: 'figleaves' });
       dressFigure(eve, { hair: 'long', hairColor: PAL.hairDark, outfit: 'figleaves' });
+      tintNew(adam);
+      tintNew(eve);
     },
     // 창 3:8 나무 사이에 숨는다: 카메라(+x, +z) 반대쪽인 나무 뒤로 간다.
     hide: () => Promise.all([
@@ -466,9 +478,43 @@ export function makeEden(scene) {
       pillar.position.copy(adam.position).lerp(eve.position, 0.5).setY(0);
       pillar.visible = true;
       await tween(900, () => {});
-      dressFigure(adam, { hair: 'short', hairColor: PAL.hairBrown, outfit: 'skins' });
-      dressFigure(eve, { hair: 'long', hairColor: PAL.hairDark, outfit: 'skins' });
-      await tween(1500, () => {});
+      // 옷이 뚝 바뀌지 않게: 무화과 잎 옷(예전 몸)을 따로 떼어 두고, 가죽옷 입은 새 몸이 발밑부터 위로 차오른다.
+      // 경계선(높이 h)에 빛 고리가 올라가고, 경계 위는 예전 몸, 아래는 새 몸만 그린다(재질 clippingPlanes).
+      const h = { y: 0 };
+      const below = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0); // y <= h만 그린다
+      const above = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // y >= h만 그린다
+      const swaps = [[adam, { hair: 'short', hairColor: PAL.hairBrown, outfit: 'skins' }], [eve, { hair: 'long', hairColor: PAL.hairDark, outfit: 'skins' }]].map(([fig, spec]) => {
+        const { rig } = fig.userData;
+        const old = new THREE.Group();
+        old.add(...rig.children); // 예전 옷 부품을 그대로 옮긴다
+        fig.add(old);
+        dressFigure(fig, spec);
+        tintNew(fig);
+        old.traverse((o) => o.material && (o.material.clippingPlanes = [above]));
+        rig.traverse((o) => o.material && (o.material.clippingPlanes = [below]));
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.6, 20), new THREE.MeshBasicMaterial({ color: PAL.holy, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+        ring.rotation.x = -Math.PI / 2;
+        fig.add(ring);
+        return { fig, rig, old, ring };
+      });
+      await tween(2200, (p) => {
+        h.y = easeOut(p) * 1.8;
+        below.constant = h.y;
+        above.constant = -h.y;
+        for (const s of swaps) {
+          s.old.position.copy(s.rig.position); // 예전 몸도 숨 쉬는 움직임을 따라간다
+          s.old.rotation.copy(s.rig.rotation);
+          s.old.scale.copy(s.rig.scale);
+          s.ring.position.y = h.y;
+          s.ring.material.opacity = 0.85 * (1 - p * p);
+        }
+      });
+      for (const s of swaps) {
+        s.fig.remove(s.old, s.ring);
+        s.ring.geometry.dispose();
+        s.rig.traverse((o) => o.material && (o.material.clippingPlanes = null));
+      }
+      await tween(500, () => {});
       pillar.visible = false;
     },
     // 창 3:23~24 동쪽 문을 지나 거친 땅으로 걸어 나간다. 그 뒤 그룹들과 불 칼이 길을 지킨다.

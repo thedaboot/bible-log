@@ -25,23 +25,29 @@ export function say(lines, ctx, { onLine } = {}) {
       delete box.dataset.typing;
     };
 
-    const show = () => {
+    const back = $('dialogBack');
+    const onClick = () => show();
+    // instant: 이전 대사로 돌아갈 때는 타자 효과 없이 바로 보여 준다
+    const show = (instant = false) => {
       if (timer) { finishTyping(); return; }
       if (i >= lines.length) {
         box.hidden = true;
-        box.removeEventListener('click', show);
+        back.hidden = true;
+        box.removeEventListener('click', onClick);
+        back.onclick = null;
         removeEventListener('keydown', onKey);
         resolve();
         return;
       }
       const l = lines[i++];
+      back.hidden = i < 2;
       onLine?.(l, i - 1);
       full = fill(l.text, ctx);
       box.dataset.who = l.who;
       $('speaker').textContent = SPEAKERS[l.who];
       $('ref').textContent = l.ref ?? '';
       $('srLine').textContent = `${SPEAKERS[l.who] ? SPEAKERS[l.who] + ': ' : ''}${full}`;
-      if (reducedMotion()) { lineEl.textContent = full; return; }
+      if (instant === true || reducedMotion()) { lineEl.textContent = full; return; }
       // 아직 안 나온 글자(rest)도 숨긴 채 자리를 차지하게 해서, 줄바꿈 위치가 처음부터 고정된다
       let n = 0;
       const typed = document.createElement('span');
@@ -60,11 +66,20 @@ export function say(lines, ctx, { onLine } = {}) {
       }, TYPE_MS);
     };
 
+    // 이전 대사: 이 섹션(say 한 번) 안에서만 돌아간다. onLine을 다시 불러 카메라·연출을 그 대사에 맞춘다.
+    const goBack = () => {
+      if (i < 2) return;
+      if (timer) finishTyping();
+      i -= 2;
+      show(true);
+    };
     const onKey = (e) => {
       if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); show(); }
+      if (e.code === 'ArrowLeft' || e.code === 'Backspace') { e.preventDefault(); goBack(); }
     };
+    back.onclick = (e) => { e.stopPropagation(); goBack(); };
     box.hidden = false;
-    box.addEventListener('click', show);
+    box.addEventListener('click', onClick);
     addEventListener('keydown', onKey);
     show();
   });
@@ -249,9 +264,11 @@ export function showCard({ title, text, count }) {
   $('dexCount').textContent = count;
   el.hidden = false;
   return new Promise((resolve) => {
-    const close = () => { clearTimeout(timer); el.hidden = true; el.onclick = null; resolve(); };
+    const onKey = (e) => { if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) { e.preventDefault(); close(); } };
+    const close = () => { clearTimeout(timer); el.hidden = true; el.onclick = null; removeEventListener('keydown', onKey); resolve(); };
     const timer = setTimeout(close, reducedMotion() ? 2000 : 2800);
     el.onclick = close;
+    addEventListener('keydown', onKey);
   });
 }
 
