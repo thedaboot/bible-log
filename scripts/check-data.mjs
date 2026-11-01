@@ -11,6 +11,7 @@ import { load, save, reach, newState } from '../src/save.js';
 import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
+import { layout } from '../src/map.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL } from '../src/data/growth.js';
 import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook } from '../src/growth.js';
 import { ITEMS } from '../src/data/items.js';
@@ -226,6 +227,17 @@ const stageIds = WORLDS.flatMap((w) => w.stages);
 assert.equal(new Set(stageIds).size, stageIds.length, '스테이지가 두 번 나옴');
 assert.ok(stageIds.every((id) => CHAPTERS.some((c) => c.id === id)) && !stageIds.includes('heaven'), '월드 스테이지 오류');
 assert.ok(CHAPTERS.every((c) => c.id === 'heaven' || stageIds.includes(c.id)), '어느 월드에도 없는 장');
+// 곁길: 같은 월드에서 앞에 나온 본 스테이지에서 갈라지고, 지도 칸이 다른 표지와 겹치지 않는다
+for (const w of WORLDS) {
+  w.stages.forEach((id, k) => {
+    const side = CHAPTERS.find((c) => c.id === id).side;
+    if (!side) return;
+    const p = w.stages.indexOf(side);
+    assert.ok(p >= 0 && p < k && !CHAPTERS.find((c) => c.id === side).side, `${id}: 곁길이 갈라질 본 스테이지 오류`);
+  });
+  const cells = layout(w.stages).map((c) => `${c.row}/${c.col}`);
+  assert.equal(new Set(cells).size, cells.length, `${w.id}: 지도 표지 자리가 겹침`);
+}
 
 // 꾸미기: 기본값이 선택지 안에 있고, 탭이 지상 항목을 빠짐없이 한 번씩 나눈다
 for (const [k, v] of Object.entries(DEFAULT_EARTH)) assert.ok(LOOK.earth[k].some((o) => o.id === v), `지상 기본값 ${k}`);

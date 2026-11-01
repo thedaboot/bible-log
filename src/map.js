@@ -27,12 +27,61 @@ export function stageInfo(state, id) {
     total: entries.length,
   };
 }
+const SVG = 'http://www.w3.org/2000/svg';
+const COLS = 5;
+
+// 지도 칸 자리. 본 스테이지 줄은 홀수 줄(1, 3, 5…), 곁길은 그 아래 짝수 줄이다.
+export function layout(stages) {
+  const at = {};
+  let m = 0;
+  return stages.map((id) => {
+    const ch = CHAPTERS.find((c) => c.id === id);
+    if (ch.side) {
+      const p = at[ch.side];
+      return { row: p.row + 1, col: p.col };
+    }
+    const line = Math.floor(m / COLS);
+    const k = m++ % COLS;
+    return (at[id] = { row: line * 2 + 1, col: line % 2 ? COLS - k : k + 1 });
+  });
+}
+
+// 표지 가운데를 이어 점선 길을 긋는다. 줄이 바뀌는 자리는 바깥으로 돌아 내려가고, 곁길은 짧은 가지로 잇는다.
+function drawPath(svg, box, stages, cells, marks) {
+  const base = box.getBoundingClientRect();
+  const c = marks.map((b) => {
+    const r = b.firstChild.getBoundingClientRect();
+    return { x: r.left - base.left + r.width / 2, y: r.top - base.top + r.height / 2, w: b.getBoundingClientRect().width };
+  });
+  const main = stages.map((id, k) => k).filter((k) => !CHAPTERS.find((ch) => ch.id === stages[k]).side);
+  let d = '';
+  main.forEach((k, i) => {
+    if (!i) { d += `M${c[k].x} ${c[k].y}`; return; }
+    const a = c[main[i - 1]];
+    if (cells[k].row !== cells[main[i - 1]].row) {
+      const out = cells[k].col === COLS ? 1 : -1; // 오른쪽 끝에서는 오른쪽으로, 왼쪽 끝에서는 왼쪽으로 돌아 내려간다
+      const x = a.x + out * (a.w / 2 + 16); // 이름 칸 바깥으로 돈다
+      d += ` H${x} V${c[k].y} H${c[k].x}`;
+    } else d += ` H${c[k].x}`;
+  });
+  const spurs = stages.map((id, k) => k).filter((k) => CHAPTERS.find((ch) => ch.id === stages[k]).side).map((k) => {
+    const p = c[stages.indexOf(CHAPTERS.find((ch) => ch.id === stages[k]).side)];
+    return `M${p.x} ${p.y} V${c[k].y}`;
+  }).join(' ');
+  svg.setAttribute('viewBox', `0 0 ${base.width} ${base.height}`);
+  svg.innerHTML = `<path class="map__road" d="${d}"/><path class="map__spur" d="${spurs}"/>`;
+}
+
 const STATUS = { soon: '준비 중', locked: '잠김', open: '열림', cleared: '마침' };
 
 export function openMap(state) {
   const box = $('mapBox');
   const world = WORLDS[0]; // shortcut: 월드가 하나뿐이다. 출애굽기를 만들 때 월드 넘기기를 더한다.
-  const infos = world.stages.map((id) => stageInfo(state, id));
+  let n = 0;
+  const infos = world.stages.map((id) => {
+    const it = stageInfo(state, id);
+    return { ...it, side: it.ch.side, label: it.ch.side ? '곁길' : `1-${++n}` };
+  });
   const words = infos.flatMap((i) => i.words);
   $('mapTitle').textContent = world.title;
   $('mapProgress').textContent = `말씀 ${words.filter((w) => state.codex[w.id]).length} / ${words.length}`;
@@ -43,6 +92,7 @@ export function openMap(state) {
     const detail = $('mapDetail');
     const close = (value) => {
       box.hidden = true;
+      ro.disconnect();
       removeEventListener('keydown', onKey, true);
       resolve(value);
     };
@@ -51,7 +101,7 @@ export function openMap(state) {
       const it = infos[sel];
       const view = el('div', 'map__info');
       const head = el('div', 'map__infohead');
-      head.append(el('p', 'quest__label', `${1}-${sel + 1} · ${STATUS[it.status]}`), el('p', 'map__stage', it.ch.title), el('p', 'map__range', it.ch.range));
+      head.append(el('p', 'quest__label', `${it.label} · ${STATUS[it.status]}`), el('p', 'map__stage', it.ch.title), el('p', 'map__range', it.ch.range));
       view.append(head);
       if (it.total) {
         const stats = el('p', 'map__stats');
@@ -74,30 +124,43 @@ export function openMap(state) {
       view.append(go);
       detail.replaceChildren(view);
     };
-    nodes.replaceChildren(...infos.map((it, k) => {
+    // 굽이치는 길: 본 스테이지는 한 줄에 COLS개씩 놓고 줄마다 방향을 바꾼다. 곁길은 갈라지는 본 스테이지 바로 아래 줄에 둔다.
+    const cells = layout(world.stages);
+    nodes.style.setProperty('--map-rows', Math.max(...cells.map((c) => c.row)));
+    const marks = infos.map((it, k) => {
       const b = el('button', 'map__node');
       b.type = 'button';
       b.dataset.status = it.status;
-      b.setAttribute('aria-label', `${1}-${k + 1} ${it.ch.title}, ${STATUS[it.status]}`);
-      const mark = el('span', 'map__mark', `1-${k + 1}`);
+      if (it.side) b.dataset.side = '';
+      b.style.gridRow = cells[k].row;
+      b.style.gridColumn = cells[k].col;
+      b.setAttribute('aria-label', `${it.label} ${it.ch.title}, ${STATUS[it.status]}`);
+      const mark = el('span', 'map__mark', it.side ? '곁길' : it.label);
       if (it.star) mark.append(el('span', 'map__star'));
       b.append(mark, el('span', 'map__name', it.ch.title));
       b.onclick = () => { sel = k; paint(); };
       return b;
-    }));
+    });
+    const path = document.createElementNS(SVG, 'svg');
+    path.setAttribute('class', 'map__path');
+    path.setAttribute('aria-hidden', 'true');
+    nodes.replaceChildren(path, ...marks);
+    const draw = () => drawPath(path, nodes, world.stages, cells, marks);
+    const ro = new ResizeObserver(draw);
+    ro.observe(nodes);
     const onKey = (e) => {
       if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); close(null); }
       if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
         e.preventDefault();
         sel = (sel + (e.code === 'ArrowRight' ? 1 : infos.length - 1)) % infos.length;
         paint();
-        nodes.children[sel].focus({ preventScroll: true });
+        marks[sel].focus({ preventScroll: true });
       }
     };
     addEventListener('keydown', onKey, true);
     $('mapClose').onclick = () => close(null);
     box.hidden = false;
     paint();
-    nodes.children[sel].focus({ preventScroll: true });
+    marks[sel].focus({ preventScroll: true });
   });
 }
