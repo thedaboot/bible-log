@@ -908,6 +908,54 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
 .codex__cell[data-state="missed"] .codex__name { color: var(--color-ink-2); letter-spacing: 0.1em; }
 .codex__cell[data-state="unknown"] .codex__name { margin: auto 0 !important; align-self: center; font-size: var(--text-title-m); color: var(--color-ink-2); opacity: 0.5; }
 
+/* ---------- 인벤토리: 도구·꾸미기 칸, 고른 칸의 설명 ---------- */
+.inv { display: grid; gap: var(--space-sm); }
+.inv__cats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2xs); }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: var(--space-xs); }
+.slot {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-3xs);
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: var(--space-xs) var(--space-2xs);
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: var(--color-frame);
+  background: var(--color-light);
+  box-shadow: inset 0 0 0 2px var(--color-frame), inset 0 -4px 0 var(--color-paper-3);
+  transition: transform var(--dur-micro) var(--ease-out), background-color var(--dur-micro) var(--ease-out);
+}
+@media (hover: hover) { .slot:not(.slot--empty):hover { background: var(--color-paper); transform: translateY(-2px); } }
+.slot:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.slot:active { transform: translateY(2px); }
+.slot[aria-pressed="true"] { background: var(--color-paper-2); box-shadow: inset 0 0 0 3px var(--color-accent), inset 0 -4px 0 var(--color-paper-3); }
+.slot[data-held] { box-shadow: inset 0 0 0 3px var(--color-gold), inset 0 -4px 0 var(--color-paper-3); }
+.slot__icon { width: 40px; height: 40px; }
+.slot__name { font-size: var(--text-label); font-weight: 700; white-space: nowrap; }
+.slot__badge { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); padding: 2px 6px; font-size: 0.6875rem; font-weight: 800; white-space: nowrap; color: var(--color-ink); background: var(--color-gold); box-shadow: 0 0 0 2px var(--color-frame); }
+/* 잠긴 꾸미기: 실루엣과 여는 레벨 */
+.slot[data-state="locked"] { background: var(--color-paper-2); box-shadow: inset 0 0 0 2px var(--color-paper-3); }
+.slot[data-state="locked"] .slot__icon { filter: brightness(0); opacity: 0.22; }
+.slot[data-state="locked"] .slot__name { color: var(--color-ink-2); }
+/* 빈 도구 칸 */
+.slot--empty { cursor: default; background: var(--color-paper-2); box-shadow: inset 0 0 0 2px var(--color-paper-3); }
+.slot--empty::before { content: ''; width: 14px; height: 14px; box-shadow: inset 0 0 0 2px var(--color-paper-3); }
+.inv__detail { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-sm); min-height: 5.5rem; padding: var(--space-sm) var(--space-md); background: var(--color-paper-2); }
+.inv__detail:has(.inv__hint) { grid-template-columns: minmax(0, 1fr); }
+.inv__bigicon { width: 56px; height: 56px; }
+.inv__text { display: grid; gap: 2px; min-width: 0; }
+.inv__text p { margin: 0; }
+.inv__name { font-size: var(--text-lede); font-weight: 800; color: var(--color-frame); }
+.inv__note { font-size: var(--text-small); color: var(--color-ink-2); word-break: keep-all; text-wrap: pretty; }
+.inv__hint { margin: 0; font-size: var(--text-small); line-height: 1.6; color: var(--color-ink-2); word-break: keep-all; text-wrap: balance; }
+.inv__actions { display: grid; gap: var(--space-2xs); justify-items: stretch; }
+.modal__panel .inv__hold { justify-self: stretch; min-height: 40px; font-size: var(--text-small); }
+.inv__lock { margin: 0; padding: var(--space-2xs) var(--space-sm); font-size: var(--text-small); font-weight: 800; white-space: nowrap; color: var(--color-ink-2); box-shadow: inset 0 0 0 2px var(--color-paper-3); }
+
 /* ---------- 조작 안내: 정한 두 줄 말고는 꺾이지 않는다. 좁은 화면에서는 키캡과 글자를 줄여 넣는다 ---------- */
 .controls p { white-space: nowrap; }
 @media (max-width: 39.99rem) {

@@ -12,7 +12,9 @@ import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS } from '../src/data/chapters.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL } from '../src/data/growth.js';
-import { grant, grow, bond, levelOf, stageOf, likeness, codexState } from '../src/growth.js';
+import { grant, grow, bond, levelOf, stageOf, likeness, codexState, ownsLook, looksOpened, addTool, useTool, canHold } from '../src/growth.js';
+import { ITEMS } from '../src/data/items.js';
+import { ITEM_ICONS } from '../src/icons.js';
 
 // 대사 묶음을 [위치, 대사 배열] 목록으로 모은다.
 const groups = [
@@ -114,6 +116,44 @@ mem.set('bible-rpg/save/v1', '{깨진 JSON');
 assert.equal(load(storage), null);
 assert.equal(load(null), null);
 
+// 손에 드는 물건: 모두 손에 그릴 수 있고(LOOK.earth.item), 아이콘이 있고, 장절이 맞다. 꾸미기는 열리는 레벨이 겹치지 않는다.
+{
+  for (const it of ITEMS) {
+    assert.ok(LOOK.earth.item.some((o) => o.id === it.id && o.name === it.name), `${it.id}: 손에 그릴 수 없음`);
+    assert.ok(ITEM_ICONS[it.id], `${it.id}: 아이콘 없음`);
+    assert.ok(REF.test(it.ref) && it.note, `${it.id}: 장절·설명 오류`);
+    assert.ok(['tool', 'look'].includes(it.kind), `${it.id}: 종류 오류`);
+  }
+  assert.deepEqual(LOOK.earth.item.filter((o) => o.id !== 'none').map((o) => o.id).sort(), ITEMS.map((i) => i.id).sort(), '소품과 손에 드는 물건 목록이 다름');
+  const looks = ITEMS.filter((i) => i.kind === 'look');
+  assert.equal(new Set(looks.map((i) => i.level)).size, looks.length, '꾸미기 여는 레벨이 겹침');
+  assert.ok(looks.every((i) => i.level >= 2 && i.level <= MAX_LEVEL), '꾸미기 여는 레벨 범위');
+
+  const s = newState();
+  assert.equal(ownsLook(s, 'staff'), false, '레벨 1에서 지팡이가 열림');
+  s.xp = 100; // 레벨 3
+  assert.ok(ownsLook(s, 'staff') && ownsLook(s, 'bag') && !ownsLook(s, 'hood'));
+  assert.deepEqual(looksOpened(1, 3).map((i) => i.id), ['staff', 'bag']);
+  assert.ok(!ownsLook(s, 'sling'), '도구를 꾸미기로 셈');
+  // 도구: 칸만큼 넣고, 쓰면 사라지고, 손에 든 도구가 떨어지면 맨손
+  for (let i = 0; i < slotsAt(levelOf(s.xp).level); i++) assert.ok(addTool(s, 'sling'));
+  assert.equal(addTool(s, 'horn'), false, '칸이 찼는데 도구가 들어감');
+  s.earthLook = { ...DEFAULT_EARTH, item: 'sling' };
+  while (s.items.tools.length > 1) useTool(s, 'sling');
+  assert.equal(s.earthLook.item, 'sling', '도구가 남았는데 맨손이 됨');
+  useTool(s, 'sling');
+  assert.equal(s.earthLook.item, 'none', '도구를 다 썼는데 손에 남음');
+  assert.equal(useTool(s, 'sling'), false);
+  assert.ok(canHold(s, 'none') && canHold(s, 'staff') && !canHold(s, 'horn'));
+  // 예전 저장값: 고른 꾸미기는 갖게 하고, 고른 도구는 맨손으로
+  mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { item: 'scroll' } }));
+  const a = load(storage);
+  assert.ok(a.earthLook.item === 'scroll' && ownsLook(a, 'scroll'), '예전에 고른 꾸미기를 잃음');
+  mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { item: 'horn' } }));
+  assert.equal(load(storage).earthLook.item, 'none', '얻지 않은 도구를 손에 듦');
+  console.log(`OK: 손에 드는 물건 점검 통과(도구 ${ITEMS.length - looks.length}개, 꾸미기 ${looks.length}개)`);
+}
+
 // 하늘: 한낮엔 별이 없고, 한밤엔 햇빛이 없고, 해돋이엔 노을빛(붉은 기)이 돈다
 const noon = skyState(Math.PI / 2);
 assert.ok(noon.sun > 1.3 && noon.stars === 0, '한낮 하늘 오류');
@@ -132,7 +172,8 @@ assert.equal(newState().earthLook, null, '지상 모습은 처음 땅에 내려�
 // 꾸미기: 기본값이 선택지 안에 있고, 탭이 지상 항목을 빠짐없이 한 번씩 나눈다
 for (const [k, v] of Object.entries(DEFAULT_EARTH)) assert.ok(LOOK.earth[k].some((o) => o.id === v), `지상 기본값 ${k}`);
 for (const [k, v] of Object.entries(DEFAULT_LOOK)) assert.ok(LOOK.heaven[k].some((o) => o.id === v), `천국 기본값 ${k}`);
-assert.deepEqual(LOOK_TABS.earth.flatMap((t) => t.keys).sort(), Object.keys(LOOK.earth).sort(), '탭 구성 오류');
+// 손에 드는 물건(item)은 인벤토리에서 고르므로 꾸미기 탭에는 없다
+assert.deepEqual(LOOK_TABS.earth.flatMap((t) => t.keys).sort(), Object.keys(LOOK.earth).filter((k) => k !== 'item').sort(), '탭 구성 오류');
 // 예전 지상 모습(빛깔 하나)은 빛깔을 '나를 감싸는 빛'으로 옮긴다
 mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { color: 'rose', hair: 'long' } }));
 const old = load(storage);

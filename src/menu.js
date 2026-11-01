@@ -4,8 +4,9 @@ import { $ } from './ui.js';
 import { SPIRIT, SPIRIT_STAGES, slotsAt } from './data/growth.js';
 import { CODEX, CODEX_TABS } from './data/codex.js';
 import { CHAPTERS } from './data/chapters.js';
-import { levelOf, stageOf, likeness, codexState } from './growth.js';
-import { TALENT, BAG } from './icons.js';
+import { levelOf, stageOf, likeness, codexState, ownsLook } from './growth.js';
+import { TALENT, BAG, ITEM_ICONS } from './icons.js';
+import { ITEMS } from './data/items.js';
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -19,6 +20,16 @@ const svg = (tag, attrs) => {
   for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
   return e;
 };
+// 내용을 바꿀 때 넘기는 방향(-1 왼쪽, 1 오른쪽)에서 짧게 들어온다.
+function swap(node, view, dir = 0) {
+  node.replaceChildren(view);
+  if (!dir) return;
+  view.dataset.dir = dir;
+  view.classList.add('is-entering');
+  view.addEventListener('animationend', () => view.classList.remove('is-entering'), { once: true });
+}
+// 고른 칩·칸이 눌렸다 튀어 오른다
+function pop(b) { b.classList.remove('is-picked'); void b.offsetWidth; b.classList.add('is-picked'); }
 const button = (cls, text, onClick, label) => {
   const b = el('button', cls, text);
   b.type = 'button';
@@ -116,6 +127,94 @@ function statusView(state) {
   return wrap;
 }
 
+// 인벤토리: 도구(칸을 차지하고 쓰면 사라짐)와 꾸미기(레벨로 열림). 칸을 고르면 아래 설명 칸에 이름·장절·설명과 손에 들기 버튼이 나온다.
+const INV_TABS = [{ id: 'tool', name: '도구' }, { id: 'look', name: '꾸미기' }];
+function inventoryView(state, ctx) {
+  const lv = levelOf(state.xp).level;
+  const heldId = () => state.earthLook?.item ?? 'none'; // 손에 들면 바뀌므로 그릴 때마다 읽는다
+  const wrap = el('div', 'inv');
+  const cats = el('div', 'inv__cats');
+  const box = el('div', 'codex__box');
+  let picked = null;
+
+  const detail = (it) => {
+    const d = el('div', 'inv__detail');
+    if (!it) {
+      d.append(el('p', 'inv__hint', ctx.kind === 'tool'
+        ? '도구는 도전이 있는 스테이지 앞부분에서 얻어요. 쓸 곳에서 다 쓰면 사라져요.'
+        : '꾸미기는 레벨이 오르면 하나씩 열려요. 칸을 고르면 손에 들 수 있어요.'));
+      return d;
+    }
+    const icon = el('span', 'inv__bigicon');
+    icon.innerHTML = ITEM_ICONS[it.id];
+    const text = el('div', 'inv__text');
+    text.append(el('p', 'inv__name', it.name), el('p', 'codex__ref', it.ref), el('p', 'inv__note', it.note));
+    const act = el('div', 'inv__actions');
+    const owned = it.kind === 'tool' ? state.items.tools.includes(it.id) : ownsLook(state, it.id);
+    if (!owned) act.append(el('p', 'inv__lock', `Lv.${it.level}에 열려요`));
+    else if (ctx.onHold) {
+      const isHeld = heldId() === it.id;
+      const hold = button('btn inv__hold', isHeld ? '손에 든 중' : '손에 들기', () => { ctx.onHold(it.id); render(); });
+      hold.disabled = isHeld;
+      act.append(hold);
+      if (isHeld) act.append(button('btn btn--quiet inv__hold', '내려놓기', () => { ctx.onHold('none'); render(); }));
+    }
+    d.append(icon, text, act);
+    return d;
+  };
+
+  const slot = (it, owned) => {
+    const b = button('slot', '', () => { picked = it.id; render(); });
+    b.dataset.state = owned ? 'owned' : 'locked';
+    b.setAttribute('aria-pressed', String(picked === it.id));
+    if (heldId() === it.id) b.dataset.held = '';
+    const icon = el('span', 'slot__icon');
+    icon.innerHTML = ITEM_ICONS[it.id];
+    b.append(icon, el('span', 'slot__name', owned ? it.name : `Lv.${it.level}`));
+    if (heldId() === it.id) b.append(el('span', 'slot__badge', '손에 든 중'));
+    return b;
+  };
+
+  const render = (dir = 0) => {
+    const view = el('div', 'codex__page');
+    const head = el('p', 'codex__count');
+    let grid;
+    if (ctx.kind === 'tool') {
+      const slots = slotsAt(lv);
+      head.append(el('span', 'codex__countname', '도구'), el('span', 'codex__countnum', `${state.items.tools.length} / ${slots}칸`));
+      grid = el('div', 'slots');
+      for (let k = 0; k < slots; k++) {
+        const it = ITEMS.find((i) => i.id === state.items.tools[k]);
+        grid.append(it ? slot(it, true) : el('span', 'slot slot--empty'));
+      }
+    } else {
+      const looks = ITEMS.filter((i) => i.kind === 'look');
+      head.append(el('span', 'codex__countname', '꾸미기'), el('span', 'codex__countnum', `${looks.filter((i) => ownsLook(state, i.id)).length} / ${looks.length}`));
+      grid = el('div', 'slots');
+      for (const it of looks) grid.append(slot(it, ownsLook(state, it.id)));
+    }
+    view.append(head, grid, detail(ITEMS.find((i) => i.id === picked && i.kind === ctx.kind)));
+    swap(box, view, dir);
+  };
+
+  for (const c of INV_TABS) {
+    const b = button('chip', c.name, () => {
+      if (c.id === ctx.kind) return;
+      const dir = c.id === 'look' ? 1 : -1;
+      ctx.kind = c.id;
+      picked = null;
+      cats.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      pop(b);
+      render(dir);
+    });
+    b.setAttribute('aria-pressed', String(c.id === ctx.kind));
+    cats.append(b);
+  }
+  wrap.append(cats, box);
+  render();
+  return wrap;
+}
+
 // 도감 한 장(스테이지)의 한 분류, 한 페이지. 페이지마다 PAGE칸.
 export const PAGE = 6;
 const BOOK_CHAPTERS = CHAPTERS.filter((ch) => CODEX.some((c) => c.stage === ch.id));
@@ -139,24 +238,17 @@ let open = null;
 export const menuIsOpen = () => !!open;
 
 // opts.only: 'codex'면 첫 화면처럼 도감만 연다. opts.stage: 처음 펼칠 장 id.
-export function openMenu(state, { tab = 'status', only = null, stage = null } = {}) {
+export function openMenu(state, { tab = 'status', only = null, stage = null, onHold = null } = {}) {
   if (open) return open.promise;
   const box = $('menuBox');
   const tabsEl = $('menuTabs');
   const body = $('menuBody');
-  const TABS = only ? [] : [{ id: 'status', name: '상태' }, { id: 'codex', name: '도감' }];
+  const TABS = only ? [] : [{ id: 'status', name: '상태' }, { id: 'inventory', name: '인벤토리' }, { id: 'codex', name: '도감' }];
+  const inv = { kind: 'tool', onHold };
   if (only) tab = only;
   let chapter = Math.max(0, BOOK_CHAPTERS.findIndex((ch) => ch.id === stage));
   let cat = 'person', page = 0;
 
-  // 내용을 바꿀 때 넘기는 방향(-1 왼쪽, 1 오른쪽)에서 짧게 들어온다.
-  const swap = (node, view, dir = 0) => {
-    node.replaceChildren(view);
-    if (!dir) return;
-    view.dataset.dir = dir;
-    view.classList.add('is-entering');
-    view.addEventListener('animationend', () => view.classList.remove('is-entering'), { once: true });
-  };
 
   // 탭 막대는 한 번만 만들고, 고른 탭과 밑줄 막대만 옮긴다(막대가 미끄러져 옮겨 간다).
   tabsEl.hidden = !TABS.length;
@@ -232,9 +324,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null } = 
         cat = c.id;
         page = 0;
         cats.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-        b.classList.remove('is-picked');
-        void b.offsetWidth;
-        b.classList.add('is-picked');
+        pop(b);
         codexBody(dir);
       });
       b.setAttribute('aria-pressed', String(c.id === cat));
@@ -248,7 +338,8 @@ export function openMenu(state, { tab = 'status', only = null, stage = null } = 
 
   const render = (dir = 0) => {
     paintTabs();
-    swap(body, tab === 'status' ? statusView(state) : codexView(), dir);
+    const view = tab === 'status' ? statusView(state) : tab === 'inventory' ? inventoryView(state, inv) : codexView();
+    swap(body, view, dir);
   };
   const setTab = (id) => {
     if (id === tab) return;

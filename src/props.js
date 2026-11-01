@@ -131,8 +131,7 @@ export const LOOK_TABS = {
     { label: '몸', keys: ['skin', 'height', 'aura'] },
     { label: '머리', keys: ['hair', 'hairColor', 'beard'] },
     { label: '옷', keys: ['outfit', 'outfitColor'] },
-    { label: '소품', keys: ['item'] },
-  ],
+  ],  // 손에 드는 물건(item)은 꾸미기 화면이 아니라 인벤토리에서 고른다(data/items.js)
 };
 export const LOOK_LABELS = {
   color: '빛깔', hair: '머리 모양', outfit: '옷 모양', item: '소품',

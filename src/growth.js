@@ -1,5 +1,6 @@
 // 성장 계산: 경험치·레벨, 열매 단계, 관계, 도감 기록. 수치는 data/growth.js에 있다.
-import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, xpToNext, TITLES, BONDS, BOND_NAMES } from './data/growth.js';
+import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, xpToNext, TITLES, BONDS, BOND_NAMES, slotsAt } from './data/growth.js';
+import { ITEMS } from './data/items.js';
 import { josa } from './text.js';
 import { LIKENESS } from './data/codex.js';
 
@@ -64,3 +65,29 @@ export function codexState(state, entry) {
   if (state.codex[entry.id]) return 'met';
   return state.claimed.includes(`${entry.stage}/clear`) ? 'missed' : 'unknown';
 }
+
+// ---------- 손에 드는 물건(data/items.js) ----------
+// 꾸미기는 레벨로 열린 것과 따로 얻은 것(state.items.looks, 상점·예전 저장값)을 합친다.
+export function ownsLook(state, id) {
+  const it = ITEMS.find((i) => i.id === id && i.kind === 'look');
+  return !!it && (it.level <= levelOf(state.xp).level || state.items.looks.includes(id));
+}
+// 레벨이 before에서 after로 오를 때 새로 열린 꾸미기
+export const looksOpened = (before, after) => ITEMS.filter((i) => i.kind === 'look' && i.level > before && i.level <= after);
+
+// 도구는 인벤토리 칸을 차지한다. 칸이 차면 넣지 못한다(false).
+export function addTool(state, id) {
+  if (state.items.tools.length >= slotsAt(levelOf(state.xp).level)) return false;
+  state.items.tools.push(id);
+  return true;
+}
+// 도구를 쓰면 하나 사라진다. 손에 들고 있던 도구가 다 떨어지면 맨손이 된다.
+export function useTool(state, id) {
+  const i = state.items.tools.indexOf(id);
+  if (i < 0) return false;
+  state.items.tools.splice(i, 1);
+  if (state.earthLook?.item === id && !state.items.tools.includes(id)) state.earthLook.item = 'none';
+  return true;
+}
+// 손에 들 수 있는지: 맨손, 가진 꾸미기, 가진 도구
+export const canHold = (state, id) => id === 'none' || ownsLook(state, id) || state.items.tools.includes(id);

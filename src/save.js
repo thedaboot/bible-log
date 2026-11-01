@@ -1,6 +1,8 @@
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK } from './props.js';
 import { CHECKPOINTS, CHAPTERS } from './data/chapters.js';
 import { SPIRIT, BONDS } from './data/growth.js';
+import { ITEMS } from './data/items.js';
+import { ownsLook } from './growth.js';
 
 export { CHECKPOINTS };
 const KEY = 'bible-rpg/save/v1';
@@ -55,7 +57,7 @@ export function load(storage = store()) {
       if (seen.includes('creation')) unlocked.push('creation-2', 'creation-3', 'creation-4', 'creation-5', 'creation-6', 'creation-7', 'eden');
     }
     const scene = s.scene === 'creation' || s.scene === 'creation-1' ? 'creation-1' : s.scene;
-    return {
+    const out = {
       name: String(s.name ?? '').slice(0, 10),
       look: cleanLook(s.look, LOOK.heaven, DEFAULT_LOOK),
       earthLook: s.earthLook ? cleanEarth(s.earthLook) : null,
@@ -63,9 +65,21 @@ export function load(storage = store()) {
       unlocked: CHECKPOINTS.filter((id) => unlocked.includes(id)),
       ...cleanGrowth(s),
     };
+    holdMigrate(out);
+    return out;
   } catch {
     return null;
   }
+}
+
+// 손에 든 물건 옮기기(소품 → 인벤토리): 예전에 고른 꾸미기는 레벨과 상관없이 갖게 하고,
+// 도구는 도전 스테이지에서 얻어야 하므로 갖고 있지 않으면 맨손으로 바꾼다.
+function holdMigrate(st) {
+  const id = st.earthLook?.item;
+  if (!id || id === 'none') return;
+  const it = ITEMS.find((i) => i.id === id);
+  if (it?.kind === 'look' && !ownsLook(st, id)) st.items.looks.push(id);
+  else if (!it || (it.kind === 'tool' && !st.items.tools.includes(id))) st.earthLook.item = 'none';
 }
 
 export function save(data, storage = store()) {

@@ -12,7 +12,7 @@ import { EDEN, FALL, QUIZ, NAMING } from './data/eden.js';
 import { load, save, reach, newState } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
 import { REWARDS } from './data/growth.js';
-import { grant, bond, record, levelOf } from './growth.js';
+import { grant, bond, record, levelOf, looksOpened } from './growth.js';
 import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
 import { tween, easeOut, setInstant } from './anim.js';
@@ -499,6 +499,8 @@ function dressFx(key, look, swap) {
 const dressWith = (spec) => (look, key) => dressFx(key, look, () => { finishWipe?.(); dressFigure(player, spec(look)); });
 
 // ---------- 꾸미기 방: 처음 땅에 내려가기 전, 지상에서의 모습을 전용 화면에서 고른다 ----------
+// 손에 드는 물건(item)은 인벤토리에서 고르므로 꾸미기 화면(무작위 포함)에서 뺀다.
+const EARTH_OPTIONS = Object.fromEntries(Object.entries(LOOK.earth).filter(([k]) => k !== 'item'));
 async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submit = '이 모습으로 내려가기' } = {}) {
   heaven.group.visible = angel.visible = false;
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
@@ -523,7 +525,7 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
     kicker,
     title: '지상에서의 내 모습',
     text: '땅에서도 사람들 눈에는 보이지 않아요.\n여러 시대를 함께 걸을 모습을 골라 주세요.',
-    options: LOOK.earth,
+    options: EARTH_OPTIONS,
     tabs: LOOK_TABS.earth,
     page: true,
     submit,
@@ -571,7 +573,10 @@ function reward(key, kind, entry) {
   if (!msgs) return;
   const { xp, talent } = REWARDS[kind];
   const after = levelOf(state.xp);
-  logGain([xp && `경험치 +${xp}`, talent && `달란트 +${talent}`, after.level > before && `레벨 ${after.level} · ${after.title}`].filter(Boolean));
+  logGain([
+    xp && `경험치 +${xp}`, talent && `달란트 +${talent}`, after.level > before && `레벨 ${after.level} · ${after.title}`,
+    ...looksOpened(before, after.level).map((it) => `꾸미기 열림 · ${it.name}`),
+  ].filter(Boolean));
   refreshHud({ levelUp: after.level > before });
   for (const m of msgs) toast(m, { gain: true });
 }
@@ -592,7 +597,13 @@ async function showMenu() {
   if (mode !== 'walk' || menuIsOpen()) return;
   mode = 'none';
   target = null;
-  await openMenu(state, { stage: chapterOf(state.scene) });
+  // 손에 들기: 지상에서만(천국 모습에는 손에 드는 물건이 없다). 빛이 손으로 날아와 물건이 된다(dressFx 'item').
+  const onHold = state.earthLook && eden ? (id) => {
+    state.earthLook = { ...state.earthLook, item: id };
+    save(state);
+    dressWith(earthSpec)(state.earthLook, 'item');
+  } : null;
+  await openMenu(state, { stage: chapterOf(state.scene), onHold });
   mode = 'walk';
 }
 $('menuBtn').onclick = showMenu;
