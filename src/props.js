@@ -785,5 +785,27 @@ export function makeHeaven() {
   portal.position.set(gatePos.x, 2, gatePos.z);
   group.add(portal);
 
-  return { group, pillar, pillarPos: new THREE.Vector3(0, 0, -6), gatePos };
+  // 쉼터: 상점 천사(왼쪽)와 기록대(오른쪽). 처음 부르심(프롤로그)에서도 같은 자리에 서 있다.
+  const shopPos = new THREE.Vector3(-5, 0, 1.5);
+  const shopAngel = makeAngel();
+  shopAngel.position.copy(shopPos);
+  shopAngel.rotation.y = Math.PI / 3;
+  group.add(shopAngel);
+  const bookPos = new THREE.Vector3(5, 0, 1.5);
+  const lectern = new THREE.Group();
+  const wood = mat(PAL.bark);
+  const stand = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1, 0.25), wood);
+  stand.position.y = 0.5;
+  const top = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.6), wood);
+  top.position.y = 1.05;
+  top.rotation.x = -0.35;
+  const book = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.48), glowMat(PAL.gold, 0.35));
+  book.position.y = 1.12;
+  book.rotation.x = -0.35;
+  lectern.add(stand, top, book);
+  lectern.position.copy(bookPos);
+  lectern.rotation.y = -Math.PI / 3;
+  group.add(lectern);
+
+  return { group, pillar, pillarPos: new THREE.Vector3(0, 0, -6), gatePos, shopPos, bookPos };
 }

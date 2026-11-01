@@ -10,7 +10,7 @@ import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, ST
 import { load, save, reach, newState } from '../src/save.js';
 import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
-import { CHAPTERS, CHECKPOINTS } from '../src/data/chapters.js';
+import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL } from '../src/data/growth.js';
 import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold } from '../src/growth.js';
 import { ITEMS } from '../src/data/items.js';
@@ -211,6 +211,11 @@ assert.ok(sunrise.r > sunrise.b, '해돋이 노을 오류');
 assert.equal(new Set(CHECKPOINTS).size, CHECKPOINTS.length, '지점 id 중복');
 assert.ok(CHAPTERS.every((c) => c.id && c.title && c.range), '장 데이터 오류');
 assert.equal(newState().earthLook, null, '지상 모습은 처음 땅에 내려갈 때 고른다');
+// 월드: 스테이지는 장 목록에 있고 한 월드에만 한 번 나온다. 천국(프롤로그)은 쉼터라 스테이지가 아니다.
+const stageIds = WORLDS.flatMap((w) => w.stages);
+assert.equal(new Set(stageIds).size, stageIds.length, '스테이지가 두 번 나옴');
+assert.ok(stageIds.every((id) => CHAPTERS.some((c) => c.id === id)) && !stageIds.includes('heaven'), '월드 스테이지 오류');
+assert.ok(CHAPTERS.every((c) => c.id === 'heaven' || stageIds.includes(c.id)), '어느 월드에도 없는 장');
 
 // 꾸미기: 기본값이 선택지 안에 있고, 탭이 지상 항목을 빠짐없이 한 번씩 나눈다
 for (const [k, v] of Object.entries(DEFAULT_EARTH)) assert.ok(LOOK.earth[k].some((o) => o.id === v), `지상 기본값 ${k}`);

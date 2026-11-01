@@ -15,6 +15,7 @@ import { REWARDS, SPIRIT } from './data/growth.js';
 import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit } from './growth.js';
 import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
+import { openMap } from './map.js';
 import { tween, easeOut, setInstant } from './anim.js';
 import {
   $, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, logGain,
@@ -371,12 +372,14 @@ async function runCreation(fromDay = 1) {
     }
     mode = 'orbit';
     showControls('look');
-    await waitButton(day < 7 ? `${DAY_NAMES[day + 1]}로` : '에덴 동산으로');
+    await waitButton(day < 7 ? `${DAY_NAMES[day + 1]}로` : '쉼터로 돌아가기');
     mode = 'none';
     setControls(null);
   }
+  reward('creation/clear', 'clear');
+  reach(state, 'eden'); // 다음 스테이지를 연다
   await fade(1);
-  runEden('eden');
+  runShelter();
 }
 
 // 꾸미기에서 고를 때: 항목마다 그 항목다운 방식으로 바뀐다(정말 입고 물드는 느낌). docs/standards/ui.md '꾸미기 창' 참고.
@@ -812,16 +815,51 @@ async function runEdenFall() {
   reward('eden/clear', 'clear');
   await new Promise((r) => setTimeout(r, 2400)); // 마친 보상 알림을 본 뒤 화면을 덮는다
   await fade(1);
-  showEnd();
+  runShelter();
 }
 
-function showEnd() {
-  $('endTitle').textContent = '다음 장면';
-  $('endText').textContent = '다음 장면은 아직 만드는 중입니다.\n진행 상황은 저장되었습니다.';
-  $('endcard').hidden = false;
-  fade(0);
+// ---------- 쉼터: 천국을 넓힌 광장. 스테이지를 마치면 돌아오고, 이어하기도 여기서 시작한다 ----------
+// 빛의 문 → 월드 지도, 기록대 → 도감, 상점 천사 → 상점. 걸어서 닿으면 열리고, 닫으면 한 걸음 물러난다.
+async function runShelter() {
+  stopWalk();
+  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
+  if (eden) { scene.remove(eden.group); eden = null; }
+  if (basket) { player.remove(basket); basket = null; }
+  scene.background = new THREE.Color(0xfdf3d8);
+  setEdges(true);
+  heaven.group.visible = true;
+  dressFigure(player, lookSpec(state.look));
+  setView(12);
+  camAngle = 0;
+  walkRadius = 8.5;
+  placeCompanions(new THREE.Vector3(0, 0, 3));
+  mode = 'none';
+  await fade(0);
+  const spots = [
+    { pos: heaven.gatePos, r: 1.6, open: async () => {
+      const id = await openMap(state);
+      if (!id) return false;
+      await fade(1);
+      stopWalk();
+      startAt(id);
+      return true;
+    } },
+    { pos: heaven.bookPos, r: 1.4, open: async () => { await openMenu(state, { only: 'codex', stage: chapterOf(state.scene) }); return false; } },
+  ];
+  const arm = (sp) => addTrigger(sp.pos, sp.r, async () => {
+    mode = 'none';
+    if (await sp.open()) return;
+    // 한 걸음 물러나 다시 닿을 수 있게 한다
+    const away = new THREE.Vector3().subVectors(player.position, sp.pos).setY(0);
+    if (away.lengthSq() < 1e-6) away.set(0, 0, -1); // 정확히 그 자리에 서 있으면 광장 안쪽으로
+    player.position.copy(sp.pos).add(away.setLength(sp.r + 0.5));
+    mode = 'walk';
+    arm(sp);
+  });
+  spots.forEach(arm);
+  waypoint.set(heaven.gatePos);
+  startWalk();
 }
-$('endBtn').onclick = () => location.reload();
 
 // ---------- 첫 화면 ----------
 function startAt(id) {
@@ -857,16 +895,10 @@ function showTitle() {
     p.textContent = text;
     return p;
   };
-  const span = (cls, text) => {
-    const el = document.createElement('span');
-    el.className = cls;
-    el.textContent = text;
-    return el;
-  };
   const showMain = () => {
     menu.classList.remove('menu--list', 'menu--cards');
     menu.replaceChildren(button('처음부터', begin(() => { state = newState(saved); dressFigure(player, lookSpec(state.look)); runPrologue(); })));
-    if (saved) menu.append(button('이어하기', showContinue));
+    if (saved) menu.append(button('이어하기', begin(() => { state = saved; runShelter(); }))); // 이어하기는 쉼터에서 시작한다
     if (saved?.name) menu.append(button('커스텀 변경하기', showLooks)); // 천국 꾸미기를 마친 사용자만
     if (saved) menu.append(button('도감', () => openMenu(saved, { only: 'codex', stage: chapterOf(saved.scene) }).then(() => menu.querySelector('button').focus({ preventScroll: true }))));
     menu.querySelector('button').focus({ preventScroll: true });
@@ -908,40 +940,6 @@ function showTitle() {
     const back = button('돌아가기', fn);
     back.classList.add('menu__item--sub');
     return back;
-  };
-  // 이어하기 1단계: 장 카드. 열린 지점 수를 진행도로 보여 주고, 아직 못 간 장은 잠긴 카드로 보여 준다.
-  const showContinue = () => {
-    menu.classList.remove('menu--list');
-    menu.classList.add('menu--cards');
-    const cards = CHAPTERS.map((ch) => {
-      const opened = ch.points.filter((p) => saved.unlocked.includes(p.id)).length;
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'card';
-      b.disabled = opened === 0;
-      if (ch.points.some((p) => p.id === saved.scene)) b.dataset.recent = '';
-      const bar = span('card__bar', '');
-      bar.style.setProperty('--p', ch.points.length ? opened / ch.points.length : 0);
-      const status = !ch.points.length ? '준비 중' : opened ? `${opened} / ${ch.points.length}` : '잠김';
-      b.append(span('card__title', ch.title), span('card__range', ch.range), bar, span('card__status', status));
-      b.onclick = () => showChapter(ch);
-      return b;
-    });
-    menu.replaceChildren(head('어느 장으로 갈까요?'), ...cards, backButton(showMain));
-    (menu.querySelector('.card[data-recent]') ?? menu.querySelector('button:not(:disabled)')).focus({ preventScroll: true });
-  };
-  // 이어하기 2단계: 장 안의 지점 목록
-  const showChapter = (ch) => {
-    menu.classList.remove('menu--cards');
-    menu.classList.add('menu--list');
-    const items = ch.points.map((pt) => {
-      const open = saved.unlocked.includes(pt.id);
-      const b = button(open ? pt.title : `${pt.title} · 잠김`, begin(() => { state = saved; startAt(pt.id); }), { recent: pt.id === saved.scene });
-      b.disabled = !open;
-      return b;
-    });
-    menu.replaceChildren(head(`${ch.title} · ${ch.range}`), ...items, backButton(showContinue));
-    (menu.querySelector('[data-recent]') ?? menu.querySelector('button:not(:disabled)')).focus({ preventScroll: true });
   };
   // 방향키로 메뉴를 고른다
   menu.addEventListener('keydown', (e) => {

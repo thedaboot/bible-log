@@ -108,11 +108,18 @@
       </div>
     </div>
 
-    <div id="endcard" class="modal" hidden>
-      <div class="panel modal__panel" role="dialog" aria-labelledby="endTitle">
-        <h2 id="endTitle" class="modal__title"></h2>
-        <p id="endText" class="modal__text"></p>
-        <button id="endBtn" class="btn" type="button">처음 화면으로</button>
+    <div id="mapBox" class="modal" hidden>
+      <div class="panel modal__panel map" role="dialog" aria-labelledby="mapTitle">
+        <div class="map__top">
+          <div>
+            <p class="quest__label">월드 지도</p>
+            <h2 id="mapTitle" class="map__title"></h2>
+          </div>
+          <p id="mapProgress" class="map__progress"></p>
+          <button id="mapClose" class="btn btn--quiet menu-panel__close" type="button" title="닫기 (Esc)">닫기</button>
+        </div>
+        <div class="map__sheet"><div id="mapNodes" class="map__nodes"></div></div>
+        <div id="mapDetail" class="map__detail" aria-live="polite"></div>
       </div>
     </div>
 

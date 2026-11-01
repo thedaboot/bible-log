@@ -17,3 +17,9 @@ export const CHAPTERS = [
 ];
 
 export const CHECKPOINTS = CHAPTERS.flatMap((c) => c.points.map((p) => p.id));
+
+// 월드(성경의 책 하나)와 스테이지(사건 하나). 스테이지 id는 위 장(CHAPTERS) id와 같다. 천국(프롤로그)은 쉼터라 스테이지가 아니다.
+// 지도에서는 1-1, 1-2처럼 월드 번호와 스테이지 번호로 부른다. 앞 스테이지의 지점이 하나라도 열리면 그 스테이지가 열린다.
+export const WORLDS = [
+  { id: 'genesis', title: '창세기', stages: ['creation', 'eden', 'cain', 'noah'] },
+];

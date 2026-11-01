@@ -997,6 +997,46 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
 .choice:has(.choice__mark) { box-shadow: 0 0 0 var(--px) var(--color-accent), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); }
 @media (hover: none), (pointer: coarse) { .choice__key { display: none; } .choices { left: var(--space-md); right: var(--space-md); width: auto; } }
 
+/* ---------- 월드 지도: 양피지 위 길을 따라 스테이지 표지가 놓인다 ---------- */
+.map { width: min(52rem, 100%); gap: var(--space-md); justify-items: stretch; }
+.map__top { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: var(--space-md); }
+.map__top p { margin: 0; }
+.map__title { margin: var(--space-3xs) 0 0; font-family: var(--font-display); font-size: var(--text-title-m); font-weight: 400; line-height: 1; color: var(--color-frame); }
+.map__progress { padding: var(--space-2xs) var(--space-sm); font-size: var(--text-small); font-weight: 800; white-space: nowrap; color: var(--color-frame); background: var(--color-gold); }
+.modal__panel .map__top .menu-panel__close { align-self: center; }
+/* 양피지: 안쪽 그늘과 점선 길 */
+.map__sheet { position: relative; padding: var(--space-xl) var(--space-lg); background: var(--color-paper-2); box-shadow: inset 0 0 0 2px var(--color-paper-3), inset 0 0 24px var(--color-paper-3); overflow-x: auto; }
+.map__nodes { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(7rem, 1fr); align-items: start; gap: var(--space-md); }
+.map__nodes::before { content: ''; position: absolute; left: 3.5rem; right: 3.5rem; top: 28px; height: 4px; background: repeating-linear-gradient(90deg, var(--color-ink-2) 0 8px, transparent 8px 16px); opacity: 0.5; }
+.map__node { position: relative; display: grid; justify-items: center; gap: var(--space-2xs); padding: 0; border: 0; cursor: pointer; font: inherit; color: var(--color-frame); background: none; }
+/* 짝수 번째 표지는 조금 내려서 길이 굽이치게 한다 */
+.map__node:nth-child(even) { margin-top: var(--space-md); }
+.map__mark { position: relative; display: grid; place-items: center; width: 56px; height: 56px; font-size: var(--text-small); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--color-frame); background: var(--color-light); box-shadow: inset 0 0 0 3px var(--color-frame), 0 4px 0 var(--color-shadow); transition: transform var(--dur-micro) var(--ease-out); }
+.map__name { font-size: var(--text-small); font-weight: 800; white-space: nowrap; }
+@media (hover: hover) { .map__node:not([data-status="soon"]):hover .map__mark { transform: translateY(-3px); } }
+.map__node:focus-visible { outline: none; }
+.map__node:focus-visible .map__mark { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.map__node:active .map__mark { transform: translateY(2px); }
+.map__node[aria-pressed="true"] .map__mark { background: var(--color-gold); box-shadow: inset 0 0 0 3px var(--color-frame), 0 0 0 3px var(--color-accent), 0 4px 0 var(--color-shadow); }
+.map__node[data-status="cleared"] .map__mark::after { content: ''; position: absolute; right: -6px; bottom: -6px; width: 18px; height: 18px; background: var(--color-accent); clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 8%, 38% 72%); }
+.map__node[data-status="locked"] .map__mark, .map__node[data-status="soon"] .map__mark { color: var(--color-ink-2); background: var(--color-paper-2); box-shadow: inset 0 0 0 3px var(--color-paper-3); }
+.map__node[data-status="soon"] .map__mark { box-shadow: inset 0 0 0 2px var(--color-paper-3); outline: 2px dashed var(--color-paper-3); outline-offset: -2px; }
+.map__node[data-status="locked"] .map__name, .map__node[data-status="soon"] .map__name { color: var(--color-ink-2); }
+/* 볼거리가 남은 스테이지: 표지 위 작은 별 */
+.map__star { position: absolute; top: -9px; right: -9px; width: 18px; height: 18px; background: var(--color-gold); clip-path: polygon(50% 0, 62% 36%, 100% 38%, 70% 60%, 80% 100%, 50% 76%, 20% 100%, 30% 60%, 0 38%, 38% 36%); filter: drop-shadow(0 0 0 var(--color-frame)); }
+/* 고른 스테이지의 설명과 들어가기 */
+.map__detail { min-height: 7rem; }
+.map__info { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-light); box-shadow: inset 0 0 0 2px var(--color-paper-3); animation: tab-in var(--dur-short) var(--ease-out); }
+.map__infohead { display: grid; gap: 2px; }
+.map__info p { margin: 0; }
+.map__stage { font-size: var(--text-ui); font-weight: 800; color: var(--color-frame); }
+.map__range { font-size: var(--text-small); color: var(--color-ink-2); }
+.map__stats { grid-column: 1; display: flex; gap: var(--space-sm); font-size: var(--text-small); font-weight: 700; color: var(--color-frame); }
+.map__left { color: var(--color-accent); }
+.map__go { grid-column: 2; grid-row: 1 / span 2; display: grid; gap: var(--space-2xs); justify-items: stretch; }
+.modal__panel .map__point { justify-self: stretch; }
+.map__note { font-size: var(--text-small); font-weight: 700; color: var(--color-ink-2); white-space: nowrap; }
+
 /* ---------- 조작 안내: 정한 두 줄 말고는 꺾이지 않는다. 좁은 화면에서는 키캡과 글자를 줄여 넣는다 ---------- */
 .controls p { white-space: nowrap; }
 @media (max-width: 39.99rem) {
