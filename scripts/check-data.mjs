@@ -12,7 +12,7 @@ import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL } from '../src/data/growth.js';
-import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold } from '../src/growth.js';
+import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook } from '../src/growth.js';
 import { ITEMS } from '../src/data/items.js';
 import { ITEM_ICONS } from '../src/icons.js';
 
@@ -128,8 +128,11 @@ assert.equal(load(null), null);
   }
   assert.deepEqual(LOOK.earth.item.filter((o) => o.id !== 'none').map((o) => o.id).sort(), ITEMS.map((i) => i.id).sort(), '소품과 손에 드는 물건 목록이 다름');
   const looks = ITEMS.filter((i) => i.kind === 'look');
-  assert.equal(new Set(looks.map((i) => i.level)).size, looks.length, '꾸미기 여는 레벨이 겹침');
-  assert.ok(looks.every((i) => i.level >= 2 && i.level <= MAX_LEVEL), '꾸미기 여는 레벨 범위');
+  const leveled = looks.filter((i) => i.level), sold = looks.filter((i) => i.price);
+  assert.ok(looks.every((i) => !!i.level !== !!i.price), '꾸미기는 레벨로 열리거나 상점에서 산다(둘 중 하나)');
+  assert.equal(new Set(leveled.map((i) => i.level)).size, leveled.length, '꾸미기 여는 레벨이 겹침');
+  assert.ok(leveled.every((i) => i.level >= 2 && i.level <= MAX_LEVEL), '꾸미기 여는 레벨 범위');
+  assert.ok(sold.every((i) => Number.isInteger(i.price) && i.price > 0), '상점 가격 오류');
 
   const s = newState();
   assert.equal(ownsLook(s, 'staff'), false, '레벨 1에서 지팡이가 열림');
@@ -147,6 +150,13 @@ assert.equal(load(null), null);
   assert.equal(s.earthLook.item, 'none', '도구를 다 썼는데 손에 남음');
   assert.equal(useTool(s, 'sling'), false);
   assert.ok(canHold(s, 'none') && canHold(s, 'staff') && !canHold(s, 'horn'));
+  // 상점: 달란트가 모자라면 못 사고, 사면 달란트가 줄고 갖게 되며, 두 번 사지 않는다
+  s.talents = 10;
+  assert.equal(buyLook(s, 'timbrel'), false, '달란트가 모자란데 삼');
+  s.talents = 40;
+  assert.ok(buyLook(s, 'timbrel') && s.talents === 25 && ownsLook(s, 'timbrel'));
+  assert.equal(buyLook(s, 'timbrel'), false, '같은 꾸미기를 두 번 삼');
+  assert.equal(buyLook(s, 'staff'), false, '레벨로 여는 꾸미기를 삼');
   // 예전 저장값: 고른 꾸미기는 갖게 하고, 고른 도구는 맨손으로
   mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { item: 'scroll' } }));
   const a = load(storage);

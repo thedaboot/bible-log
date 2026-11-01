@@ -122,7 +122,7 @@ export const LOOK = {
     skin: SKINS, height: HEIGHTS, aura: COLORS,
     hair: [...HAIRS, { id: 'braid', name: '땋은 머리' }, { id: 'bun', name: '올림머리' }], hairColor: HAIR_COLORS, beard: BEARDS,
     outfit: OUTFITS, outfitColor: CLOTH,
-    item: [...ITEMS, { id: 'hood', name: '두건' }, { id: 'lamp', name: '등잔' }, { id: 'scroll', name: '두루마리' }],
+    item: [...ITEMS, { id: 'hood', name: '두건' }, { id: 'lamp', name: '등잔' }, { id: 'scroll', name: '두루마리' }, { id: 'timbrel', name: '소고' }, { id: 'palm', name: '종려 가지' }, { id: 'lyre', name: '수금' }],
   },
 };
 // 지상 꾸미기는 항목이 많아 탭으로 나눈다.
@@ -260,6 +260,27 @@ export function dressFigure(fig, spec) {
       add(new THREE.SphereGeometry(0.17, 8, 6), m(PAL.clay), 0.33, 1.13, -0.05);
       add(new THREE.CylinderGeometry(0.07, 0.09, 0.12, 8), m(PAL.clay), 0.36, 1.32, -0.05);
       break;
+    case 'timbrel': { // 소고(출 15:20): 손에 든 둥근 북, 가죽 면과 테두리의 작은 방울
+      const t = add(new THREE.CylinderGeometry(0.17, 0.17, 0.06, 10), m(PAL.skins), 0.42, 0.82, 0.18);
+      t.rotation.x = Math.PI / 2;
+      for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2; add(new THREE.IcosahedronGeometry(0.03, 0), m(PAL.gold), 0.42 + Math.cos(a) * 0.18, 0.82 + Math.sin(a) * 0.18, 0.18); }
+      break;
+    }
+    case 'palm': { // 종려 가지(요 12:13): 위로 든 긴 줄기와 갈라진 잎
+      add(new THREE.CylinderGeometry(0.025, 0.03, 1.1, 5), m(PAL.bark), 0.42, 1.05, 0.12);
+      for (const side of [-1, 1]) for (let i = 0; i < 3; i++) {
+        const leaf = add(new THREE.BoxGeometry(0.28, 0.04, 0.08), m(PAL.leafLight), 0.42 + side * 0.13, 1.35 + i * 0.12, 0.12);
+        leaf.rotation.z = side * (0.5 + i * 0.15);
+      }
+      break;
+    }
+    case 'lyre': { // 수금(삼상 16:23): 두 팔과 가로대, 줄
+      for (const x of [-0.1, 0.1]) { const arm = add(new THREE.BoxGeometry(0.05, 0.42, 0.05), m(PAL.bark), 0.42 + x, 0.95, 0.2); arm.rotation.z = -x * 2; }
+      add(new THREE.BoxGeometry(0.3, 0.05, 0.05), m(PAL.bark), 0.42, 1.15, 0.2);
+      add(new THREE.BoxGeometry(0.22, 0.1, 0.07), m(PAL.bark), 0.42, 0.76, 0.2);
+      for (const x of [-0.05, 0, 0.05]) add(new THREE.BoxGeometry(0.01, 0.34, 0.01), m(PAL.gold), 0.42 + x, 0.96, 0.22);
+      break;
+    }
     case 'bag': // 목자 가방(삼상 17:40)
       add(new THREE.BoxGeometry(0.22, 0.26, 0.12), m(PAL.skins), -0.36, 0.62, 0.05);
       add(new THREE.BoxGeometry(0.05, 0.75, 0.05), m(PAL.skins), -0.05, 0.95, 0.27, 0.15);

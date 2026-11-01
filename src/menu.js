@@ -151,7 +151,7 @@ function inventoryView(state, ctx) {
     text.append(el('p', 'inv__name', it.name), el('p', 'codex__ref', it.ref), el('p', 'inv__note', it.note));
     const act = el('div', 'inv__actions');
     const owned = it.kind === 'tool' ? state.items.tools.includes(it.id) : ownsLook(state, it.id);
-    if (!owned) act.append(el('p', 'inv__lock', `Lv.${it.level}에 열려요`));
+    if (!owned) act.append(el('p', 'inv__lock', it.level ? `Lv.${it.level}에 열려요` : `상점 · ${it.price} 달란트`));
     else if (ctx.onHold) {
       const isHeld = heldId() === it.id;
       const hold = button('btn inv__hold', isHeld ? '손에 든 중' : '손에 들기', () => { ctx.onHold(it.id); render(); });
@@ -170,7 +170,7 @@ function inventoryView(state, ctx) {
     if (heldId() === it.id) b.dataset.held = '';
     const icon = el('span', 'slot__icon');
     icon.innerHTML = ITEM_ICONS[it.id];
-    b.append(icon, el('span', 'slot__name', owned ? it.name : `Lv.${it.level}`));
+    b.append(icon, el('span', 'slot__name', owned ? it.name : it.level ? `Lv.${it.level}` : '상점'));
     if (heldId() === it.id) b.append(el('span', 'slot__badge', '손에 든 중'));
     return b;
   };
@@ -237,8 +237,55 @@ function codexCell(state, c, no) {
 let open = null;
 export const menuIsOpen = () => !!open;
 
-// opts.only: 'codex'면 첫 화면처럼 도감만 연다. opts.stage: 처음 펼칠 장 id.
-export function openMenu(state, { tab = 'status', only = null, stage = null, onHold = null } = {}) {
+// 상점(쉼터의 상점 천사): 달란트로 꾸미기를 산다. 칸과 설명 칸은 인벤토리와 같은 모양이다.
+function shopView(state, ctx) {
+  const wrap = el('div', 'inv');
+  const purse = el('p', 'shop__purse');
+  const icon = el('span', 'shop__coin');
+  icon.innerHTML = TALENT;
+  purse.append(el('span', 'shop__greet', '하늘의 달란트로 바꿀 수 있어요.'), icon, el('span', 'stat__num', state.talents), el('span', 'stat__unit', '달란트'));
+  const box = el('div', 'codex__box');
+  let picked = null;
+  const render = () => {
+    purse.querySelector('.stat__num').textContent = state.talents;
+    const view = el('div', 'codex__page');
+    const grid = el('div', 'slots');
+    for (const it of ITEMS.filter((i) => i.price)) {
+      const owned = ownsLook(state, it.id);
+      const b = button('slot', '', () => { picked = it.id; render(); });
+      b.dataset.state = owned ? 'owned' : 'sale';
+      b.setAttribute('aria-pressed', String(picked === it.id));
+      const ic = el('span', 'slot__icon');
+      ic.innerHTML = ITEM_ICONS[it.id];
+      b.append(ic, el('span', 'slot__name', it.name), el('span', 'slot__price', owned ? '가짐' : `${it.price}`));
+      grid.append(b);
+    }
+    const it = ITEMS.find((i) => i.id === picked);
+    const d = el('div', 'inv__detail');
+    if (!it) d.append(el('p', 'inv__hint', '산 꾸미기는 인벤토리의 꾸미기 칸에서 손에 들 수 있어요.'));
+    else {
+      const big = el('span', 'inv__bigicon');
+      big.innerHTML = ITEM_ICONS[it.id];
+      const text = el('div', 'inv__text');
+      text.append(el('p', 'inv__name', it.name), el('p', 'codex__ref', it.ref), el('p', 'inv__note', it.note));
+      const act = el('div', 'inv__actions');
+      const owned = ownsLook(state, it.id);
+      const buy = button('btn inv__hold', owned ? '가지고 있어요' : `${it.price} 달란트로 사기`, () => { if (ctx.onBuy(it.id)) render(); });
+      buy.disabled = owned || state.talents < it.price;
+      act.append(buy);
+      if (!owned && state.talents < it.price) act.append(el('p', 'inv__lock', `${it.price - state.talents} 달란트 모자라요`));
+      d.append(big, text, act);
+    }
+    view.append(grid, d);
+    swap(box, view, 0);
+  };
+  wrap.append(purse, box);
+  render();
+  return wrap;
+}
+
+// opts.only: 'codex'면 첫 화면처럼 도감만, 'shop'이면 상점만 연다. opts.stage: 처음 펼칠 장 id.
+export function openMenu(state, { tab = 'status', only = null, stage = null, onHold = null, onBuy = null } = {}) {
   if (open) return open.promise;
   const box = $('menuBox');
   const tabsEl = $('menuTabs');
@@ -253,6 +300,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
   // 탭 막대는 한 번만 만들고, 고른 탭과 밑줄 막대만 옮긴다(막대가 미끄러져 옮겨 간다).
   tabsEl.hidden = !TABS.length;
   $('menuTitle').hidden = !only;
+  $('menuTitle').textContent = only === 'shop' ? '하늘 상점' : '바이블로그 도감';
   if (TABS.length) {
     tabsEl.replaceChildren(...TABS.map((t) => {
       const b = button('tab', t.name, () => setTab(t.id));
@@ -338,7 +386,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
 
   const render = (dir = 0) => {
     paintTabs();
-    const view = tab === 'status' ? statusView(state) : tab === 'inventory' ? inventoryView(state, inv) : codexView();
+    const view = tab === 'status' ? statusView(state) : tab === 'inventory' ? inventoryView(state, inv) : tab === 'shop' ? shopView(state, { onBuy }) : codexView();
     swap(body, view, dir);
   };
   const setTab = (id) => {

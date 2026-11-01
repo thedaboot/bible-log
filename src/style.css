@@ -1069,3 +1069,10 @@ body:has(#dialog:not([hidden])) .controls { display: none; }
 }
 /* 고르는 동안에는 대사 창의 '다음' 표시를 숨긴다(선택지가 다음 행동이다) */
 body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
+
+/* ---------- 상점: 가진 달란트, 값이 붙은 칸 ---------- */
+.shop__purse { display: flex; align-items: center; gap: var(--space-2xs); margin: 0; padding: var(--space-xs) var(--space-md); white-space: nowrap; background: var(--color-paper-2); }
+.shop__greet { flex: 1; font-size: var(--text-small); color: var(--color-ink-2); white-space: normal; word-break: keep-all; }
+.shop__coin { width: 24px; height: 24px; }
+.slot__price { font-size: var(--text-label); font-weight: 800; color: var(--color-accent); font-variant-numeric: tabular-nums; }
+.slot[data-state="owned"] .slot__price { color: var(--color-ink-2); }

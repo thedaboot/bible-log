@@ -12,7 +12,8 @@ import { EDEN, FALL, QUIZ, NAMING, INTERLUDE, EVE_GREETING } from './data/eden.j
 import { load, save, reach, newState } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
 import { REWARDS, SPIRIT } from './data/growth.js';
-import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit } from './growth.js';
+import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook } from './growth.js';
+import { ITEMS } from './data/items.js';
 import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
 import { openMap } from './map.js';
@@ -845,6 +846,17 @@ async function runShelter() {
       return true;
     } },
     { pos: heaven.bookPos, r: 1.4, open: async () => { await openMenu(state, { only: 'codex', stage: chapterOf(state.scene) }); return false; } },
+    { pos: heaven.shopPos, r: 1.6, open: async () => {
+      await openMenu(state, { only: 'shop', onBuy: (id) => {
+        const it = ITEMS.find((i) => i.id === id);
+        if (!buyLook(state, id)) return false;
+        save(state);
+        refreshHud();
+        logGain([`달란트 -${it.price}`, `꾸미기 · ${it.name}`]);
+        return true;
+      } });
+      return false;
+    } },
   ];
   const arm = (sp) => addTrigger(sp.pos, sp.r, async () => {
     mode = 'none';

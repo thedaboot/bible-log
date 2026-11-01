@@ -1,6 +1,6 @@
 // 손에 드는 물건(docs/design.md "손에 드는 물건"). id는 props.js LOOK.earth.item의 id와 같아서 그대로 손에 그려진다.
 // kind 'tool': 도전에서 쓰고 다 쓰면 사라진다. 인벤토리 칸을 차지한다. 같은 스테이지 앞부분에서 얻는다.
-// kind 'look': 꾸미기. level에 이르면 열리고 계속 가진다. 칸을 차지하지 않는다.
+// kind 'look': 꾸미기. level에 이르면 열리거나, price가 있으면 쉼터 상점에서 달란트로 산다. 계속 가지고 칸을 차지하지 않는다.
 // note는 성경에서 그 물건이 나오는 자리 한 줄이다.
 export const ITEMS = [
   { id: 'sling', kind: 'tool', name: '물매', ref: '삼상 17:40', note: '다윗이 시냇가의 돌 다섯 개와 함께 든 물매' },
@@ -12,4 +12,8 @@ export const ITEMS = [
   { id: 'hood', kind: 'look', level: 5, name: '두건', ref: '출 28:4', note: '머리를 감싸는 천' },
   { id: 'scroll', kind: 'look', level: 8, name: '두루마리', ref: '렘 36:2', note: '말씀을 받아 적은 두루마리' },
   { id: 'oil', kind: 'look', level: 12, name: '기름 뿔병', ref: '삼상 16:13', note: '사무엘이 다윗에게 부은 기름의 뿔병' },
+  // 상점 꾸미기(2단계). 가격 초안: 에덴까지 받는 달란트(41)로 하나나 둘을 살 수 있게 ★
+  { id: 'timbrel', kind: 'look', price: 15, name: '소고', ref: '출 15:20', note: '홍해를 건넌 뒤 미리암이 손에 든 소고' },
+  { id: 'palm', kind: 'look', price: 20, name: '종려 가지', ref: '요 12:13', note: '예루살렘에 들어오시는 예수님을 맞은 종려 가지' },
+  { id: 'lyre', kind: 'look', price: 30, name: '수금', ref: '삼상 16:23', note: '다윗이 사울 앞에서 탄 수금' },
 ];

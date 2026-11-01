@@ -101,3 +101,12 @@ export function chooseFruit(state, key, fruit) {
   state.claimed.push(key);
   return grow(state, fruit, SPIRIT_GAIN.choice);
 }
+
+// 상점: 달란트로 꾸미기를 산다. 이미 가졌거나 달란트가 모자라면 false.
+export function buyLook(state, id) {
+  const it = ITEMS.find((i) => i.id === id && i.price);
+  if (!it || ownsLook(state, id) || state.talents < it.price) return false;
+  state.talents -= it.price;
+  state.items.looks.push(id);
+  return true;
+}
