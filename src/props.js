@@ -923,6 +923,7 @@ export function makeWaypoint() {
   return {
     group,
     set(pos) { target = pos; group.visible = !!pos; },
+    get target() { return target; },
     update(t, from) {
       if (!target) return;
       marker.position.set(target.x, (target.y ?? 0) + 2.6 + Math.sin(t * 3) * 0.2, target.z);

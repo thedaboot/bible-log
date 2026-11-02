@@ -786,33 +786,6 @@ body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
 /* 휴대폰: 조작 안내는 메뉴 버튼 위(아래에서 64px)에 떠 있어서 서로 겹치지 않는다. 좁은 HUD에서는 퍼센트 글자를 빼고 바를 넓힌다. */
 @media (max-width: 39.99rem) { .hud__xptext { display: none; } }
 
-/* ---------- 획득 기록: 메뉴 버튼 위에 작은 회색 글씨로 잠깐 쌓였다 사라진다 ---------- */
-.gain-log {
-  position: fixed;
-  z-index: 4;
-  right: var(--space-md);
-  bottom: calc(max(var(--space-md), env(safe-area-inset-bottom)) + 11rem);
-  display: grid;
-  justify-items: end;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  pointer-events: none;
-}
-@media (min-width: 75rem) { .gain-log { bottom: calc(max(var(--space-md), env(safe-area-inset-bottom)) + 4rem); } }
-.gain-log__line {
-  /* 3D 장면(흙·하늘) 위에서도 읽히게 양피지 띠를 깐다. 글자는 본문 색 */
-  padding: 2px var(--space-2xs);
-  font-size: var(--text-small);
-  font-weight: 700;
-  white-space: nowrap;
-  color: var(--color-frame);
-  background: var(--color-paper);
-  box-shadow: 0 0 0 2px var(--color-paper-3);
-  animation: gain-line 2400ms var(--ease-out) forwards;
-}
-@keyframes gain-line { 0% { opacity: 0; transform: translateX(8px); } 10%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 
 /* ---------- 메뉴 창 ---------- */
 .modal:has(.menu-panel) { place-items: start center; padding-top: max(var(--space-xl), 6vh); }
@@ -1158,9 +1131,6 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
   .challenge__key .key--inline { display: none; }
   .challenge__key[hidden] { display: none; }
   /* 알림은 화면 가운데(퀘스트 창과 겹치지 않게), 획득 기록은 도전 패널 위로 */
-  .toast { top: 45%; }
-  body:has(#challenge:not([hidden])) .gain-log, body:has(#gauge:not([hidden])) .gain-log { bottom: calc(max(var(--space-sm), env(safe-area-inset-bottom)) + 12rem); z-index: 7; }
-  /* 메뉴·도감·상점: 화면 전체를 쓰는 시트 */
   #menuBox { padding: 0; place-items: stretch; }
   .menu-panel { width: 100%; max-height: none; height: 100dvh; padding-top: max(var(--space-md), env(safe-area-inset-top)); padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); }
   /* 첫 화면 메뉴: 손가락으로 누르기 좋게 */
@@ -1227,18 +1197,49 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
   /* 퀴즈·이름 입력: 아래에서 올라오는 시트(엄지가 닿는 곳에 보기와 버튼) */
   #quiz { padding: 0; place-items: end stretch; }
   #quiz > .modal__panel { width: 100%; padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); animation-name: sheet-up; }
-  /* 이름 입력은 위에서 내려오는 시트: 화면 키보드가 아래에서 올라와도 입력 칸이 가려지지 않는다 */
-  #nameForm { padding: 0; place-items: start stretch; }
-  #nameForm > .modal__panel { width: 100%; padding-top: max(var(--space-lg), env(safe-area-inset-top)); animation-name: sheet-down; }
+  /* 이름 입력은 가운데 창. 화면 키보드가 올라오면 ui.js askName이 창 영역을 키보드 위 보이는 영역에 맞춰 그 가운데에 둔다 */
 }
 @media (max-width: 39.99rem) {
   /* 곁길 이름은 표지 오른쪽이 아니라 아래에(두 칸 지도에서 화면 밖으로 나가지 않게) */
   .map__node[data-side] .map__name { position: static; transform: none; }
 }
-@keyframes sheet-down { from { opacity: 0; transform: translateY(-24px); } }
 /* 대사 본문: 늘 창의 위쪽 왼편에서 읽기 시작한다. ▼(다음)은 본문 오른쪽 아래 끝에 두고, 아랫줄은 장절과 '이전'만 */
 .dialog__body { position: relative; }
 .dialog__line { align-content: start; }
 /* ▼는 본문 폭을 줄이지 않게 창의 오른쪽 여백 안에 둔다 */
 .dialog__next { right: calc(-1 * var(--pad) + 4px); width: 10px; height: 8px; }
 .dialog[data-who="voice"] .dialog__line, .dialog[data-who="elohim"] .dialog__line { align-content: center; padding-inline: 1.5rem; }
+
+/* ---------- 보상 표시(2026-11-02): HUD에서 떠오르는 숫자, HUD 아래로 내려오는 배너 ---------- */
+.hud { overflow: visible; }
+.hud__pop { position: absolute; z-index: 1; transform: translate(-50%, -50%); padding: 1px var(--space-3xs); font-size: var(--text-small); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; color: var(--color-frame); background: var(--color-gold); box-shadow: 0 0 0 2px var(--color-frame); animation: hud-pop 900ms var(--ease-out) forwards; }
+.hud__pop--spend { background: var(--color-paper-2); }
+@keyframes hud-pop { 0% { opacity: 0; transform: translate(-50%, -20%) scale(0.8); } 20% { opacity: 1; transform: translate(-50%, -90%) scale(1.08); } 70% { opacity: 1; transform: translate(-50%, -130%); } 100% { opacity: 0; transform: translate(-50%, -170%); } }
+/* 배너: 화면 위쪽(HUD 아래)에서 내려와 잠깐 머문다. 아이콘은 종류(data-kind)마다 다르다 */
+.toast { top: calc(max(var(--space-md), env(safe-area-inset-top)) + var(--hud-h) + var(--space-sm)); display: flex; align-items: center; gap: var(--space-2xs); padding: var(--space-2xs) var(--space-sm) var(--space-2xs) var(--space-xs); font-size: var(--text-small); font-weight: 700; color: var(--color-frame); background: var(--color-paper); box-shadow: 0 0 0 var(--px) var(--color-frame), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); animation: banner-in var(--dur-long) var(--ease-out); }
+@keyframes banner-in { from { opacity: 0; transform: translate(-50%, -12px); } }
+.toast--gain { animation: banner-in var(--dur-long) var(--ease-out); }
+.toast--gain::after { display: none; }
+.toast--gain::before, .toast::before { content: ''; flex: none; width: 18px; height: 18px; margin: 0; border: 0; transform: none; animation: check-in var(--dur-long) var(--ease-out); }
+.toast[data-kind="check"]::before { background: var(--color-accent); clip-path: polygon(14% 52%, 38% 76%, 86% 22%, 98% 34%, 38% 96%, 2% 64%); }
+.toast[data-kind="fruit"]::before { background: var(--color-leaf); clip-path: polygon(46% 100%, 46% 52%, 10% 46%, 0 14%, 30% 12%, 50% 42%, 64% 6%, 100% 0, 92% 34%, 56% 50%, 56% 100%); }
+.toast[data-kind="level"] { background: var(--color-gold); }
+.toast[data-kind="level"]::before { background: var(--color-frame); clip-path: polygon(50% 0, 62% 36%, 100% 38%, 70% 60%, 80% 100%, 50% 76%, 20% 100%, 30% 60%, 0 38%, 38% 36%); }
+body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
+@media (max-width: 44.99rem) {
+  /* 휴대폰: HUD 아래, 퀘스트 창 위에 겹쳐 잠깐 뜬다 */
+  .toast { top: calc(max(var(--space-md), env(safe-area-inset-top)) + var(--hud-h) + var(--space-2xs)); z-index: 7; max-width: calc(100% - var(--space-md) * 2); }
+}
+
+/* 화면 밖 목표 표시: 화면 가장자리의 금빛 원과 목표 쪽 화살표(main.js edgeArrow가 자리와 방향을 정한다) */
+.edge-arrow { position: fixed; z-index: 4; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; pointer-events: none; background: var(--color-gold); box-shadow: 0 0 0 var(--px) var(--color-frame), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); }
+.edge-arrow::before { content: ''; position: absolute; inset: 9px 8px 9px 12px; background: var(--color-frame); clip-path: polygon(0 0, 100% 50%, 0 100%); animation: edge-nudge 900ms steps(2) infinite; }
+@keyframes edge-nudge { 50% { transform: translateX(3px); } }
+body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edge-arrow { display: none; }
+.quest__count { margin-left: var(--space-3xs); font-size: var(--text-label); font-weight: 800; color: var(--color-accent-ink); font-variant-numeric: tabular-nums; }
+@media (min-width: 45rem) { .quest__count { display: none; } }
+@media (max-width: 44.99rem) {
+  .quest__items li.is-done:not(.is-new), .quest__items li.is-later { display: none; }
+  /* 지상 꾸미기(전용 화면)도 '이 모습으로' 줄을 시트 아래에 붙인다 */
+  .modal--page .look__actions { position: sticky; bottom: calc(-1 * var(--space-md)); padding-block: var(--space-sm); background: var(--color-paper); box-shadow: 0 -2px 0 var(--color-paper-3); }
+}

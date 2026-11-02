@@ -168,7 +168,14 @@ export function askName() {
   form.hidden = false;
   input.value = '';
   input.removeAttribute('aria-invalid');
-  input.focus();
+  // 화면 키보드가 올라오면 보이는 영역(visualViewport)이 줄어든다. 창 영역을 그 영역에 맞춰 입력 창이 키보드 위 가운데에 오게 한다.
+  const vv = globalThis.visualViewport;
+  const fit = () => { if (!vv) return; form.style.top = `${vv.offsetTop}px`; form.style.height = `${vv.height}px`; form.style.bottom = 'auto'; };
+  fit();
+  vv?.addEventListener('resize', fit);
+  vv?.addEventListener('scroll', fit);
+  const unfit = () => { vv?.removeEventListener('resize', fit); vv?.removeEventListener('scroll', fit); form.style.top = form.style.height = form.style.bottom = ''; };
+  input.focus({ preventScroll: true });
   return new Promise((resolve) => {
     form.onsubmit = (e) => {
       e.preventDefault();
@@ -181,6 +188,7 @@ export function askName() {
       }
       form.hidden = true;
       form.onsubmit = null;
+      unfit();
       resolve(name);
     };
   });
@@ -313,13 +321,22 @@ export function setQuest(quest) {
   box.hidden = !quest;
   if (!quest) { questDone = new Set(); return; }
   $('questTitle').textContent = quest.title;
+  // 목표가 여럿이면 제목 옆에 진행 숫자(휴대폰은 끝낸 목표를 접어서 이 숫자로 보여 준다)
+  if (quest.items.length > 1) {
+    const n = document.createElement('span');
+    n.className = 'quest__count';
+    n.textContent = `${quest.items.filter((it) => it.done).length} / ${quest.items.length}`;
+    $('questTitle').append(' ', n);
+  }
   const list = $('questItems');
+  let left = 0;
   const before = questDone;
   questDone = new Set(quest.items.filter((it) => it.done).map((it) => it.text));
   list.replaceChildren(...quest.items.map((it) => {
     const li = document.createElement('li');
     li.textContent = it.text;
     if (it.done) li.className = before.has(it.text) || before.size + 1 < questDone.size ? 'is-done' : 'is-done is-new';
+    else if (++left > 3) li.className = 'is-later'; // 휴대폰에서는 남은 목표를 셋까지만
     return li;
   }));
 }
@@ -372,9 +389,11 @@ export function showCard({ title, text, ref, count }) {
 const toasts = [];
 function nextToast() {
   const el = $('toast');
-  const [text, { gain = false } = {}] = toasts[0];
+  const [text, { gain = false, kind } = {}] = toasts[0];
   el.textContent = text;
   el.classList.toggle('toast--gain', gain);
+  // 배너 아이콘: 열매가 자람(새싹), 레벨·칭호(별, 금빛 배너), 그 밖의 획득(체크)
+  el.dataset.kind = kind ?? (/자랐어요$/.test(text) ? 'fruit' : /^(레벨|칭호)/.test(text) ? 'level' : 'check');
   el.hidden = true;
   void el.offsetWidth; // 연속으로 띄워도 등장 효과가 다시 돌게 한다
   el.hidden = false;
@@ -382,7 +401,7 @@ function nextToast() {
     toasts.shift();
     if (toasts.length) nextToast();
     else el.hidden = true;
-  }, toasts.length > 1 ? 1400 : 2200);
+  }, toasts.length > 1 ? 1300 : 2000);
 }
 export function toast(text, opts) {
   toasts.push([text, opts]);
@@ -510,20 +529,41 @@ export function setHud({ level, into, need, talents }, { levelUp = false } = {})
   $('hudXp').style.transform = `scaleX(${into / need})`;
   $('hudXpTrack').setAttribute('aria-label', `경험치 ${into} / ${need}`);
   $('hudXpText').textContent = `${Math.floor((into / need) * 100)}%`;
-  $('hudTalent').textContent = talents;
+  rollNumber($('hudTalent'), talents);
   if (levelUp) replay($('hud'), 'is-levelup');
 }
 export function showHud(on) { $('hud').hidden = !on; }
 
-// 획득 기록: '경험치 +5' 같은 줄이 오른쪽 아래에 작은 회색 글씨로 쌓였다가 2.4초 뒤 사라진다. 최대 5줄.
-export function logGain(lines) {
-  const log = $('gainLog');
-  for (const text of lines) {
-    const li = document.createElement('li');
-    li.className = 'gain-log__line';
-    li.textContent = text;
-    log.append(li);
-    while (log.children.length > 5) log.firstChild.remove();
-    setTimeout(() => li.remove(), 2400);
-  }
+// 숫자를 세며 바꾼다(달란트가 늘거나 줄 때). 처음 그릴 때와 움직임 줄이기에서는 바로 바꾼다.
+function rollNumber(node, to) {
+  const from = Number(node.textContent) || 0;
+  cancelAnimationFrame(node._roll);
+  if (from === to || reducedMotion() || !node.isConnected || $('hud').hidden) { node.textContent = to; return; }
+  const start = performance.now();
+  const step = () => {
+    const p = Math.min(1, (performance.now() - start) / 500);
+    node.textContent = Math.round(from + (to - from) * (1 - (1 - p) ** 3));
+    if (p < 1) node._roll = requestAnimationFrame(step);
+  };
+  step();
+}
+
+// 획득 표시: 경험치·달란트가 오르면 HUD의 막대 끝과 달란트 숫자 옆에서 "+5"가 떠올랐다 사라진다.
+// (오른쪽 아래에 줄로 쌓던 획득 기록을 대신한다. 열매·도구·레벨은 배너 toast로 보여 준다.)
+export function popHud({ xp = 0, talent = 0 } = {}) {
+  const hud = $('hud');
+  if (hud.hidden) return;
+  const base = hud.getBoundingClientRect();
+  const at = (node, text, cls) => {
+    const r = node.getBoundingClientRect();
+    const pop = document.createElement('span');
+    pop.className = `hud__pop ${cls}`;
+    pop.textContent = text;
+    pop.style.left = `${r.right - base.left}px`;
+    pop.style.top = `${r.top - base.top + r.height / 2}px`;
+    pop.addEventListener('animationend', () => pop.remove(), { once: true });
+    hud.append(pop);
+  };
+  if (xp) at($('hudXpTrack'), `+${xp}`, 'hud__pop--xp');
+  if (talent) at($('hudTalent'), `${talent > 0 ? '+' : ''}${talent}`, talent > 0 ? 'hud__pop--talent' : 'hud__pop--spend');
 }

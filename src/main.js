@@ -25,7 +25,7 @@ import { openMenu, menuIsOpen } from './menu.js';
 import { openMap } from './map.js';
 import { tween, easeOut, setInstant } from './anim.js';
 import {
-  $, isTouch, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, logGain,
+  $, isTouch, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, popHud,
 } from './ui.js';
 
 // ---------- 렌더링: 쿼터뷰 정사영 카메라 + 픽셀화 후처리 ----------
@@ -66,7 +66,10 @@ function setEdges(on) {
 function sideView(on) { viewShift = on ? { x: 0.2, y: 0.2 } : null; resize(); }
 function resize() {
   const w = innerWidth, h = innerHeight, aspect = w / h;
-  const view = aspect < 1 ? viewSize * 1.35 : viewSize; // 세로 화면(휴대폰)에서는 더 넓게 본다
+  // 세로 화면(휴대폰): 높이 기준으로만 넓히면 가로로 보이는 폭이 데스크톱의 3분의 1로 줄어
+  // 창조의 영·땅·문 같은 대상이 화면 밖으로 나간다. 가로 폭이 적어도 viewSize만큼 보이게 높이를 늘린다.
+  const view = aspect < 1 ? Math.max(viewSize * 1.35, viewSize / aspect) : viewSize;
+  pixelPass.setPixelSize(w < 640 ? 3 : 4); // 작은 화면은 장면이 작아지는 만큼 픽셀도 작게(인물이 뭉개지지 않게)
   camera.left = (-view * aspect) / 2;
   camera.right = (view * aspect) / 2;
   camera.top = view / 2;
@@ -90,6 +93,24 @@ const heaven = makeHeaven();
 const player = makeFigure(lookSpec(state.look));
 const angel = makeAngel();
 const waypoint = makeWaypoint();
+// 목표가 화면 밖이면 화면 가장자리에 목표 쪽을 가리키는 표시를 띄운다(세로 화면에서 목표가 잘 안 보인다)
+const edgeTmp = new THREE.Vector3();
+function edgeArrow() {
+  const el = $('edgeArrow');
+  const tgt = waypoint.target;
+  if (!tgt || mode !== 'walk') { el.hidden = true; return; }
+  edgeTmp.set(tgt.x, (tgt.y ?? 0) + 1, tgt.z).project(camera);
+  const w = innerWidth, h = innerHeight, m = 36;
+  let x = ((edgeTmp.x + 1) / 2) * w, y = ((1 - edgeTmp.y) / 2) * h;
+  if (edgeTmp.z < 1 && x > m && x < w - m && y > m && y < h - m) { el.hidden = true; return; }
+  const cx = w / 2, cy = h / 2, a = Math.atan2(y - cy, x - cx);
+  // 화면 가운데에서 목표 쪽으로 뻗은 선이 가장자리(여백 m)와 만나는 점
+  const k = Math.min((w / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (h / 2 - m) / Math.abs(Math.sin(a) || 1e-6));
+  x = cx + Math.cos(a) * k;
+  y = cy + Math.sin(a) * k;
+  el.hidden = false;
+  el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${a}rad)`;
+}
 const dressingRoom = makeDressingRoom();
 scene.add(heaven.group, player, angel, waypoint.group, dressingRoom);
 let creation = null;
@@ -315,6 +336,7 @@ function placeCompanions(at) {
 
 // ---------- 장면: 천국 ----------
 async function runPrologue() {
+  showHud(false); // 이야기를 보는 장면: HUD 없이
   scene.background = new THREE.Color(0xfdf3d8);
   setEdges(true);
   heaven.group.visible = player.visible = true;
@@ -367,6 +389,7 @@ async function runPrologue() {
 
 // ---------- 장면: 창조의 일곱 날 ----------
 async function runCreation(fromDay = 1) {
+  showHud(false);
   heaven.group.visible = player.visible = angel.visible = false;
   angelFollow = false;
   scene.background = new THREE.Color(0x020308);
@@ -574,6 +597,8 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
 
 // ---------- 장면: 에덴(창 2~3장) ----------
 async function runEden(from = 'eden') {
+  refreshHud();
+  showHud(true);
   if (!state.earthLook) await runDressingRoom();
   heaven.group.visible = false;
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); creation = null; }
@@ -606,11 +631,11 @@ function reward(key, kind, entry, spirit) {
   if (!msgs) return;
   const { xp, talent } = REWARDS[kind];
   const after = levelOf(state.xp);
-  logGain([
-    xp && `경험치 +${xp}`, talent && `달란트 +${talent}`, after.level > before && `레벨 ${after.level} · ${after.title}`,
-    ...looksOpened(before, after.level).map((it) => `꾸미기 열림 · ${it.name}`),
-  ].filter(Boolean));
+  popHud({ xp, talent }); // 경험치·달란트는 HUD에서 숫자가 떠오른다
   refreshHud({ levelUp: after.level > before });
+  // 레벨·꾸미기 열림·열매 성장은 HUD 아래 배너로 차례로
+  if (after.level > before) toast(`레벨 ${after.level} · ${after.title}`, { gain: true, kind: 'level' });
+  for (const it of looksOpened(before, after.level)) toast(`꾸미기 열림 · ${it.name}`, { gain: true });
   for (const m of msgs) toast(m, { gain: true });
 }
 function note(entry, stage = 'eden') {
@@ -852,6 +877,8 @@ async function runEdenFall() {
 // ---------- 장면: 가인과 아벨(창 4장) ----------
 // 양 치기(퀘스트) → 저녁 막간(아벨) → 첫 새끼 데려가기(퀘스트) → 제사와 창 4:7 → 들(멀리서) → 심문과 놋 땅 → 셋 → 퀴즈
 async function runCain() {
+  refreshHud();
+  showHud(true);
   if (!state.earthLook) await runDressingRoom({ kicker: '들판으로 내려가기 전' });
   heaven.group.visible = false;
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); creation = null; }
@@ -1098,6 +1125,8 @@ function challengeTick(dt) {
 
 // ---------- 1-4부터의 스테이지: src/stages/<id>.js가 장면(build)과 진행(run)을 맡고, 여기는 공용 기능(g)만 건넨다 ----------
 async function runStage(id) {
+  refreshHud();
+  showHud(true);
   const mod = STAGE_MODS[id];
   if (!state.earthLook) await runDressingRoom({ kicker: mod.kicker ?? '땅으로 내려가기 전' });
   heaven.group.visible = false;
@@ -1250,6 +1279,8 @@ function autoTick(dt) {
 // 빛의 문 → 월드 지도, 기록대 → 도감, 상점 천사 → 상점. 걸어서 닿으면 열리고, 닫으면 한 걸음 물러난다.
 async function runShelter() {
   stopWalk();
+  refreshHud();
+  showHud(true);
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); creation = null; }
   if (eden) { scene.remove(eden.group); disposeTree(eden.group); eden = null; }
   if (cain) { scene.remove(cain.group); disposeTree(cain.group); cain = null; }
@@ -1283,7 +1314,8 @@ async function runShelter() {
         if (!buyLook(state, id)) return false;
         save(state);
         refreshHud();
-        logGain([`달란트 -${it.price}`, `꾸미기 · ${it.name}`]);
+        popHud({ talent: -it.price });
+        toast(`꾸미기 · ${it.name}`, { gain: true });
         return true;
       } });
       return false;
@@ -1419,6 +1451,7 @@ function tick() {
   checkTriggers();
   aimNearest?.();
   waypoint.update(t, player.position);
+  edgeArrow();
   creation?.update(dt, t);
   eden?.update(dt, t, player.position);
   cain?.update(dt, t, player.position);
@@ -1442,7 +1475,7 @@ function tick() {
 
 // 개발 서버에서만: 브라우저 점검용으로 캐릭터와 세계에 접근한다(배포 빌드에는 빠진다).
 // run은 쉼터의 걸어서 닿는 자리를 지우고 시작한다(지도에서 들어갈 때와 같다).
-if (import.meta.env.DEV) globalThis.__dev = { player, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => { stopWalk(); $('title').hidden = true; refreshHud(); showHud(true); titleView = false; viewShift = null; resize(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`) };
+if (import.meta.env.DEV) globalThis.__dev = { player, get heaven() { return heaven; }, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => { stopWalk(); $('title').hidden = true; refreshHud(); showHud(true); titleView = false; viewShift = null; resize(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`) };
 
 scene.background = new THREE.Color(0xfdf3d8);
 player.position.set(0, 0, -3);
