@@ -8,6 +8,7 @@ import { tween, easeOut } from './anim.js';
 import { FLOCK } from './data/cain.js';
 
 const V = (x, z) => new THREE.Vector3(x, 0, z);
+const UP = new THREE.Vector3(0, 1, 0);
 export const CAIN_RADIUS = 12.5;
 export const CAIN_START = V(6, 6);
 // 카메라가 (+x, +z)에서 내려다본다. 화면에서 나란히 보여야 하는 둘은 화면 가로 방향(1, 0, -1)으로 뗀다.
@@ -28,7 +29,12 @@ const ABEL_AT_ALTAR = ABEL_ALTAR.clone().add(V(-0.8, 0.8));
 const CAIN_AT_ALTAR = CAIN_ALTAR.clone().add(V(0.8, -0.8));
 // 창 4:8 들: 카메라에서 먼 쪽. 멀리서 비춘다.
 const OPEN_FIELD = V(-6.5, -5); // 땅 끝에 붙으면 멀리서 볼 때 하늘이 화면을 차지한다
-const NOD_DIR = V(1, -0.6).normalize(); // 가인이 떠나는 쪽(놋 땅, 창 4:16)
+const NOD_DIR = V(1, -0.6).normalize(); // 가인이 돌아서는 쪽(창 4:5)
+// 창 4:8 뒤 가인이 아벨을 끌어다 덮는 자리(각색, 창 4:9 "모릅니다"와 4:10~11 땅이 피를 받음). 들의 화면 왼쪽, 덤불 밑.
+const HIDE = V(-8, -3.6);
+const BUSH = HIDE.clone().add(V(-0.6, -0.7)); // 카메라 반대쪽이라 덮은 자리를 가리지 않는다
+const HIDE_STAND = HIDE.clone().add(V(1.1, -1.1)); // 덮은 자리 시작의 화면 오른쪽(cover가 흙더미 가운데 기준으로 다시 정한다). 빛은 그 오른쪽 위에 내려온다
+const LEAVE_DIR = V(0.6, -1).normalize(); // 창 4:16 떠나는 걸음: 화면 오른쪽, 조금 먼 쪽. 짧게 걸어 휴대폰 세로 화면 안에서 끝난다
 // 양의 터(FLOCK과 같은 순서). 무대와 우리에서 떨어진 들판 곳곳에 둔다.
 const SHEEP_SPOTS = [V(-7.5, -2.5), V(-8.5, 5.5), V(-2, 8), V(2.5, 8.5), V(8, -0.5)];
 const toCam = (p, k = 1.4) => p.clone().add(V(k, k));
@@ -149,7 +155,20 @@ export function makeCain(scene) {
   }
 
   // 들판 둘레의 나무(무대, 우리, 밭, 길, 양의 터는 비운다)
-  const keep = [CAIN_START, ADAM_SPOT, EVE_SPOT, FOLD, ABEL_SPOT, GATE_OUT, FIELD, ABEL_ALTAR, CAIN_ALTAR, OPEN_FIELD, ...SHEEP_SPOTS];
+  // 덤불(창 4:8 뒤 덮는 자리): 잎 뭉치 셋과 돌 둘
+  for (const [dx, dz, r, c] of [[0, 0, 0.45, PAL.leafDark], [0.35, 0.3, 0.32, 0x5f8f3a], [-0.4, 0.25, 0.3, 0x5f8f3a]]) {
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), mat(c));
+    leaf.position.set(BUSH.x + dx, r * 0.8, BUSH.z + dz);
+    group.add(leaf);
+  }
+  for (const [dx, dz, r] of [[0.7, -0.2, 0.22], [-0.2, 0.6, 0.18]]) {
+    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), stoneM);
+    stone.position.set(BUSH.x + dx, r * 0.6, BUSH.z + dz);
+    group.add(stone);
+  }
+  colliders.push({ x: BUSH.x, z: BUSH.z, r: 0.45 });
+
+  const keep = [CAIN_START, ADAM_SPOT, EVE_SPOT, FOLD, ABEL_SPOT, GATE_OUT, FIELD, ABEL_ALTAR, CAIN_ALTAR, OPEN_FIELD, HIDE, ...SHEEP_SPOTS];
   let placed = 0;
   for (let tries = 0; placed < 18 && tries < 600; tries++) {
     const a = rand() * Math.PI * 2, r = 6 + rand() * 6;
@@ -215,7 +234,22 @@ export function makeCain(scene) {
   mark.position.set(0, 1.42, 0.2);
   mark.visible = false;
   cain.userData.rig.add(mark);
-  group.add(pillar, presence, sheaf);
+  // 가인이 덮은 흙더미(각색). 창 4:10 "피가 땅에서 울부짖는다"에서 은은히 빛난다(emissive).
+  const moundMat = mat(PAL.soil, { emissive: PAL.holy, emissiveIntensity: 0 });
+  const mound = new THREE.Group();
+  const heap = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), moundMat);
+  heap.scale.set(0.95, 0.32, 0.5);
+  mound.add(heap);
+  for (const [x, z, a] of [[-0.5, 0.1, 0.4], [0.1, -0.2, -0.6], [0.5, 0.15, 1.2]]) {
+    const twig = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.05), mat(PAL.bark));
+    twig.position.set(x, 0.3, z);
+    twig.rotation.y = a;
+    mound.add(twig);
+  }
+  mound.visible = false;
+  let cry = false; // 창 4:10부터 흙더미가 빛난다
+  const trialSpot = HIDE.clone().lerp(HIDE_STAND, 0.5); // 심문 장면 카메라 자리(cover가 정한다)
+  group.add(pillar, presence, sheaf, mound);
 
   // ---------- 인물 이동: walkTo(fig, 목표) → 도착하면 끝나는 Promise. 막혀서 1.5초 넘게 못 가면 목표에 둔다. ----------
   const movers = new Map();
@@ -314,18 +348,76 @@ export function makeCain(scene) {
         tween(500, (p) => cain.position.lerpVectors(from, back, easeOut(p))).then(() => { cain.userData.pose = 'down'; return tween(500, (p) => (cain.userData.rig.rotation.x = 0.3 * p)); }),
       ]);
     },
+    // 창 4:8 뒤(각색): 가인이 주위를 살피고 아벨을 덤불 밑으로 끌어간다. 멀리서 비춘다.
+    drag: async () => {
+      cain.userData.pose = null;
+      for (const d of [V(-1, 1), V(1, -1)]) { face(cain, cain.position.clone().add(d)); await tween(650, () => {}); }
+      const dir = HIDE.clone().sub(abel.position).setY(0).normalize();
+      await walkTo(cain, abel.position.clone().addScaledVector(dir, 0.8), 1.2);
+      face(cain, abel.position);
+      cain.userData.armPose = 'carry';
+      await tween(300, () => {});
+      // 가인은 아벨 쪽을 본 채 뒷걸음질하고, 누운 몸이 끌리는 쪽으로 돌아 따라온다(몸은 눕힌 인물의 x축 방향)
+      const from = cain.position.clone(), to = HIDE.clone().addScaledVector(dir, 0.8), body = abel.position.clone();
+      const yaw0 = abel.rotation.y, yaw1 = Math.atan2(-dir.z, dir.x);
+      await tween(from.distanceTo(to) * 1100, (p) => {
+        cain.position.lerpVectors(from, to, p);
+        abel.position.lerpVectors(body, HIDE, p);
+        abel.rotation.y = yaw0 + Math.atan2(Math.sin(yaw1 - yaw0), Math.cos(yaw1 - yaw0)) * Math.min(1, p * 3);
+      });
+      cain.userData.armPose = null;
+    },
+    // 흙과 마른 가지로 덮는다: 몸을 굽혔다 폈다 하는 동안 흙더미가 차오르고 아벨은 그 밑으로 가려진다
+    cover: async () => {
+      // 흙더미(가로 반지름 0.95)와 겹치지 않게 누운 몸 가운데에서 화면 오른쪽으로 1.5 떨어져 선다
+      new THREE.Box3().setFromObject(abel).getCenter(mound.position).setY(0);
+      const stand = mound.position.clone().add(V(1.05, -1.05));
+      trialSpot.copy(mound.position).lerp(stand, 0.5);
+      await walkTo(cain, stand, 1.2);
+      face(cain, mound.position);
+      await tween(450, () => {});
+      mound.rotation.y = abel.rotation.y;
+      mound.scale.setScalar(0.01);
+      mound.visible = true;
+      cain.userData.pose = 'bend';
+      const { rig } = cain.userData;
+      await tween(2600, (p) => {
+        rig.rotation.x = 0.15 + 0.4 * Math.abs(Math.sin(p * Math.PI * 3));
+        mound.scale.setScalar(Math.max(0.01, easeOut(p)));
+        if (p > 0.55) abel.visible = false;
+      });
+      rig.rotation.x = 0;
+      cain.userData.pose = null;
+    },
+    faceLight: () => face(cain, presence.position),
+    // 창 4:10 피가 땅에서 울부짖는다: 덮은 자리가 은은히 빛나고 가인이 그쪽을 돌아본다
+    cry: () => { cry = true; face(cain, mound.position); },
     // 창 4:15 표를 주신다
     mark: async () => {
       mark.visible = true;
       await tween(800, (p) => mark.scale.setScalar(Math.max(0.01, easeOut(p) * 1.6)));
     },
-    // 창 4:16 가인이 여호와 앞을 떠나 동쪽으로 걸어간다
+    // 창 4:16 가인이 여호와 앞을 떠난다. 빛은 그 자리에 두고, 나무에 막히지 않는 길을 골라 화면 안에서 멀어진다.
     leave: async () => {
-      presence.visible = false;
-      await walkTo(cain, cain.position.clone().addScaledVector(NOD_DIR, 9), 2.2);
+      const from = cain.position.clone();
+      let to = from.clone().addScaledVector(LEAVE_DIR, 3.2);
+      for (const a of [0, 0.35, -0.35, 0.7, -0.7]) {
+        const p = from.clone().addScaledVector(LEAVE_DIR.clone().applyAxisAngle(UP, a), 3.2);
+        if (p.length() > CAIN_RADIUS - 1) continue;
+        let ok = true;
+        for (let j = 1; j <= 18 && ok; j++) ok = !collide(from.clone().lerp(p, j / 18), 0.3);
+        if (ok) { to = p; break; }
+      }
+      // 걸음 끝 40% 동안 흐려지며 사라진다(카메라는 그 자리에 둔다)
+      const mats = [];
+      cain.traverse((o) => { if (o.material) { o.material.transparent = true; mats.push(o.material); } });
+      const start = from.distanceTo(to);
+      const fadeId = setInterval(() => { const k = Math.min(1, cain.position.distanceTo(from) / start); for (const m of mats) m.opacity = Math.min(1, (1 - k) / 0.4); }, 50);
+      await walkTo(cain, to, 1.4);
+      clearInterval(fadeId);
       cain.visible = false;
     },
-    hideField: () => { abel.visible = false; },
+    hideField: () => { abel.visible = cain.visible = presence.visible = false; cry = false; moundMat.emissiveIntensity = 0; },
   };
 
   const inStage = (p, pad = 0) => stage && p.distanceTo(stage.c) < stage.r + pad;
@@ -352,6 +444,7 @@ export function makeCain(scene) {
 
   function update(dt, t, playerPos = null) {
     if (pillar.visible) pillar.userData.pulse(t);
+    if (cry) moundMat.emissiveIntensity = 0.35 + 0.2 * Math.sin(t * 2.4);
     for (const [fig, m] of movers) {
       const d = stepToward(fig, m.to, m.speed, dt, 0.3);
       if (d < m.best - 0.02) { m.best = d; m.stuck = 0; } else m.stuck += dt;
@@ -409,6 +502,6 @@ export function makeCain(scene) {
 
   return {
     group, sky, people, sheep, lamb, acts, update, collide, stepAside: stepAsideSpots,
-    spots: { start: CAIN_START, home: ADAM_SPOT.clone().lerp(EVE_SPOT, 0.5), fold: FOLD, abel: ABEL_SPOT, cain: CAIN_SPOT, altars: ALTARS, abelAltar: ABEL_ALTAR, field: OPEN_FIELD, fieldView: OPEN_FIELD.clone().add(V(1.6, 1.6)) },
+    spots: { start: CAIN_START, home: ADAM_SPOT.clone().lerp(EVE_SPOT, 0.5), fold: FOLD, abel: ABEL_SPOT, cain: CAIN_SPOT, altars: ALTARS, abelAltar: ABEL_ALTAR, field: OPEN_FIELD, hide: HIDE, trial: trialSpot, fieldView: OPEN_FIELD.clone().add(V(1.6, 1.6)) },
   };
 }

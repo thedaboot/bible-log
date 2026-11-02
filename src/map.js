@@ -86,7 +86,7 @@ export function openMap(state) {
   let n = 0;
   const infos = world.stages.map((id) => {
     const it = stageInfo(state, id);
-    return { ...it, side: it.ch.side, label: it.ch.side ? '곁길' : `1-${++n}` };
+    return { ...it, side: it.ch.side, label: it.ch.side ? '샛길' : `1-${++n}` };
   });
   const words = infos.flatMap((i) => i.words);
   $('mapTitle').textContent = world.title;
@@ -156,7 +156,7 @@ export function openMap(state) {
       b.style.gridRow = cells[k].row;
       b.style.gridColumn = cells[k].col;
       b.setAttribute('aria-label', `${it.label} ${it.ch.title}${STATUS[it.status] ? `, ${STATUS[it.status]}` : ''}`);
-      const mark = el('span', 'map__mark', it.side ? '곁길' : it.label);
+      const mark = el('span', 'map__mark', it.side ? '샛길' : it.label);
       if (it.status === 'locked') mark.append(el('span', 'map__lock')); // 잠긴 표지: 자물쇠
       if (it.star) mark.append(el('span', 'map__star'));
       // 도감을 얼마나 채웠는지: 표지 아래 얇은 막대(열린 스테이지만)

@@ -39,17 +39,18 @@ const interlude = {
       { who: 'abraham', text: '당신도 거들어 주었구려. 이 늙은이가 오늘은 많이 뛰었소.', ref: null, basis: '막간: 인물이 관찰자를 알아본다, 창 18:6~7 급히' },
     ] },
     { choose: [
-      { text: '정말 빨리 뛰셨어요!', fruit: 'joy', reply: [
-        { who: 'abraham', text: '아흔아홉 살 다리로는 꽤 빨랐지.\n소 떼까지 가서 송아지를 고르느라 신발도 벗겨졌소.', ref: null, basis: '창 17:24 아흔아홉 살, 창 18:7' },
+      { text: '아흔아홉에 그 속도라니요!', fruit: 'joy', reply: [
+        { who: 'abraham', text: '송아지가 먼저 지쳐서 이긴 것이오.\n신발 한 짝은 소 떼 사이에 두고 왔지만.', ref: null, basis: '창 17:24 아흔아홉 살, 창 18:7 소 떼로 달려가 송아지를 고름' },
       ] },
       { text: '(물 한 잔을 건넨다)', fruit: 'kindness', reply: [
-        { who: 'narr', text: '아브라함이 단숨에 물을 마시고, 남은 물로 이마를 적셨다.', ref: null, basis: '창 18:4 물' },
+        { who: 'narr', text: '아브라함이 단숨에 잔을 비우고 빈 잔을 들여다보았다.', ref: null, basis: '창 18:4 물' },
+        { who: 'abraham', text: '손님 발 씻을 물은 넉넉히 떠 놓고, 내 몫은 잊었구려.', ref: null, basis: '창 18:4 물을 가져다 발을 씻으시고' },
       ] },
       { text: '처음 보는 손님들이죠?', fruit: 'faith', reply: [
-        { who: 'abraham', text: '처음 보는 얼굴이오. 그래도 나그네는 그냥 보내는 법이 아니오.', ref: null, basis: '히 13:2 손님 대접하기를 잊지 말라' },
+        { who: 'abraham', text: '이름도 묻기 전에 상부터 차렸소.\n나그네는 묻지 말고 먼저 먹이는 법이오.', ref: null, basis: '창 18:3~5 쉬어 가기를 청함, 히 13:2 손님 대접하기를 잊지 말라' },
       ] },
-      { text: '제가 상을 지킬게요.', fruit: 'goodness', need: { kindness: 1 }, reply: [
-        { who: 'abraham', text: '고맙소. 그럼 나는 손님들 곁에 서 있겠소.\n필요한 것이 있으면 내가 바로 가져오겠소.', ref: null, basis: '창 18:8 곁에 섬' },
+      { text: '파리는 제가 쫓을게요.', fruit: 'goodness', need: { kindness: 1 }, reply: [
+        { who: 'abraham', text: '고맙소. 한낮이라 파리가 손님보다 먼저 상에 앉겠구려.\n나는 손님들 곁에 서 있겠소.', ref: null, basis: '창 18:1 한낮 더위, 창 18:8 곁에 섬' },
       ] },
     ] },
     { say: [
@@ -57,14 +58,14 @@ const interlude = {
       { who: 'abraham', text: '그런데 사라와 나 사이에는 아직 아들이 없소.', ref: null, basis: '창 17:17, 18:11' },
     ] },
     { choose: [
-      { text: '그 약속 꼭 이뤄질 거예요.', fruit: 'faith', reply: [
-        { who: 'abraham', text: '나도 그렇게 믿소. 별을 세던 밤부터 지금까지.', ref: null, basis: '창 15:5~6' },
+      { text: '별처럼 많아질 거예요!', fruit: 'faith', reply: [
+        { who: 'abraham', text: '그 밤에 세다 만 별이 아직 하늘에 그대로 있소.\n하나도 지워지지 않았으니 약속도 그대로겠지.', ref: null, basis: '창 15:5~6 하늘의 별을 셀 수 있나 보라' },
       ] },
       { text: '기다리기 힘드셨겠어요.', fruit: 'patience', reply: [
-        { who: 'abraham', text: '스물네 해요. 하란을 떠난 날부터 손가락으로 세어 왔소.', ref: null, basis: '창 12:4 일흔다섯 살, 창 17:24 아흔아홉 살' },
+        { who: 'abraham', text: '스물네 해요. 손가락 발가락을 다 꼽고도 넷이 남소.', ref: null, basis: '창 12:4 일흔다섯 살, 창 17:24 아흔아홉 살' },
       ] },
       { text: '사라님도 같은 마음일까요?', fruit: 'love', reply: [
-        { who: 'abraham', text: '그 사람은 웃음으로 버티오. 오늘도 떡 반죽을 하며 웃더군.', ref: null, basis: '창 18:6, 18:12 웃음' },
+        { who: 'abraham', text: '사라는 웃음으로 견디는 사람이오.\n실은 나도 그 말씀에 엎드려 웃었소. 사라에겐 비밀이오.', ref: null, basis: '창 17:17 아브라함이 엎드려 웃음, 창 18:12 사라의 웃음' },
       ] },
     ] },
     { say: [

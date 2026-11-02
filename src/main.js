@@ -251,10 +251,12 @@ function setStage(name) {
 
 // 걸어서 닿으면 실행되는 지점들(문, 강 끝, 동물, 열매 나무)
 let triggers = [];
-function addTrigger(pos, r, cb) { const trig = { pos, r, cb }; triggers.push(trig); return trig; }
+// soft: 지나가다 듣는 짧은 인사처럼 퀘스트를 끊으면 안 되는 지점. 머무르기 게이지가 차는 중이거나 도전 목표 곁이면 미룬다(S19).
+function addTrigger(pos, r, cb, soft = false) { const trig = { pos, r, cb, soft }; triggers.push(trig); return trig; }
 function checkTriggers() {
   if (mode !== 'walk') return;
   for (const trig of triggers) {
+    if (trig.soft && (holdQuest?.cur || ch?.near)) continue; // 퀘스트 진행 중에는 짧은 인사를 미룬다
     if (player.position.distanceTo(trig.pos) < trig.r) {
       triggers = triggers.filter((x) => x !== trig);
       trig.cb();
@@ -1035,14 +1037,21 @@ async function runCain() {
   await toField;
   await cain.acts.approach();
   await talk(CAIN.fallen, state);
-  // 창 4:9~16: 빛이 가인 곁에 머문다. 표를 주시고, 가인은 동쪽으로 떠난다.
-  camFocus = cainFig.position;
-  setView(15);
+  // 각색: 가인이 주위를 살피고 아벨을 덤불 밑으로 끌어다 흙으로 덮는다(아직 멀리서). 동작은 대사와 겹쳐 시작한다.
+  let hiding;
+  await talk(CAIN.hidden, state, { onLine: (l, i) => { hiding = i ? (hiding ?? Promise.resolve()).then(cain.acts.cover) : cain.acts.drag(); } });
+  await hiding;
+  // 창 4:9~15: 빛이 덮은 자리 곁의 가인에게 내려온다. 카메라는 그 자리에 고정한다(가인을 따라가지 않는다).
+  camFocus = cain.spots.trial;
+  setView(12);
   await cain.acts.presence(cainFig);
   let leave;
   await talk(CAIN.trial, state, { onLine: (l) => {
+    if (l.who === 'cain') cain.acts.faceLight();
+    if (l.focus === 'cry') cain.acts.cry();
     if (l.ref === '창 4:15' && l.who === 'narr') cain.acts.mark();
-    if (l.ref === '창 4:16') { note('place/nod', 'cain'); leave = cain.acts.leave(); } // 떠나는 걸음을 마지막 대사와 겹친다
+    // 창 4:16: 하나님 말씀이 다 끝난 뒤 떠나는 걸음을 시작한다. 화면 안에서 멀어지고, 대사를 넘긴 뒤 사라진다.
+    if (l.ref === '창 4:16' && !leave) { note('place/nod', 'cain'); leave = cain.acts.leave(); }
   } });
   await leave;
   cain.acts.hideField();
@@ -1244,7 +1253,7 @@ function stageApi(id, mod) {
         await talk(lines, state);
         meet(who, 'met', id);
         mode = 'walk';
-      });
+      }, true);
       return () => { triggers = triggers.filter((x) => x !== trig); };
     },
     // 깊은 대화(design.md): 관계 "대화" 이상 + 레벨 조건이면 열린다. 닫혀 있으면 짧은 인사(locked)만 한다.
@@ -1347,7 +1356,7 @@ async function afterStage(id) {
   save(state);
   const cur = stageInfo(state, id);
   const next = nextStage(id);
-  const label = (info) => { const n = WORLDS[0].stages.filter((s) => !stageInfo(state, s).ch.side).indexOf(info.ch.id); return info.ch.side ? '곁길' : `1-${n + 1}`; };
+  const label = (info) => { const n = WORLDS[0].stages.filter((s) => !stageInfo(state, s).ch.side).indexOf(info.ch.id); return info.ch.side ? '샛길' : `1-${n + 1}`; };
   const pick = await askClear({ kicker: `${label(cur)} · 마침`, title: cur.ch.title, next: next && `${label(next)} ${next.ch.title}` });
   if (pick === 'next' && next) { await fade(1); startAt(next.open[0].id); return; }
   if (pick === 'map') {

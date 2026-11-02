@@ -8,7 +8,12 @@ import data from '../data/mamre.js';
 
 const START = V(6, 5);
 const TENT = V(-1.5, 2.5);
-const DOOR = TENT.clone().add(V(1.5, -1.5)); // 장막 입구는 돌린 방향(+x → 화면 오른쪽) 밖
+// 장막 입구는 +x(화면 오른쪽 아래)를 본다. 카메라가 (+x, +z)에서 비스듬히 보므로 입구 안에 선 사라가 보인다.
+const HIDE = TENT.clone().add(V(1.35, 0)); // 사라가 숨어 듣는 자리: 입구 천 바로 뒤(창 18:10 장막 문에서 들음)
+const DENY = TENT.clone().add(V(2.15, -0.35)); // 창 18:15 문 밖으로 한 걸음 나와 부인하는 자리
+const PEEK = TENT.clone().add(V(4, -2.2)); // 숨은 사라가 귀를 기울이는 쪽(입구 밖, 상 쪽). 옆얼굴이 보인다
+const INTO =TENT.clone().add(V(2.1, 0.9)); // 장막 둘레를 돌아 입구로 드는 길목(장막 충돌을 가로지르지 않게)
+const DOOR = TENT.clone().add(V(2.0, -1.0)); // 아브라함이 앉아 있던 장막 문 곁
 const OAK = V(-3.2, -3.2); // 마므레 상수리나무
 const ALONG = V(1, -1).normalize();
 const TABLE = OAK.clone().add(V(2.2, 2.2)); // 나무 그늘 앞의 손님상(낮은 깔개)
@@ -20,6 +25,44 @@ const SOURCES = [
   { id: 'curds', name: '엉긴 젖', text: '소 떼 곁에서 엉긴 젖 받기', pos: V(5, 2.2), color: 0xf6f0dc },
 ];
 
+// 땅에 엎드림(창 18:2 몸을 땅에 굽혀): 무릎을 꿇고(몸을 낮춤) 상체와 이마가 땅에 닿도록 숙이며 팔을 앞으로 뻗는다.
+// 공용 bow는 고개 숙임(인사)까지라 여기서 rig와 팔을 직접 움직인다. toward가 있으면 내려가며 그쪽으로 돈다.
+function prostrate(fig, toward) {
+  const u = fig.userData, { rig, arms } = u;
+  u.pose = 'bow';
+  const yaw0 = fig.rotation.y;
+  const turn = toward ? Math.atan2(Math.sin(Math.atan2(toward.x - fig.position.x, toward.z - fig.position.z) - yaw0), Math.cos(Math.atan2(toward.x - fig.position.x, toward.z - fig.position.z) - yaw0)) : 0;
+  const pose = (kneel, lean, reach) => {
+    rig.position.set(0, -0.34 * kneel, -0.18 * lean);
+    rig.rotation.set(1.15 * lean, 0, 0);
+    arms?.forEach((a, i) => { a.rotation.x = -2.75 * reach; a.rotation.z = (i ? 1 : -1) * (0.12 + 0.1 * reach); });
+  };
+  // 무릎 꿇기 → 이마를 땅에 대기(천천히), 끝은 엎드린 채로 둔다. 일어날 때는 rise를 부른다.
+  return tween(650, (p) => { fig.rotation.y = yaw0 + turn * easeOut(p); pose(easeOut(p), 0.25 * easeOut(p), 0); })
+    .then(() => tween(1100, (p) => { const k = easeOut(p); pose(1, 0.25 + 0.75 * k, k); }));
+}
+function rise(fig) {
+  const u = fig.userData, { rig, arms } = u;
+  const y0 = rig.position.y, z0 = rig.position.z, x0 = rig.rotation.x, a0 = arms?.map((a) => a.rotation.x) ?? [];
+  return tween(900, (p) => {
+    const k = easeOut(p);
+    rig.position.set(0, y0 * (1 - k), z0 * (1 - k));
+    rig.rotation.set(x0 * (1 - k), 0, 0);
+    arms?.forEach((a, i) => { a.rotation.x = a0[i] * (1 - k); a.rotation.z = (i ? 1 : -1) * 0.12; });
+  }).then(() => { u.pose = null; });
+}
+// 창 18:12 속으로 웃음: 몸을 움츠려 낮추고 손을 입가로 모은 채 어깨를 들썩인다.
+function giggle(fig) {
+  const u = fig.userData, { rig, arms } = u;
+  u.pose = 'laugh';
+  return tween(1800, (p) => {
+    const e = Math.min(1, p * 5, (1 - p) * 4);
+    rig.position.y = -0.07 * e + Math.abs(Math.sin(p * Math.PI * 9)) * 0.03 * e;
+    rig.rotation.set(0.22 * e, 0, Math.sin(p * Math.PI * 9) * 0.05 * e);
+    arms?.forEach((a, i) => { a.rotation.x = -1.75 * e; a.rotation.z = (i ? 1 : -1) * (0.12 - 0.62 * e); });
+  }).then(() => { u.pose = null; });
+}
+
 export default {
   id: 'mamre',
   data,
@@ -30,12 +73,26 @@ export default {
     const F = makeField({
       scene, seed: 1814, start: START, sky: 0xeee4c8, ground: 0xb3a865,
       stages: { table: { c: toCam(TABLE, 1.8), r: 2.4 } },
-      trees: 10, keep: [...SOURCES.map((s) => s.pos)],
+      trees: 10, keep: [...SOURCES.map((s) => s.pos), HIDE, DENY, INTO],
     });
     const oak = makeTree('round');
     oak.scale.setScalar(2.6);
     F.put(oak, OAK, 0.8);
-    F.put(makeTent(0x5a3a28, 1.2), TENT, 1.6, Math.PI / 4);
+    // 장막: 입구(+x)를 비워 두고 뒤와 양옆만 막는다. 사라가 입구 안쪽에 설 수 있다.
+    const tent = F.put(makeTent(0x5a3a28, 1.2), TENT);
+    for (const [x, z, r] of [[-0.4, 0, 1.3], [0.5, 0.95, 0.6], [0.5, -0.95, 0.6]]) F.block(TENT.clone().add(V(x, z)), r);
+    // 입구: 어두운 안쪽(makeTent의 문)을 사람 키만큼 키우고, 한쪽 천은 걷어 묶고 한쪽 천은 반쯤 드리운다(창 18:10 장막 문 뒤)
+    const [, doorway] = tent.children;
+    doorway.scale.set(1.25, 1.35, 1);
+    doorway.position.y = 0.54 * 1.35;
+    const flapM = mat(0x9a7048, { side: THREE.DoubleSide });
+    // 드리운 천은 입구 가장자리(카메라 쪽)에서 비스듬히 나와 사라의 화면 왼쪽 절반을 가린다. 몸에 박히지 않게 앞으로 0.2 띄운다.
+    const flap = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 1.4), flapM);
+    flap.position.set(1.5, 0.76, 0.4);
+    flap.rotation.y = 0.67;
+    const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.4, 6), flapM);
+    roll.position.set(1.3, 0.7, -0.5);
+    tent.add(flap, roll);
     const rug = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 1.1), mat(0xb8452f));
     rug.position.copy(TABLE).setY(0.03);
     rug.rotation.y = Math.PI / 4;
@@ -60,7 +117,7 @@ export default {
       return d;
     });
     Object.assign(F, { guests, abraham, sarah, servant, dishes, calf, cows });
-    F.spots = { start: START, table: TABLE, door: DOOR, oak: OAK, ...Object.fromEntries(SOURCES.map((s) => [s.id, s.pos])) };
+    F.spots = { start: START, table: TABLE, door: DOOR, hide: HIDE, deny: DENY, into: INTO, oak: OAK, ...Object.fromEntries(SOURCES.map((s) => [s.id, s.pos])) };
     F.solid = ['oak'];
     F.plant();
     return F;
@@ -80,12 +137,13 @@ export default {
     await Promise.all(guests.map((gst, i) => F.acts.walkTo(gst, GUESTS[i], 1.2)));
     guests.forEach((gst) => F.acts.face(gst, TABLE));
     g.note('person/guests');
+    // 창 18:2 달려 나가 땅에 엎드림: 서술과 함께 달려가 무릎 꿇고 이마를 땅에 댄다. "내 주여"는 엎드린 채 말한다.
+    await F.acts.bow(abraham, 0);
+    const bowDown = F.acts.walkTo(abraham, TABLE.clone().addScaledVector(ALONG, 1.8), 2.4).then(() => prostrate(abraham, GUESTS[1]));
     await g.talk(data.lines.arrive.slice(2, 3));
-    await F.acts.bow(abraham, 0);
-    await F.acts.walkTo(abraham, TABLE.clone().addScaledVector(ALONG, 1.8), 2.4);
-    await F.acts.bow(abraham, 0.6);
+    await bowDown;
     await g.talk(data.lines.arrive.slice(3, 4));
-    await F.acts.bow(abraham, 0);
+    await rise(abraham);
     g.note('place/mamre');
     // 아브라함이 장막과 소 떼로 달려간다(창 18:6~7)
     F.acts.walkTo(abraham, DOOR, 2.4);
@@ -114,25 +172,32 @@ export default {
     g.reward('serve-done', 'questDone', null, 'goodness');
     g.note('item/cake');
 
+    // 떡을 내준 사라는 장막으로 들어가 입구 천 뒤에 선다. 장막을 가로지르지 않게 둘레의 길목을 돌아 든다.
+    F.acts.walkTo(sarah, INTO, 1.4).then(() => F.acts.walkTo(sarah, HIDE, 0.9)).then(() => F.acts.face(sarah, PEEK));
     // 막간(창 18:8과 18:9 사이): 손님들이 상을 받는 동안 장막 곁에서 아브라함과 대화한다.
     await F.acts.walkTo(abraham, DOOR.clone().add(V(0.8, -0.6)), 2);
     g.cam(DOOR, 12);
     await g.interlude(abraham);
 
-    // 창 18:8~15 아들의 약속, 사라의 웃음
+    // 창 18:8~15 아들의 약속, 사라의 웃음. 사라가 숨어 있는 동안 장막 입구가 화면에 들도록 비춘다.
     g.cam(TABLE, 12);
-    g.stage('table');
     await F.acts.walkTo(abraham, TABLE.clone().addScaledVector(ALONG, -1.8), 1.8); // 상 왼쪽(장막 쪽). 오른쪽은 비켜 선 관찰자 자리
     F.acts.face(abraham, GUESTS[1]);
-    await F.acts.walkTo(sarah, DOOR.clone().add(V(-0.3, 0.9)), 1.6);
-    F.acts.face(sarah, TABLE);
-    await g.talk(data.lines.served.slice(0, 4));
-    g.cam(sarah.position, 11);
-    await g.talk(data.lines.served.slice(4, 5));
-    g.cam(TABLE, 12);
-    await g.talk(data.lines.served.slice(5, 7));
-    g.cam(sarah.position.clone().lerp(TABLE, 0.5), 12);
-    await g.talk(data.lines.served.slice(7));
+    g.stage('table'); // 아브라함이 선 뒤에 켜야 관찰자가 아브라함과 겹치지 않는 자리로 비킨다
+    if (sarah.position.distanceTo(HIDE) > 0.1) sarah.position.copy(HIDE); // 막간을 아주 빨리 넘겨 아직 걷는 중일 때
+    F.acts.face(sarah, PEEK);
+    const S = data.lines.served;
+    const both = HIDE.clone().lerp(TABLE, 0.5);
+    await g.talk(S, { onLine: (l) => {
+      const k = S.indexOf(l);
+      if (k === 0) g.cam(TABLE, 12);
+      else if (k === 2) g.cam(HIDE, 9.5); // "장막 안에 있습니다": 입구 천 뒤의 사라
+      else if (k === 4) { g.cam(HIDE, 9); giggle(sarah); } // 창 18:12 속으로 웃음
+      else if (k === 7) { g.cam(both, 11); F.acts.walkTo(sarah, DENY, 1.1).then(() => F.acts.face(sarah, GUESTS[1])); } // 창 18:15 한 걸음 나와 부인
+      else if (k === 8) F.acts.bow(sarah, 0.3); // 두려워 고개를 떨군다
+      else g.cam(both, 12);
+    } });
+    await F.acts.bow(sarah, 0);
 
     // 창 18:16~33: 손님들이 소돔 쪽으로 걸어가고, 아브라함이 배웅하며 간구한다(짧게).
     const toward = TABLE.clone().addScaledVector(ALONG, -5).add(V(-1, -1));
