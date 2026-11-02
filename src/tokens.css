@@ -18,7 +18,7 @@
   --color-scrim:   oklch(30% 0.045 50 / 0.45);
 
   /* 글꼴: 큰 제목만 픽셀, 나머지는 프리텐다드 */
-  --font-display: "Galmuri11", "Galmuri14", monospace; /* 큰 제목 전용(게임 느낌) */
+  --font-display: "Galmuri11", monospace; /* 큰 제목 전용(게임 느낌) */
   --font-body: "Pretendard Variable", "Pretendard", system-ui, sans-serif; /* 읽는 글자 전부 */
   --font-small: var(--font-body);
 

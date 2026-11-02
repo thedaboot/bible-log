@@ -1,6 +1,7 @@
 // 3D 디자인 시스템: 모든 장면이 이 파일의 색표(PAL)와 부품만 써서 같은 모양을 유지한다.
 // 지금은 임시 도형이다. 직접 만든 .glb 모델이 나오면 같은 함수 안에서 모델을 불러오도록 바꾼다.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { tween, easeOut } from './anim.js';
 
 // ---------- 색표 ----------
@@ -35,6 +36,29 @@ export const PAL = {
 };
 
 export const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, ...extra });
+
+// 무리 안의 메시를 재질별로 하나씩 합친다(그리는 횟수를 줄인다). 움직이지 않는 장식 부품에만 쓴다.
+export function bake(group) {
+  group.updateMatrixWorld(true);
+  const inv = group.matrixWorld.clone().invert();
+  const byMat = new Map();
+  group.traverse((o) => { if (o.isMesh) { if (!byMat.has(o.material)) byMat.set(o.material, []); byMat.get(o.material).push(o); } });
+  group.clear();
+  for (const [m, list] of byMat) {
+    const geos = list.map((o) => {
+      const geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      o.geometry.dispose();
+      return geo.applyMatrix4(inv.clone().multiply(o.matrixWorld));
+    });
+    group.add(new THREE.Mesh(mergeGeometries(geos), m));
+  }
+  return group;
+}
+
+// 장면을 떠날 때 지오메트리·재질을 GPU에서 내린다(scene.remove만으로는 남는다).
+export function disposeTree(obj) {
+  obj?.traverse((o) => { o.geometry?.dispose(); (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m?.dispose()); });
+}
 const glowMat = (color, intensity = 0.5) => mat(color, { emissive: color, emissiveIntensity: intensity });
 
 // ---------- 구름: 천국과 창조의 하늘이 같은 구름을 쓴다 ----------
@@ -156,6 +180,7 @@ export function makeFigure(spec) {
 
 export function dressFigure(fig, spec) {
   const rig = fig.userData.rig;
+  disposeTree(rig);
   rig.clear();
   fig.userData.height = spec.height ?? 1;
   const ghost = spec.ghost;
@@ -441,7 +466,7 @@ export function makeFruit(kind) {
     case 'date': for (const [x, y] of [[-0.05, 0], [0, 0.02], [0.05, 0], [-0.025, -0.06], [0.025, -0.06]]) ball(0.035, x, y, 0, 0.8, 1.4); break;
     default: ball(0.1, 0, 0, 0);
   }
-  return g;
+  return bake(g);
 }
 
 // kind: 'pine' | 'round' | 'fruit' | 'life'(생명나무) | 'knowledge'(선악을 알게 하는 나무)
@@ -488,6 +513,8 @@ function makePalm() {
   trunk.position.y = 0.95;
   g.add(trunk);
   const leafM = mat(PAL.leafLight);
+  const crown = new THREE.Group();
+  g.add(crown);
   for (let i = 0; i < 7; i++) {
     const a = (i / 7) * Math.PI * 2;
     const pivot = new THREE.Group();
@@ -497,8 +524,9 @@ function makePalm() {
     leaf.position.x = 0.4;
     leaf.rotation.z = -0.35;
     pivot.add(leaf);
-    g.add(pivot);
+    crown.add(pivot);
   }
+  bake(crown);
   g.userData.fruits = [];
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + 0.4;

@@ -101,15 +101,15 @@ export default {
     const water = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 0.2, 24), mat(PAL.water, { transparent: true, opacity: 0.88 }));
     water.position.y = -0.3;
     water.visible = false;
-    const rain = new THREE.Group();
+    // 빗줄기 180개를 메시 하나(InstancedMesh)로 그린다
     const dropM = new THREE.MeshBasicMaterial({ color: 0xbcd4ec, transparent: true, opacity: 0.7 });
-    for (let i = 0; i < 180; i++) {
-      const d = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.55, 0.03), dropM);
-      const a = F.rand() * Math.PI * 2, r = F.rand() * 13;
-      d.position.set(Math.cos(a) * r, F.rand() * 10, Math.sin(a) * r);
-      rain.add(d);
-    }
+    const rain = new THREE.InstancedMesh(new THREE.BoxGeometry(0.03, 0.55, 0.03), dropM, 180);
+    const drops = Array.from({ length: 180 }, () => { const a = F.rand() * Math.PI * 2, r = F.rand() * 13; return new THREE.Vector3(Math.cos(a) * r, F.rand() * 10, Math.sin(a) * r); });
+    const dropM4 = new THREE.Matrix4();
+    const placeDrops = () => { drops.forEach((p, i) => rain.setMatrixAt(i, dropM4.makeTranslation(p.x, p.y, p.z))); rain.instanceMatrix.needsUpdate = true; };
+    placeDrops();
     rain.visible = false;
+    rain.frustumCulled = false; // 기준 도형(원점) 기준으로 잘리지 않게
     // 무지개(창 9:13): 들 끝 하늘에 걸린 반원. 화면을 마주 보게 돌린다.
     const rainbow = new THREE.Group();
     [0xe85a4a, 0xf2a03a, 0xf2d24a, 0x6fbf5a, 0x4a8ad8, 0x7a5ac8].forEach((c, i) => {
@@ -133,9 +133,9 @@ export default {
     raven.visible = dove.visible = false;
     F.group.add(raven, dove);
     F.onUpdate((dt, t) => {
-      if (rain.visible) for (const d of rain.children) { d.position.y -= dt * 14; if (d.position.y < 0) d.position.y += 10; }
+      if (rain.visible) { for (const p of drops) { p.y -= dt * 14; if (p.y < 0) p.y += 10; } placeDrops(); }
       if (water.visible && ark.floating) { ark.g.position.y = Math.max(0, water.position.y - 0.35) + Math.sin(t * 1.4) * 0.05; ark.g.rotation.z = Math.sin(t * 1.1) * 0.03; }
-      for (const b of [raven, dove]) if (b.visible) b.children.slice(1, 3).forEach((w, i) => (w.rotation.x = Math.sin(t * 14) * 0.6 * (i ? 1 : -1)));
+      for (const b of [raven, dove]) if (b.visible) for (const i of [1, 2]) b.children[i].rotation.x = Math.sin(t * 14) * 0.6 * (i === 2 ? 1 : -1);
     });
     // 방주가 지어지는 정도(0~6번 성공): 뼈대 → 판자 → 지붕과 역청
     ark.hull.visible = false;

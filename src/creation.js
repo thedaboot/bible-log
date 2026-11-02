@@ -41,7 +41,8 @@ export function skyState(theta) {
   return { bg: skyColor, hemi: 0.22 + 0.88 * day, sun: 1.4 * smooth(0, 0.25, h), stars: 1 - smooth(-0.2, 0.05, h), glow };
 }
 
-function scaleIn(obj, s) { obj.scale.setScalar(Math.max(0.0001, s)); }
+// 아직 나타나지 않은 물체는 그리지 않는다(크기 0이어도 visible이면 그리는 횟수에 든다)
+function scaleIn(obj, s) { obj.scale.setScalar(Math.max(0.0001, s)); obj.visible = s > 0.001; }
 
 export function makeCreation(scene) {
   const group = new THREE.Group();
@@ -67,7 +68,7 @@ export function makeCreation(scene) {
     const c = makeCloud(1 + Math.random() * 0.5); // 천국 구름과 같은 부품
     const r = 10 + Math.random() * 3; // 바다 위에 두어 땅을 가리지 않게 한다
     c.position.set(Math.cos(a) * r, 6 + Math.random(), Math.sin(a) * r);
-    c.scale.set(0.0001, 0.0001, 0.0001);
+    scaleIn(c, 0);
     clouds.push(c);
     group.add(c);
   }

@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import './style.css';
-import { PAL, makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turnFigure, makeAngel, makeWaypoint, LOOK, LOOK_TABS, DEFAULT_EARTH, earthSpec, makeDressingRoom, makeBasket } from './props.js';
+import { PAL, makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turnFigure, makeAngel, makeWaypoint, LOOK, LOOK_TABS, DEFAULT_EARTH, earthSpec, makeDressingRoom, makeBasket, disposeTree } from './props.js';
 import { makeCreation } from './creation.js';
 import { makeEden, EDEN_RADIUS } from './eden.js';
 import { makeCain, CAIN_RADIUS } from './cain.js';
@@ -43,6 +43,7 @@ let camOffset = CAM_OFFSET;
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
 const ORIGIN = new THREE.Vector3();
 const camTarget = new THREE.Vector3();
+const camTmp = new THREE.Vector3();
 let camFollow = ORIGIN; // 카메라가 따라가는 점(보통은 내 캐릭터)
 let camFocus = null; // 연출 중에 잠시 바라보는 점
 let camAngle = 0;
@@ -363,7 +364,7 @@ async function runCreation(fromDay = 1) {
   heaven.group.visible = player.visible = angel.visible = false;
   angelFollow = false;
   scene.background = new THREE.Color(0x020308);
-  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); }
+  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); }
   creation = makeCreation(scene);
   scene.add(creation.group);
   camera.add(creation.stars);
@@ -528,9 +529,9 @@ const dressWith = (spec) => (look, key) => dressFx(key, look, () => { finishWipe
 const EARTH_OPTIONS = Object.fromEntries(Object.entries(LOOK.earth).filter(([k]) => k !== 'item'));
 async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submit = '이 모습으로 내려가기' } = {}) {
   heaven.group.visible = angel.visible = false;
-  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
-  if (eden) { scene.remove(eden.group); eden = null; }
-  if (field) { scene.remove(field.group); field = null; }
+  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); creation = null; }
+  if (eden) { scene.remove(eden.group); disposeTree(eden.group); eden = null; }
+  if (field) { scene.remove(field.group); disposeTree(field.group); field = null; }
   dressingRoom.visible = player.visible = true;
   showHud(false); // 꾸미기 화면에서는 HUD를 숨긴다
   scene.background = new THREE.Color(0xf6efe2);
@@ -569,8 +570,8 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
 async function runEden(from = 'eden') {
   if (!state.earthLook) await runDressingRoom();
   heaven.group.visible = false;
-  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
-  if (eden) scene.remove(eden.group);
+  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); creation = null; }
+  if (eden) { scene.remove(eden.group); disposeTree(eden.group); }
   eden = makeEden(scene);
   scene.add(eden.group);
   scene.background = eden.sky.clone();
@@ -847,9 +848,9 @@ async function runEdenFall() {
 async function runCain() {
   if (!state.earthLook) await runDressingRoom({ kicker: '들판으로 내려가기 전' });
   heaven.group.visible = false;
-  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
-  if (eden) { scene.remove(eden.group); eden = null; }
-  if (cain) scene.remove(cain.group);
+  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); creation = null; }
+  if (eden) { scene.remove(eden.group); disposeTree(eden.group); eden = null; }
+  if (cain) { scene.remove(cain.group); disposeTree(cain.group); }
   cain = makeCain(scene);
   scene.add(cain.group);
   scene.background = cain.sky.clone();
@@ -1094,10 +1095,10 @@ async function runStage(id) {
   const mod = STAGE_MODS[id];
   if (!state.earthLook) await runDressingRoom({ kicker: mod.kicker ?? '땅으로 내려가기 전' });
   heaven.group.visible = false;
-  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
-  if (eden) { scene.remove(eden.group); eden = null; }
-  if (cain) { scene.remove(cain.group); cain = null; }
-  if (field) scene.remove(field.group);
+  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); creation = null; }
+  if (eden) { scene.remove(eden.group); disposeTree(eden.group); eden = null; }
+  if (cain) { scene.remove(cain.group); disposeTree(cain.group); cain = null; }
+  if (field) { scene.remove(field.group); disposeTree(field.group); }
   field = mod.build(scene);
   scene.add(field.group);
   scene.background = field.sky.clone();
@@ -1243,10 +1244,10 @@ function autoTick(dt) {
 // 빛의 문 → 월드 지도, 기록대 → 도감, 상점 천사 → 상점. 걸어서 닿으면 열리고, 닫으면 한 걸음 물러난다.
 async function runShelter() {
   stopWalk();
-  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
-  if (eden) { scene.remove(eden.group); eden = null; }
-  if (cain) { scene.remove(cain.group); cain = null; }
-  if (field) { scene.remove(field.group); field = null; }
+  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); creation = null; }
+  if (eden) { scene.remove(eden.group); disposeTree(eden.group); eden = null; }
+  if (cain) { scene.remove(cain.group); disposeTree(cain.group); cain = null; }
+  if (field) { scene.remove(field.group); disposeTree(field.group); field = null; }
   if (basket) { player.remove(basket); basket = null; }
   scene.background = new THREE.Color(0xfdf3d8);
   setEdges(true);
@@ -1418,7 +1419,7 @@ function tick() {
   }
   tapped.clear();
   camTarget.lerp(camFocus ?? camFollow, Math.min(1, dt * 4));
-  camera.position.copy(camTarget).add(camOffset.clone().applyAxisAngle(Y_AXIS, camAngle));
+  camera.position.copy(camTarget).add(camTmp.copy(camOffset).applyAxisAngle(Y_AXIS, camAngle));
   camera.lookAt(camTarget);
   composer.render();
   requestAnimationFrame(tick);

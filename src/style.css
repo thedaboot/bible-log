@@ -2,9 +2,16 @@
  * · paper oklch(95% 0.03 85) · accent oklch(58% 0.14 70) gold · Galmuri11 titles only + Pretendard)
  * · axes: light / pixel-display + serif-body / warm · motion: title reveal · dialog rise · day-title
  */
-@import 'galmuri/dist/galmuri.css';
 @import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 @import './tokens.css';
+/* 픽셀 제목 글꼴: 쓰는 Galmuri11 보통 굵기 하나만 싣는다(galmuri.css 전체를 가져오면 11종의 ttf까지 배포물에 실린다) */
+@font-face {
+  font-family: Galmuri11;
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../node_modules/galmuri/dist/Galmuri11.woff2') format('woff2');
+}
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; overflow-x: clip; }
