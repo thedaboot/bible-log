@@ -452,7 +452,7 @@ export function setQuest(quest) {
 const CONTROLS = {
   walk: {
     pc: '<div class="keys"><kbd class="key key--w">W</kbd><kbd class="key key--a">A</kbd><kbd class="key key--s">S</kbd><kbd class="key key--d">D</kbd></div><p>키보드로 걷거나,<br>가고 싶은 곳을 클릭하세요</p>',
-    touch: '<span class="gesture gesture--tap" aria-hidden="true"></span><p>탭하면 그곳으로, 끌면 그 방향으로 걸어요</p>',
+    touch: '<span class="gesture gesture--tap" aria-hidden="true"></span><p>탭하면 그곳으로, 드래그하면 그 방향으로 걸어요</p>',
   },
   look: {
     pc: '<div class="keys keys--row"><kbd class="key key--q">Q</kbd><kbd class="key key--e">E</kbd></div><p>화면을 드래그하거나, Q·E 키를 눌러<br>세상을 둘러보세요</p>',

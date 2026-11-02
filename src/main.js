@@ -141,7 +141,7 @@ const canvas = renderer.domElement;
 // 걷기 입력(2026-11-02 사용자 캡처 S04): 짧게 누르면 그 자리로 걸어가고, 누른 채 끌면 그 자리에 떠 있는 조이스틱이 생겨
 // 끄는 방향으로 걷는다(화면 어디서 눌러도 된다. 모바일 액션 RPG의 흔한 방식). 키보드 걷기와 같은 방향 계산을 쓴다.
 const STICK_DEAD = 12; // 이만큼(px) 끌어야 조이스틱이 된다(그 전에 떼면 탭)
-const STICK_MAX = 48; // 손잡이가 움직이는 반지름(px)
+const STICK_MAX = 40; // 손잡이가 움직이는 반지름(px)
 const stick = { id: null, x: 0, y: 0, dx: 0, dy: 0, on: false };
 const stickEl = $('stick');
 function stickDraw() {
@@ -169,6 +169,7 @@ canvas.addEventListener('pointermove', (e) => {
 for (const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, (e) => {
   dragX = null;
   if (e.pointerId !== stick.id) return;
+  if (mode === 'walk') practiced('walk', LEARN_SEC); // 탭·드래그를 한 번 쓰면 조작 안내를 닫고 다시 띄우지 않는다
   // 끌지 않고 뗐으면 탭: 누른 자리로 걸어간다
   if (!stick.on && ev === 'pointerup' && mode === 'walk') {
     const ndc = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
@@ -267,7 +268,7 @@ let aimPos = null; // 지금 안내하는 목표(개발용 자동 플레이가 �
 function startWalk() { mode = 'walk'; playerFace = null; showControls('walk'); }
 
 // 조작 안내: 그 조작을 게임 시간으로 6초쯤 직접 써 보면 익힌 것으로 보고 다시 띄우지 않는다(state.learned).
-const LEARN_SEC = 6;
+const LEARN_SEC = 2; // 키보드로 이만큼 걸으면 익힌 것으로 본다. 탭·드래그는 한 번 걸으면 바로(2026-11-02 사용자 요청: 처음 조작할 때만)
 const practice = { walk: 0, look: 0 };
 function showControls(kind) { setControls(kind && !state.learned.includes(kind) ? kind : null); }
 function practiced(kind, dt) {
@@ -1067,6 +1068,7 @@ async function runCain() {
 // 자리마다 hits번 성공하면 끝난다. 실패해도 감점 없이 다시 한다. 열매가 자라 있으면 금빛 구간이 넓어진다(assistOf).
 // spot.tool이 있으면 먼저 F로 도구를 써야 행동할 수 있다(예: 물동이에 물 긷기). 다 끝나면 도구를 하나 쓴다(useTool).
 let ch = null;
+const GRACE_MS = 150; // 도전 판정 여유: 누르기 전 이 시간 안에 표시가 금빛 구간에 있었으면 성공(터치·화면 지연)
 function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, speed = CHALLENGE.speed }) {
   return new Promise((resolve) => {
     const assist = assistOf(state, fruits);
@@ -1089,7 +1091,15 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       const sp = ch?.near;
       if (!sp || mode !== 'walk' || ch.busy) return;
       if (!sp.ready) { label(`${isTouch() ? '' : 'F 키로 '}${toolName} 먼저 쓰기`); flash('is-miss'); return; }
-      if (ch.m < ch.zone[0] || ch.m > ch.zone[1]) { label('다시 해 보세요'); flash('is-miss'); return; }
+      // 판정(2026-11-02 S20 "구간에 들어왔는데 안 될 때가 많다"): 눈에 보인 표시는 몇 프레임 전 자리이고, 터치는 손을 댄 뒤
+      // 조금 늦게 온다. 표시는 0.1초에 구간 폭(0.12)만큼 움직여서 그 사이에 구간을 벗어났다. 최근 GRACE_MS 안에 구간에 있었으면 성공이다.
+      const now = performance.now();
+      const inZone = (m) => m >= ch.zone[0] && m <= ch.zone[1];
+      if (!inZone(ch.m) && !ch.hist.some((h) => now - h.t <= GRACE_MS && inZone(h.m))) { label('다시 해 보세요'); flash('is-miss'); return; }
+      // 구간 한가운데(가운데 40%)에 맞히면 "딱 맞아요"
+      const mid = (ch.zone[0] + ch.zone[1]) / 2, half = (ch.zone[1] - ch.zone[0]) / 2;
+      const best = Math.min(Math.abs(ch.m - mid), ...ch.hist.filter((h) => now - h.t <= GRACE_MS).map((h) => Math.abs(h.m - mid)));
+      label(best <= half * 0.4 ? '딱 맞아요!' : '좋아요!');
       flash('is-hit');
       sp.n++;
       ch.busy = true;
@@ -1125,11 +1135,14 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       if (e.code === 'Space') { e.preventDefault(); act(); }
       if (e.code === 'KeyF') { e.preventDefault(); useIt(); }
     };
-    ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, panel, busy: false, msg: '', msgT: 0, toolName };
+    ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, panel, busy: false, msg: '', msgT: 0, toolName, hist: [] };
     newZone();
     addEventListener('keydown', onKey);
-    $('chAct').onclick = act;
-    $('chTool').onclick = useIt;
+    // 버튼은 손이 닿는 순간(pointerdown)에 판정한다. click은 손을 뗀 뒤에 와서 늦다. 키보드(Enter)로 누른 click만 따로 받는다.
+    $('chAct').onpointerdown = (e) => { e.preventDefault(); act(); };
+    $('chAct').onclick = (e) => { if (e.detail === 0) act(); };
+    $('chTool').onpointerdown = (e) => { e.preventDefault(); useIt(); };
+    $('chTool').onclick = (e) => { if (e.detail === 0) useIt(); };
     aimNearest = () => {
       let best = null, bd = Infinity;
       for (const x of left) { const d = x.pos.distanceTo(player.position); if (d < bd) { bd = d; best = x; } }
@@ -1157,6 +1170,10 @@ function challengeTick(dt) {
   ch.m += ch.dir * ch.speed * dt;
   if (ch.m > 1) { ch.m = 1; ch.dir = -1; }
   if (ch.m < 0) { ch.m = 0; ch.dir = 1; }
+  // 최근 표시 자리(판정 여유용). GRACE_MS보다 오래된 것은 버린다
+  const now = performance.now();
+  ch.hist.push({ t: now, m: ch.m });
+  while (ch.hist.length && now - ch.hist[0].t > GRACE_MS) ch.hist.shift();
   $('chMark').style.transform = `translateX(${ch.m * $('chTrack').clientWidth}px)`;
   ch.panel.classList.toggle('is-gold', near.ready && ch.m >= ch.zone[0] && ch.m <= ch.zone[1]);
   ch.msgT -= dt;
