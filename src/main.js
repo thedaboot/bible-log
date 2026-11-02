@@ -48,6 +48,7 @@ let camFollow = ORIGIN; // 카메라가 따라가는 점(보통은 내 캐릭터
 let camFocus = null; // 연출 중에 잠시 바라보는 점
 let camAngle = 0;
 let viewSize = 14;
+let creation = null; // 창조의 일곱 날 장면(있으면 세로 화면도 전체 폭을 본다, resize)
 let titleView = true; // 첫 화면: 장면을 천천히 돌린다
 // 화면 한쪽에 메뉴·패널이 있을 때 장면을 반대쪽으로 민다(가로 화면은 x, 세로 화면은 y 비율)
 let viewShift = { x: -0.2, y: 0.22 };
@@ -66,10 +67,11 @@ function setEdges(on) {
 function sideView(on) { viewShift = on ? { x: 0.2, y: 0.2 } : null; resize(); }
 function resize() {
   const w = innerWidth, h = innerHeight, aspect = w / h;
-  // 세로 화면(휴대폰): 높이 기준으로만 넓히면 가로로 보이는 폭이 데스크톱의 3분의 1로 줄어
-  // 창조의 영·땅·문 같은 대상이 화면 밖으로 나간다. 가로 폭이 적어도 viewSize만큼 보이게 높이를 늘린다.
-  const view = aspect < 1 ? Math.max(viewSize * 1.35, viewSize / aspect) : viewSize;
-  pixelPass.setPixelSize(w < 640 ? 3 : 4); // 작은 화면은 장면이 작아지는 만큼 픽셀도 작게(인물이 뭉개지지 않게)
+  // 세로 화면(휴대폰): 높이 기준으로만 넓히면 가로로 보이는 폭이 데스크톱의 3분의 1로 줄어 대상이 화면 밖으로 나가고,
+  // 가로 폭을 viewSize 전체로 맞추면 인물이 너무 작아진다(2026-11-02 사용자 캡처 S01). 가로 폭을 viewSize의 0.72배로 두고
+  // 화면 밖 목표는 가장자리 화살표가 가리킨다. 창조의 일곱 날만 하늘과 땅 전체를 봐야 해서 viewSize 전체 폭이다.
+  const fitW = creation ? 1 : 0.72;
+  const view = aspect < 1 ? Math.max(viewSize * 1.35, (viewSize * fitW) / aspect) : viewSize;
   camera.left = (-view * aspect) / 2;
   camera.right = (view * aspect) / 2;
   camera.top = view / 2;
@@ -113,7 +115,6 @@ function edgeArrow() {
 }
 const dressingRoom = makeDressingRoom();
 scene.add(heaven.group, player, angel, waypoint.group, dressingRoom);
-let creation = null;
 let eden = null;
 let cain = null;
 let field = null; // 1-4부터의 스테이지 장면(field.js)
@@ -355,8 +356,8 @@ async function runPrologue() {
   await say(PROLOGUE.intro, state);
   if (!state.name) {
     state.name = await askName();
-    // 꾸미는 동안 내 캐릭터를 가까이에서 정면으로 보여 준다
-    setView(7);
+    // 꾸미는 동안 내 캐릭터를 가까이에서 정면으로 보여 준다(세로 화면은 아래 시트 위쪽 절반에 크게)
+    setView(innerWidth < innerHeight ? 5 : 7);
     player.rotation.y = Math.PI / 4;
     turntable = true;
     sideView(true);

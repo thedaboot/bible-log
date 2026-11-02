@@ -24,6 +24,10 @@ body {
   overflow-wrap: break-word;
 }
 canvas { display: block; touch-action: none; image-rendering: pixelated; }
+/* 웹앱: 두 번 탭해 확대되지 않게(손가락 탭은 바로 누름으로), iOS 탭 회색 바탕을 없앤다. 버튼은 글자색·글꼴을 물려받는다(iOS 기본 파란 글자 방지) */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+* { -webkit-tap-highlight-color: transparent; }
+button { color: inherit; font-family: inherit; }
 [hidden] { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
@@ -215,8 +219,7 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
   letter-spacing: -0.01em;
   word-break: keep-all;
   overflow-wrap: anywhere;
-  text-wrap: balance;
-  white-space: pre-line;
+  white-space: pre-line; /* 줄과 쪽은 ui.js paginate가 글자 폭을 재서 나눈다 */
 }
 /* 글자가 한 자씩 나올 때 아직 안 나온 글자도 자리를 차지하게 해서, 단어가 줄 끝에서 튀지 않게 한다 */
 .dialog__rest { visibility: hidden; }
@@ -225,7 +228,7 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
   grid-template-columns: 1fr auto;
   align-items: center;
   column-gap: var(--space-sm);
-  min-height: 24px;
+  min-height: 32px; /* '이전' 버튼이 있든 없든 같은 높이(선택지가 뜰 때 대사 창이 줄었다 늘지 않게) */
   margin-top: calc(var(--pad) - 10px);
   padding-top: var(--space-2xs);
   box-shadow: inset 0 1px 0 var(--color-paper-3);
@@ -270,12 +273,13 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
 .dialog__back::before { content: ''; flex: none; width: 7px; height: 9px; background: currentColor; clip-path: polygon(100% 0, 100% 100%, 0 50%); }
 @media (hover: hover) { .dialog__back:hover { color: var(--color-frame); background: var(--color-paper-3); } }
 .dialog__back:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+/* ▼(다음): 본문 마지막 글자 바로 뒤에 붙는다(ui.js say의 paint) */
 .dialog__next {
-  position: absolute;
-  right: 0;
-  bottom: 0.5em;
-  width: 12px;
-  height: 9px;
+  display: inline-block;
+  margin-left: 0.4em;
+  vertical-align: 0.1em;
+  width: 10px;
+  height: 8px;
   background: var(--color-frame);
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   animation: nudge 800ms steps(2) infinite;
@@ -968,7 +972,8 @@ body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
 .choice__key { display: grid; place-items: center; width: 24px; height: 24px; font: 800 var(--text-label) / 1 var(--font-body); color: var(--color-paper); background: var(--color-frame); }
 .choice__text { word-break: keep-all; text-wrap: balance; } /* 선택지는 문장이라 말줄임으로 자르지 않는다(두 줄까지) */
 /* 열매 단계로 열린 선택지: 새싹 표시와 열매 이름 */
-.choice__mark { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 4px; font-size: var(--text-label); font-weight: 800; white-space: nowrap; color: var(--color-frame); background: var(--color-gold); }
+/* 열매로 열린 선택지 꼬리표: 새싹과 열매 이름을 금빛 테두리 작은 칸에(글자 줄 끝에 붙는다) */
+.choice__mark { justify-self: end; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 5px; font-size: var(--text-label); font-weight: 800; white-space: nowrap; color: var(--color-accent-ink); background: var(--color-light); box-shadow: inset 0 0 0 2px var(--color-accent); }
 .choice__mark .px-icon { width: 16px; height: 16px; }
 .choice:has(.choice__mark) { box-shadow: 0 0 0 var(--px) var(--color-accent), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); }
 @media (hover: none), (pointer: coarse) { .choice__key { display: none; } .choices { left: var(--space-md); right: var(--space-md); width: auto; } }
@@ -1109,7 +1114,8 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
   .choices { left: auto; right: max(var(--space-xs), env(safe-area-inset-right)); width: min(22rem, calc(100% - var(--space-xs) * 2)); gap: 0; padding: var(--space-2xs) 0; background: var(--color-paper); box-shadow: 0 0 0 var(--px) var(--color-frame), inset 0 0 0 var(--px) var(--color-paper-2), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); }
   .choice { min-height: var(--hit); padding: var(--space-2xs) var(--space-sm); background: none; box-shadow: none; font-size: var(--text-lede); animation-name: rise-in; }
   .choice + .choice { box-shadow: inset 0 2px 0 var(--color-paper-2); }
-  .choice:has(.choice__mark) { box-shadow: none; }
+  .choice:has(.choice__mark) { box-shadow: inset 0 2px 0 var(--color-paper-2); }
+  .choice:first-child:has(.choice__mark) { box-shadow: none; }
   .choice:focus-visible { outline: none; background: var(--color-paper-2); }
   .choice::before { visibility: visible; opacity: 0.25; }
   .choice:focus-visible::before, .choice:active::before { opacity: 1; }
@@ -1154,7 +1160,11 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
 /* 휴대폰: 천국 모습 고르기(옆 창)는 아래 절반 시트로. 위쪽에 내 캐릭터가 보이고, 그동안 HUD는 숨긴다 */
 @media (max-width: 39.99rem) {
   #lookForm.modal--side:not(.modal--page) { padding: 0; place-items: end stretch; }
-  #lookForm.modal--side:not(.modal--page) > .modal__panel { width: 100%; max-height: 52dvh; overflow-y: auto; padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); animation-name: sheet-up; }
+  /* 스크롤 없이 한눈에: 칩은 세 칸, 간격은 줄이고 시트 높이는 내용만큼(2026-11-02 사용자 캡처 S03) */
+  #lookForm.modal--side:not(.modal--page) > .modal__panel { width: 100%; max-height: none; overflow: visible; gap: var(--space-sm); padding-top: var(--space-md); padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); animation-name: sheet-up; }
+  #lookForm.modal--side:not(.modal--page) .look__group:has(.chip) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #lookForm.modal--side:not(.modal--page) .swatch { width: 40px; height: 40px; }
+  #lookForm.modal--side:not(.modal--page) .chip { min-height: var(--hit); }
   body:has(#lookForm:not([hidden])) .hud { display: none; }
 }
 @media (max-width: 39.99rem) {
@@ -1207,7 +1217,6 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
 .dialog__body { position: relative; }
 .dialog__line { align-content: start; }
 /* ▼는 본문 폭을 줄이지 않게 창의 오른쪽 여백 안에 둔다 */
-.dialog__next { right: calc(-1 * var(--pad) + 4px); width: 10px; height: 8px; }
 .dialog[data-who="voice"] .dialog__line, .dialog[data-who="elohim"] .dialog__line { align-content: center; padding-inline: 1.5rem; }
 
 /* ---------- 보상 표시(2026-11-02): HUD에서 떠오르는 숫자, HUD 아래로 내려오는 배너 ---------- */

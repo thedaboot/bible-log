@@ -19,6 +19,7 @@ import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, 
 import { ITEMS } from '../src/data/items.js';
 import { ITEM_ICONS } from '../src/icons.js';
 import { STAGE_MODS } from '../src/stages/index.js';
+import { pagesOf, MAX_LINES, BOUND, NUMERAL } from '../src/ui.js';
 
 const MODS = Object.values(STAGE_MODS);
 // 스테이지 데이터의 대사 묶음과 막간(steps를 [위치, 대사] 목록으로 펼친다)
@@ -106,6 +107,28 @@ for (const [where, lines] of groups) {
   }
 }
 assert.deepEqual(problems, [], '줄바꿈 2판 위반');
+// 휴대폰 대사 쪽 나누기(ui.md "대사 창"): 375px 폭 18px 글자(하나님 말씀은 1.1배, 좌우 여백 1.5rem 더)로 셈한 폭에서
+// 한 쪽은 두 줄(하나님 말씀 세 줄)까지, 한 대사는 세 쪽까지다. 꾸미는 말·수 관형사와 그 뒤 말 사이에서 줄이 끊기면 안 된다.
+// 글자 폭은 근사값이다: 한글 1em, 띄어쓰기 0.28em, 그 밖 0.55em(프리텐다드 실측 비율에 가깝게).
+{
+  const em = (t) => [...t].reduce((a, c) => a + (/[가-힣]/.test(c) ? 1 : c === ' ' ? 0.28 : 0.55), 0);
+  const roomEm = (who) => (who in MAX_LINES ? (375 - 24 - 32 - 48) / (18 * 1.1) - 1.1 : (375 - 24 - 32) / 18 - 1.1);
+  const bad = [];
+  for (const [where, lines] of groups) for (const [i, l] of lines.entries()) {
+    const pages = pagesOf(fill(l.text, { name: '요한' }), roomEm(l.who), em, MAX_LINES[l.who] ?? 2);
+    if (pages.length > 3) bad.push(`${where}[${i}]: 휴대폰에서 ${pages.length}쪽(세 쪽까지)`);
+    for (const pg of pages) {
+      const ls = pg.split('\n');
+      for (let k = 1; k < ls.length; k++) {
+        const prev = ls[k - 1].split(' ').at(-1), next = ls[k].split(' ')[0];
+        if (!/[.?!,…]$/.test(prev) && (NUMERAL.test(prev) || BOUND.test(next))) bad.push(`${where}[${i}]: "${prev} / ${next}"에서 줄이 끊긴다`);
+      }
+    }
+  }
+  assert.deepEqual(bad, [], '휴대폰 대사 쪽 나누기');
+  assert.deepEqual(pagesOf('그렇지 않다. 가인을 죽이는 자는 일곱 배로 벌을 받을 것이다.', 13, em, 3), ['그렇지 않다.\n가인을 죽이는 자는\n일곱 배로 벌을 받을 것이다.']);
+}
+
 assert.equal(RIVERS.length, 4, '강은 네 줄기');
 assert.ok(ANIMALS.every((a) => a.name && a.size > 0), '동물 데이터 오류');
 for (const [i, q] of [...QUIZ, ...CAIN_QUIZ, ...MODS.flatMap((m) => m.data.quiz)].entries()) {

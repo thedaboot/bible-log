@@ -21,44 +21,113 @@ const TYPE_MS = 32; // 한 글자가 나오는 간격
 // onLine(line, i): 대사가 화면에 나올 때마다 부른다(대사에 맞춰 카메라·연출을 바꿀 때 쓴다).
 // choices: 마지막 대사가 다 나오면 대사 창 위에 선택지 패널을 띄우고, 고른 번호(0부터)로 끝난다.
 // 선택지는 [{ text, mark }]이고 mark(열매 이름)가 있으면 새싹 표시를 단다. PC는 1~4 키로도 고른다.
-// 좁은 화면에서 대사의 한 줄이 화면 한 줄을 넘으면, 그 줄을 가운데에 가까운 문장·쉼표 경계에서 나눈다
-// ("하나 / 남았소", "부어 / 보아요"처럼 말 중간에서 접히지 않게). 경계가 없으면 브라우저 줄바꿈에 맡긴다.
 let measureCtx = null; // 처음 쓸 때 만든다(npm run check는 document 없이 이 파일을 불러온다)
-export function fitLine(text, el) {
-  if (!el.clientWidth) return text;
+
+// 대사 한 줄(데이터)을 화면 폭에 맞춰 줄과 쪽으로 나눈다(ui.md "대사 창").
+// - 줄: 실제 글자 폭을 재서, 줄 수가 가장 적고 줄 길이가 고른 자리에서 나눈다. 문장 끝·데이터 줄바꿈 뒤가 가장 좋고,
+//   쉼표 뒤가 그다음이다. 한 어절만 남는 줄은 피한다("일곱 / 배로" 같은 끊김을 막는다).
+// - 쪽: 한 쪽은 maxLines 줄까지다(일반 대사 2줄, 하나님 말씀 3줄). 넘치면 문장 경계에서 쪽을 나눈다.
+//   데이터는 그대로 두고 화면에서만 나누므로 스테이지 코드의 대사 번호(slice, onLine의 i)는 바뀌지 않는다.
+export const MAX_LINES = { voice: 3, elohim: 3 };
+const maxLinesOf = (who) => MAX_LINES[who] ?? 2;
+// 줄을 나누는 자리의 값(작을수록 좋다). 0 문장 끝·데이터 줄바꿈, 1 쉼표, 2 그 밖의 띄어쓰기.
+const tierOf = (word) => (word.brk || /[.?!…]["'」)]?$/.test(word.t) ? 0 : /[,]$/.test(word.t) ? 1 : 2);
+// 띄어쓰기에서 나눌 때: 조사·연결어미 뒤만 자연스럽다. 그 밖(꾸미는 말 뒤 "바꿀 / 수는", 수 관형사 뒤 "일곱 / 배로",
+// 의존 명사 뒤 "수는 / 없지만")은 줄을 하나 더 쓰는 것(1000)보다 나쁘게 쳐서, 문장·쉼표 경계에서 나누거나 쪽을 넘긴다.
+export const BOUND = /^(수|것|줄|때|데|만큼|뿐|척|듯)(은|는|이|가|을|를|도|만|에|에는|로|으로|와|과|이에요|예요|입니다|이다)?[.,?!]*$/; // 의존 명사(단위는 NUMERAL이 맡는다)
+export const NUMERAL = /^(한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|스무|백|천|만|첫|온갖|모든)$/;
+const SOFT = /(고|며|서|면|지만|는데|니|니까|도록|게|도|를|을|에|에서|에게|께|께서|과|와|으로|로|은|는|이|가|만|까지|부터|처럼|보다|요)$/;
+function breakCost(word, next) {
+  const tier = tierOf(word);
+  if (tier === 0) return 0;
+  if (tier === 1) return 0.06;
+  if ((next && BOUND.test(next.t)) || NUMERAL.test(word.t)) return 2000;
+  if (BOUND.test(word.t) || !SOFT.test(word.t)) return 1200;
+  return 0.3;
+}
+function breakLines(words, room, wid, sp) {
+  const n = words.length;
+  const best = new Array(n + 1).fill(Infinity), from = new Array(n + 1).fill(0);
+  best[0] = 0;
+  for (let j = 1; j <= n; j++) {
+    let lw = -sp;
+    for (let i = j - 1; i >= 0; i--) {
+      lw += wid[i] + sp;
+      if (lw > room && i < j - 1) break;
+      const slack = Math.max(0, room - lw) / room;
+      const last = j === n;
+      let c = best[i] + 1000 + (last ? 0.4 : 1) * slack * slack + (last ? 0 : breakCost(words[j - 1], words[j]));
+      if (last && j - i === 1 && n > 2) c += 0.6; // 마지막 줄에 한 어절만 남지 않게
+      if (lw > room) c += 1e6; // 한 어절이 줄보다 길면 어쩔 수 없이 넘친다
+      if (c < best[j]) { best[j] = c; from[j] = i; }
+    }
+  }
+  const lines = [];
+  for (let j = n; j > 0; j = from[j]) lines.unshift(words.slice(from[j], j).map((w) => w.t).join(' '));
+  return lines;
+}
+// 글자 폭을 재는 함수(measure)와 한 줄 폭(room)으로 쪽을 나눈다. 화면 없이도 돌아서 npm run check가 점검에 쓴다.
+export function pagesOf(text, room, measure, maxLines = 2) {
+  const words = text.split('\n').flatMap((seg) => {
+    const ws = seg.split(/\s+/).filter(Boolean).map((t) => ({ t }));
+    if (ws.length) ws[ws.length - 1].brk = true;
+    return ws;
+  });
+  if (words.length) words[words.length - 1].brk = false;
+  const sp = measure(' ');
+  const wid = words.map((w) => measure(w.t));
+  const pages = [];
+  let at = 0;
+  while (at < words.length) {
+    const rest = words.slice(at), rw = wid.slice(at);
+    const all = breakLines(rest, room, rw, sp);
+    if (all.length <= maxLines) { pages.push(all.join('\n')); break; }
+    // 이 쪽에 들어가는 가장 긴 앞부분을, 좋은 경계(문장 끝 > 쉼표 > 띄어쓰기) 순으로 찾는다
+    const linesOf = (k) => breakLines(rest.slice(0, k), room, rw.slice(0, k), sp).length;
+    let cut = -1;
+    for (const tier of [0, 1, 2]) {
+      let k = rest.length - 1;
+      while (k >= 1 && !(tierOf(rest[k - 1]) <= tier && linesOf(k) <= maxLines)) k -= 1;
+      // 문장 끝이면 짧아도 한 쪽으로, 쉼표면 두 줄을 채울 때만 쓴다(아니면 띄어쓰기에서 더 길게)
+      if (k >= 1 && (tier !== 1 || linesOf(k) >= Math.min(2, maxLines))) { cut = k; break; }
+    }
+    if (cut < 1) cut = 1;
+    pages.push(breakLines(rest.slice(0, cut), room, rw.slice(0, cut), sp).join('\n'));
+    at += cut;
+  }
+  return pages;
+}
+export function paginate(text, el, maxLines = 2) {
+  if (!el.clientWidth) return [text];
   measureCtx ??= document.createElement('canvas').getContext('2d');
   const cs = getComputedStyle(el);
   measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-  const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  const split = (line) => {
-    if (measureCtx.measureText(line).width <= room) return line;
-    let best = -1;
-    for (const m of line.matchAll(/[.?!,] /g)) {
-      const k = m.index + 1;
-      if (best < 0 || Math.abs(k - line.length / 2) < Math.abs(best - line.length / 2)) best = k;
-    }
-    // 쉼표·마침표가 없으면 가운데에 가까운 띄어쓰기에서 나눠 두 줄 길이를 맞춘다("어디 / 있습니까?"처럼 한 어절만 남지 않게)
-    if (best < 0) for (const m of line.matchAll(/ /g)) if (best < 0 || Math.abs(m.index - line.length / 2) < Math.abs(best - line.length / 2)) best = m.index;
-    return best < 0 ? line : `${split(line.slice(0, best).trimEnd())}\n${split(line.slice(best + 1))}`;
-  };
-  return text.split('\n').map(split).join('\n');
+  // 줄 끝 ▼ 자리(1em)를 남긴다
+  const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.fontSize) * 1.1;
+  return pagesOf(text, room, (t) => measureCtx.measureText(t).width, maxLines);
 }
 
 export function say(lines, ctx, { onLine, choices = null } = {}) {
   const box = $('dialog');
   const lineEl = $('line');
   return new Promise((resolve) => {
-    let i = 0;
+    let i = 0; // 다음에 보일 데이터 줄
+    let pages = []; // 지금 데이터 줄을 화면 폭에 맞춰 나눈 쪽들
+    let p = 0; // 지금 보이는 쪽
     let timer = null;
     let full = '';
 
     let choosing = false;
+    const atEnd = () => i >= lines.length && p >= pages.length - 1;
+    // 본문과 ▼: ▼는 본문 마지막 글자 바로 뒤에 붙는다(오른쪽 끝에 떨어져 있지 않게)
+    const caret = () => { const c = document.createElement('span'); c.className = 'dialog__next'; c.setAttribute('aria-hidden', 'true'); return c; };
+    const paint = (...nodes) => { const w = document.createElement('span'); w.append(...nodes, caret()); lineEl.replaceChildren(w); };
     const finishTyping = () => {
       clearInterval(timer);
       timer = null;
-      lineEl.textContent = full;
+      paint(full);
       delete box.dataset.typing;
-      if (choices && i >= lines.length) openChoices();
+      if (choices && atEnd()) openChoices();
     };
     const done = (value) => {
       box.hidden = true;
@@ -74,13 +143,20 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
       choosing = true;
       back.hidden = true;
       const panel = $('choices');
-      panel.replaceChildren(...choices.map((c, n) => {
+      // 보이는 순서: 말 → 열매로 열린 말 → 괄호 속 몸짓("(말없이 곁에 앉는다)")은 맨 아래. 고른 값은 데이터 순서 번호다.
+      const order = choices.map((c, n) => n).sort((a, b) => {
+        const rank = (c) => (/^\(/.test(c.text) ? 2 : c.mark ? 1 : 0);
+        return rank(choices[a]) - rank(choices[b]) || a - b;
+      });
+      panel.replaceChildren(...order.map((n, shown) => {
+        const c = choices[n];
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'choice';
+        b.dataset.n = n;
         const key = document.createElement('kbd');
         key.className = 'choice__key';
-        key.textContent = n + 1;
+        key.textContent = shown + 1;
         const text = document.createElement('span');
         text.className = 'choice__text';
         text.textContent = fill(c.text, ctx);
@@ -95,40 +171,29 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
         b.onclick = (e) => { e.stopPropagation(); done(n); };
         return b;
       }));
-      // 대사 창 바로 위에 띄운다(대사 창 높이는 대사마다 달라서 그때 잰다)
-      panel.style.bottom = `${innerHeight - box.getBoundingClientRect().top + 28}px`; // 이름표가 대사 창 위로 솟아 있어서 그만큼 띄운다
+      // 대사 창 이름표 위에 띄운다(이름표가 대사 창 위로 솟아 있어 그 높이까지 피한다). 대사 창 높이는 대사마다 달라서 그때 잰다.
+      const tag = $('speaker');
+      const top = tag.offsetHeight ? tag.getBoundingClientRect().top : box.getBoundingClientRect().top;
+      panel.style.bottom = `${innerHeight - top + 10}px`;
       panel.hidden = false;
       panel.querySelector('button').focus({ preventScroll: true });
     };
 
     const back = $('dialogBack');
     const onClick = () => show();
-    // instant: 이전 대사로 돌아갈 때는 타자 효과 없이 바로 보여 준다
-    const show = (instant = false) => {
-      if (timer) { finishTyping(); return; }
-      if (i >= lines.length) {
-        if (choices) { openChoices(); return; } // 선택지가 있으면 고를 때까지 마지막 대사에 머문다
-        done();
-        return;
-      }
-      const l = lines[i++];
-      back.hidden = i < 2;
-      onLine?.(l, i - 1);
-      full = fitLine(fill(l.text, ctx), lineEl);
-      box.dataset.who = l.who;
-      $('speaker').textContent = SPEAKERS[l.who];
-      $('ref').textContent = l.ref ?? '';
-      $('srLine').textContent = `${SPEAKERS[l.who] ? SPEAKERS[l.who] + ': ' : ''}${full}`;
-      if (instant === true || reducedMotion()) { lineEl.textContent = full; if (choices && i >= lines.length) openChoices(); return; }
+    // 지금 쪽(pages[p])을 보여 준다. instant: 이전 대사로 돌아갈 때는 타자 효과 없이 바로 보여 준다
+    const render = (instant) => {
+      full = pages[p];
+      back.hidden = i < 2 && p === 0;
+      $('srLine').textContent = `${SPEAKERS[lines[i - 1].who] ? SPEAKERS[lines[i - 1].who] + ': ' : ''}${full}`;
+      if (instant === true || reducedMotion()) { paint(full); if (choices && atEnd()) openChoices(); return; }
       // 아직 안 나온 글자(rest)도 숨긴 채 자리를 차지하게 해서, 줄바꿈 위치가 처음부터 고정된다
       let n = 0;
       const typed = document.createElement('span');
       const rest = document.createElement('span');
       rest.className = 'dialog__rest';
       rest.textContent = full;
-      const wrap = document.createElement('span');
-      wrap.append(typed, rest);
-      lineEl.replaceChildren(wrap);
+      paint(typed, rest);
       box.dataset.typing = '';
       timer = setInterval(() => {
         n += 1;
@@ -137,18 +202,43 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
         if (n >= full.length) finishTyping();
       }, TYPE_MS);
     };
+    // 데이터 줄 하나를 열고(이름표·장절·연출), 쪽으로 나눈다. last면 그 줄의 마지막 쪽을 연다.
+    const open = (last = false) => {
+      const l = lines[i++];
+      onLine?.(l, i - 1);
+      box.dataset.who = l.who; // 하나님 말씀은 글자 크기가 달라서, 재기 전에 먼저 정한다
+      $('speaker').textContent = SPEAKERS[l.who];
+      $('ref').textContent = l.ref ?? '';
+      pages = paginate(fill(l.text, ctx), lineEl, maxLinesOf(l.who));
+      p = last ? pages.length - 1 : 0;
+    };
+    const show = (instant = false) => {
+      if (timer) { finishTyping(); return; }
+      if (p < pages.length - 1) { p += 1; render(instant); return; }
+      if (i >= lines.length) {
+        if (choices) { openChoices(); return; } // 선택지가 있으면 고를 때까지 마지막 대사에 머문다
+        done();
+        return;
+      }
+      open();
+      render(instant);
+    };
 
-    // 이전 대사: 이 섹션(say 한 번) 안에서만 돌아간다. onLine을 다시 불러 카메라·연출을 그 대사에 맞춘다.
+    // 이전 대사: 이 섹션(say 한 번) 안에서만 돌아간다. 한 대사가 여러 쪽이면 쪽부터 되돌린다.
+    // 줄을 되돌릴 때는 onLine을 다시 불러 카메라·연출을 그 대사에 맞춘다.
     const goBack = () => {
-      if (i < 2 || choosing) return;
+      if (choosing || (i < 2 && p === 0)) return;
       if (timer) finishTyping();
+      if (p > 0) { p -= 1; render(true); return; }
       i -= 2;
-      show(true);
+      open(true);
+      render(true);
     };
     const onKey = (e) => {
       if (choosing) {
         const n = Number(e.key) - 1;
-        if (n >= 0 && n < choices.length) { e.preventDefault(); done(n); }
+        const btns = [...$('choices').querySelectorAll('button')];
+        if (n >= 0 && n < btns.length) { e.preventDefault(); btns[n].click(); }
         if (e.code === 'ArrowDown' || e.code === 'ArrowUp') { e.preventDefault(); moveFocus($('choices'), e.code === 'ArrowDown' ? 1 : -1); }
         return; // 고르는 동안 Space·Enter는 포커스된 선택지 버튼이 받는다
       }
@@ -170,13 +260,18 @@ export function askName() {
   form.hidden = false;
   input.value = '';
   input.removeAttribute('aria-invalid');
-  // 화면 키보드가 올라오면 보이는 영역(visualViewport)이 줄어든다. 창 영역을 그 영역에 맞춰 입력 창이 키보드 위 가운데에 오게 한다.
+  // 화면 키보드가 올라오면 보이는 영역(visualViewport)이 줄어든다. 어두운 바탕은 화면 전체(키보드 뒤까지)를 덮은 채로 두고,
+  // 위아래 여백만 보이는 영역에 맞춰 입력 창이 키보드 위 가운데에 오게 한다(창 영역을 줄였더니 키보드 위 띠가 덮이지 않았다).
   const vv = globalThis.visualViewport;
-  const fit = () => { if (!vv) return; form.style.top = `${vv.offsetTop}px`; form.style.height = `${vv.height}px`; form.style.bottom = 'auto'; };
+  const fit = () => {
+    if (!vv) return;
+    form.style.paddingTop = `${vv.offsetTop + 16}px`;
+    form.style.paddingBottom = `${Math.max(16, innerHeight - vv.offsetTop - vv.height + 16)}px`;
+  };
   fit();
   vv?.addEventListener('resize', fit);
   vv?.addEventListener('scroll', fit);
-  const unfit = () => { vv?.removeEventListener('resize', fit); vv?.removeEventListener('scroll', fit); form.style.top = form.style.height = form.style.bottom = ''; };
+  const unfit = () => { vv?.removeEventListener('resize', fit); vv?.removeEventListener('scroll', fit); form.style.paddingTop = form.style.paddingBottom = ''; };
   input.focus({ preventScroll: true });
   return new Promise((resolve) => {
     form.onsubmit = (e) => {
