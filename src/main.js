@@ -7,6 +7,7 @@ import { PAL, makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turn
 import { makeCreation } from './creation.js';
 import { makeEden, EDEN_RADIUS } from './eden.js';
 import { makeCain, CAIN_RADIUS } from './cain.js';
+import { STAGE_MODS } from './stages/index.js';
 import { PROLOGUE } from './data/prologue.js';
 import { CREATION, DAY_NAMES } from './data/creation.js';
 import { EDEN, FALL, QUIZ, NAMING, INTERLUDE, EVE_GREETING } from './data/eden.js';
@@ -15,7 +16,9 @@ import { load, save, reach, newState, openNext } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
 import { josa } from './text.js';
 import { REWARDS, SPIRIT } from './data/growth.js';
-import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook } from './growth.js';
+import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook, addTool, useTool, assistOf, deepOpen } from './growth.js';
+import { CHALLENGE, CODEX_TITLES } from './data/growth.js';
+import { WORLDS } from './data/chapters.js';
 import { ITEMS } from './data/items.js';
 import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
@@ -87,7 +90,8 @@ scene.add(heaven.group, player, angel, waypoint.group, dressingRoom);
 let creation = null;
 let eden = null;
 let cain = null;
-const land = () => eden ?? cain; // 지금 걷는 지상 장면(에덴, 가인과 아벨의 들판)
+let field = null; // 1-4부터의 스테이지 장면(field.js)
+const land = () => eden ?? cain ?? field; // 지금 걷는 지상 장면
 
 // ---------- 입력 ----------
 // mode: 'none'(대사·연출 중) | 'walk'(걷기) | 'orbit'(창조를 둘러보기)
@@ -198,6 +202,7 @@ function checkTriggers() {
 }
 
 let aimNearest = null; // 퀘스트 중이면 가장 가까운 목표로 길 안내를 맞춘다
+let aimPos = null; // 지금 안내하는 목표(개발용 자동 플레이가 순간 이동에 쓴다)
 function startWalk() { mode = 'walk'; playerFace = null; showControls('walk'); }
 
 // 조작 안내: 그 조작을 게임 시간으로 6초쯤 직접 써 보면 익힌 것으로 보고 다시 띄우지 않는다(state.learned).
@@ -217,7 +222,9 @@ function stopWalk() {
   target = null;
   triggers = [];
   aimNearest = null;
+  aimPos = null;
   holdQuest = null;
+  endChallenge();
   setGauge(null);
   setControls(null);
   setQuest(null);
@@ -247,6 +254,7 @@ function questFind({ title, targets, text, radius = 1.6, onFound, hold = 0, hold
       let best = null, bd = Infinity;
       for (const x of left) { const d = x.pos.distanceTo(player.position); if (d < bd) { bd = d; best = x; } }
       waypoint.set(best ? best.pos : null);
+      aimPos = best?.pos ?? null;
     };
     const found = async (x) => {
       left.delete(x);
@@ -514,6 +522,7 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
   heaven.group.visible = angel.visible = false;
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
   if (eden) { scene.remove(eden.group); eden = null; }
+  if (field) { scene.remove(field.group); field = null; }
   dressingRoom.visible = player.visible = true;
   showHud(false); // 꾸미기 화면에서는 HUD를 숨긴다
   scene.background = new THREE.Color(0xf6efe2);
@@ -573,11 +582,11 @@ async function runEden(from = 'eden') {
 // 성장 보상: 같은 보상은 한 번만 받고(key는 'eden/river/pishon'처럼 스테이지로 시작), 받은 것을 획득 알림으로 차례로 보여 준다.
 // entry를 주면 도감에 처음 만난 스테이지를 남긴다.
 // 경험치·달란트·레벨은 HUD(늘 보임)와 오른쪽 아래 획득 기록(잠깐)으로 보여 주고, 열매 성장만 가운데 획득 알림으로 띄운다.
-function reward(key, kind, entry) {
+function reward(key, kind, entry, spirit) {
   const stage = key.split('/')[0];
   if (entry) record(state, entry, stage);
   const before = levelOf(state.xp).level;
-  const msgs = grant(state, key, REWARDS[kind]);
+  const msgs = grant(state, key, spirit ? { ...REWARDS[kind], spirit } : REWARDS[kind]);
   save(state);
   if (!msgs) return;
   const { xp, talent } = REWARDS[kind];
@@ -593,9 +602,9 @@ function note(entry, stage = 'eden') {
   record(state, entry, stage);
   save(state);
 }
-function meet(who, step, stage = 'eden') {
+function meet(who, step, stage = 'eden', spirit) {
   record(state, `person/${who}`, stage);
-  const msgs = bond(state, who, step);
+  const msgs = bond(state, who, step, spirit);
   save(state);
   for (const m of msgs) toast(m, { gain: true });
 }
@@ -966,6 +975,239 @@ async function runCain() {
   runShelter();
 }
 
+// ---------- 도전(docs/design.md "도전 조작"): 이동 WASD, 행동 Space, 도구 F ----------
+// 목표 자리(spots)에 다가가면 막대가 나타나고, 표시가 금빛 구간에 들어왔을 때 Space를 누르면 한 번 성공한다.
+// 자리마다 hits번 성공하면 끝난다. 실패해도 감점 없이 다시 한다. 열매가 자라 있으면 금빛 구간이 넓어진다(assistOf).
+// spot.tool이 있으면 먼저 F로 도구를 써야 행동할 수 있다(예: 물동이에 물 긷기). 다 끝나면 도구를 하나 쓴다(useTool).
+let ch = null;
+function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, speed = CHALLENGE.speed }) {
+  return new Promise((resolve) => {
+    const assist = assistOf(state, fruits);
+    const left = new Set(spots);
+    for (const sp of spots) { sp.n = 0; sp.ready = !sp.tool; }
+    const render = () => setQuest({ title, items: spots.map((sp) => ({ text: sp.text, done: !left.has(sp) })) });
+    const panel = $('challenge');
+    $('chActName').textContent = verb;
+    $('chTool').hidden = !tool;
+    $('chToolName').textContent = toolName;
+    const newZone = () => {
+      const w = Math.min(0.6, CHALLENGE.zone * (1 + assist));
+      ch.zone = [0.15 + Math.random() * (0.7 - w), 0];
+      ch.zone[1] = ch.zone[0] + w;
+      $('chZone').style.transform = `translateX(${ch.zone[0] * 100}%) scaleX(${w})`;
+    };
+    const flash = (cls) => { panel.classList.remove('is-hit', 'is-miss'); void panel.offsetWidth; panel.classList.add(cls); };
+    const label = (text) => { ch.msg = text; ch.msgT = 1.2; };
+    const act = async () => {
+      const sp = ch?.near;
+      if (!sp || mode !== 'walk' || ch.busy) return;
+      if (!sp.ready) { label(`F 키로 ${toolName} 먼저 쓰기`); flash('is-miss'); return; }
+      if (ch.m < ch.zone[0] || ch.m > ch.zone[1]) { label('다시 해 보세요'); flash('is-miss'); return; }
+      flash('is-hit');
+      sp.n++;
+      ch.busy = true;
+      mode = 'none';
+      await onHit?.(sp, sp.n);
+      mode = 'walk';
+      ch.busy = false;
+      if (sp.n >= (sp.hits ?? hits)) { left.delete(sp); render(); }
+      if (!left.size) { stopWalk(); if (tool) useTool(state, tool); save(state); resolve(); return; }
+      newZone();
+    };
+    const useIt = async () => {
+      const sp = ch?.near;
+      if (!sp || !sp.tool || sp.ready || mode !== 'walk' || ch.busy) return;
+      if (!state.items.tools.includes(tool)) { label(`${toolName}이 없어요`); return; }
+      sp.ready = true;
+      ch.busy = true;
+      mode = 'none';
+      await onTool?.(sp);
+      mode = 'walk';
+      ch.busy = false;
+      flash('is-hit');
+    };
+    const onKey = (e) => {
+      if (mode !== 'walk' || e.repeat) return;
+      if (e.code === 'Space') { e.preventDefault(); act(); }
+      if (e.code === 'KeyF') { e.preventDefault(); useIt(); }
+    };
+    ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, panel, busy: false, msg: '', msgT: 0 };
+    newZone();
+    addEventListener('keydown', onKey);
+    $('chAct').onclick = act;
+    $('chTool').onclick = useIt;
+    aimNearest = () => {
+      let best = null, bd = Infinity;
+      for (const x of left) { const d = x.pos.distanceTo(player.position); if (d < bd) { bd = d; best = x; } }
+      waypoint.set(best ? best.pos : null);
+      aimPos = best?.pos ?? null;
+    };
+    render();
+    startWalk();
+  });
+}
+function endChallenge() {
+  if (!ch) return;
+  removeEventListener('keydown', ch.onKey);
+  ch.panel.hidden = true;
+  ch = null;
+}
+// 막대 표시가 오가고, 금빛 구간에 들어오면 패널이 금빛으로 바뀐다. 목표 곁에 있을 때만 보인다.
+function challengeTick(dt) {
+  if (!ch) return;
+  let near = null, nd = Infinity;
+  for (const sp of ch.left) { const d = sp.pos.distanceTo(player.position); if (d < ch.radius && d < nd) { nd = d; near = sp; } }
+  ch.near = near;
+  ch.panel.hidden = !near || mode !== 'walk';
+  if (!near) return;
+  ch.m += ch.dir * ch.speed * dt;
+  if (ch.m > 1) { ch.m = 1; ch.dir = -1; }
+  if (ch.m < 0) { ch.m = 0; ch.dir = 1; }
+  $('chMark').style.transform = `translateX(${ch.m * $('chTrack').clientWidth}px)`;
+  ch.panel.classList.toggle('is-gold', near.ready && ch.m >= ch.zone[0] && ch.m <= ch.zone[1]);
+  ch.msgT -= dt;
+  $('chLabel').textContent = ch.msgT > 0 ? ch.msg : near.ready ? `${ch.verb} ${near.n} / ${near.hits ?? ch.hits}` : 'F 키로 도구 쓰기';
+}
+
+// ---------- 1-4부터의 스테이지: src/stages/<id>.js가 장면(build)과 진행(run)을 맡고, 여기는 공용 기능(g)만 건넨다 ----------
+async function runStage(id) {
+  const mod = STAGE_MODS[id];
+  if (!state.earthLook) await runDressingRoom({ kicker: mod.kicker ?? '땅으로 내려가기 전' });
+  heaven.group.visible = false;
+  if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
+  if (eden) { scene.remove(eden.group); eden = null; }
+  if (cain) { scene.remove(cain.group); cain = null; }
+  if (field) scene.remove(field.group);
+  field = mod.build(scene);
+  scene.add(field.group);
+  scene.background = field.sky.clone();
+  setEdges(true);
+  setView(13);
+  camAngle = 0;
+  walkRadius = field.radius;
+  placeCompanions(field.spots.start);
+  dressFigure(player, earthSpec(state.earthLook));
+  mode = 'none';
+  reach(state, id);
+  await fade(0);
+  await mod.run(stageApi(id, mod));
+}
+
+function stageApi(id, mod) {
+  const F = field;
+  const g = {
+    F, state, player, V: (x, z) => new THREE.Vector3(x, 0, z),
+    talk: (lines, opts) => talk(lines, state, opts),
+    cam: (p, view) => { camFocus = p ?? null; if (view) setView(view); },
+    stage: (name) => setStage(name),
+    quest: questFind,
+    challenge: runChallenge,
+    reward: (key, kind, entry, spirit) => reward(`${id}/${key}`, kind, entry, spirit),
+    note: (entry) => note(entry, id),
+    meet: (who, step = 'met', spirit) => meet(who, step, id, spirit),
+    // 관찰자가 인물을 바라본다(막간, 짧은 인사)
+    // 관찰자와 대천사: 보이지 않게(방주 안 등) 하거나 그 자리에 다시 세운다
+    hideCompanions: () => { player.visible = angel.visible = false; angelFollow = false; },
+    place: (p) => placeCompanions(p),
+    lookAt: (fig) => { F.acts.face(fig, player.position); playerFace = fig.position; },
+    // 막간: 인물과 끝까지 대화한다. 마치면 관계 "대화"와 보상.
+    interlude: async (fig, data = mod.data.interlude) => {
+      g.lookAt(fig);
+      await runInterlude(data, `${id}/interlude`);
+      reward(`${id}/interlude`, 'interlude');
+      meet(data.bond ?? data.who, 'talked', id);
+      playerFace = null;
+    },
+    // 걷는 동안 인물 곁을 지나가면 한 번 듣는 짧은 인사(관계 "만남"). 지울 함수를 돌려준다.
+    greet: (fig, lines, who) => {
+      const trig = addTrigger(fig.position, 2.2, async () => {
+        mode = 'none';
+        F.acts.face(fig, player.position);
+        await talk(lines, state);
+        meet(who, 'met', id);
+        mode = 'walk';
+      });
+      return () => { triggers = triggers.filter((x) => x !== trig); };
+    },
+    // 깊은 대화(design.md): 관계 "대화" 이상 + 레벨 조건이면 열린다. 닫혀 있으면 짧은 인사(locked)만 한다.
+    deep: (fig, data) => {
+      const trig = addTrigger(fig.position, 2.2, async () => {
+        mode = 'none';
+        g.lookAt(fig);
+        if (deepOpen(state, data.who)) {
+          await runInterlude(data, `${id}/deep`);
+          reward(`${id}/deep`, 'deep');
+        } else await talk(data.locked, state);
+        meet(data.who, 'met', id);
+        playerFace = null;
+        mode = 'walk';
+      });
+      return () => { triggers = triggers.filter((x) => x !== trig); };
+    },
+    deepOpen: (who) => deepOpen(state, who),
+    giveTool: (tool) => { if (!state.items.tools.includes(tool)) addTool(state, tool); save(state); toast(`${josa(ITEMS.find((i) => i.id === tool).name, '을', '를')} 얻었어요`, { gain: true }); },
+    hold: (tool) => { state.earthLook = { ...state.earthLook, item: tool }; save(state); dressWith(earthSpec)(state.earthLook, 'item'); },
+    toast: (text) => toast(text, { gain: true }),
+    card: showCard,
+    // 스테이지 끝: 퀴즈, 말씀·기념물 기록, 보상, 쉼터로
+    finish: async ({ quiz = mod.data.quiz, words = [], memento }) => {
+      stopWalk();
+      await askQuiz(quiz);
+      for (const w of words) note(w, id);
+      if (memento) note(memento, id);
+      reward(`${id}/quiz`, 'quiz');
+      reward(`${id}/clear`, 'clear');
+      codexReward();
+      await new Promise((r) => setTimeout(r, 2400));
+      await fade(1);
+      runShelter();
+    },
+  };
+  return g;
+}
+
+// 도감 완성 보상: 월드의 도감 항목을 모두 만나면 칭호(CODEX_TITLES)를 한 번 받는다.
+function codexReward() {
+  for (const w of WORLDS) {
+    const t = CODEX_TITLES[w.id];
+    if (!t || state.claimed.includes(`${w.id}/codex`)) continue;
+    if (CODEX.filter((c) => w.stages.includes(c.stage)).every((c) => state.codex[c.id])) {
+      reward(`${w.id}/codex`, 'codexDone');
+      toast(`칭호 · ${t.title}`, { gain: true });
+    }
+  }
+}
+
+// ---------- 개발 서버 전용: 자동 플레이(브라우저 점검용, __dev.auto = true) ----------
+// 대사를 넘기고, 첫 선택지와 퀴즈 정답을 고르고, 퀘스트 목표로 순간 이동하고, 도전을 성공시킨다.
+let autoT = 0;
+function autoTick(dt) {
+  if (!globalThis.__dev?.auto) return;
+  autoT += dt;
+  if (autoT < 0.15) return;
+  autoT = 0;
+  const vis = (id) => !$(id).hidden;
+  if (vis('choices')) { $('choices').querySelector('button')?.click(); return; }
+  if (vis('dialog')) { $('dialog').click(); return; }
+  if (vis('dexCard')) { $('dexCard').click(); return; }
+  if (vis('quiz')) {
+    if (!$('quizNext').hidden) { $('quizNext').click(); return; }
+    const b = [...$('quizOptions').querySelectorAll('button:not([aria-invalid])')][0];
+    b?.click();
+    return;
+  }
+  if (!$('nextBtn').hidden) { $('nextBtn').click(); return; }
+  if (mode !== 'walk') return;
+  if (ch?.near && !ch.busy) {
+    if (!ch.near.ready) { dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF' })); return; }
+    ch.m = (ch.zone[0] + ch.zone[1]) / 2;
+    ch.act();
+    return;
+  }
+  if (holdQuest?.cur) { holdQuest.p = 1; return; }
+  if (aimPos) player.position.copy(aimPos).add(new THREE.Vector3(0.6, 0, 0.6));
+}
+
 // ---------- 쉼터: 천국을 넓힌 광장. 스테이지를 마치면 돌아오고, 이어하기도 여기서 시작한다 ----------
 // 빛의 문 → 월드 지도, 기록대 → 도감, 상점 천사 → 상점. 걸어서 닿으면 열리고, 닫으면 한 걸음 물러난다.
 async function runShelter() {
@@ -973,6 +1215,7 @@ async function runShelter() {
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); creation = null; }
   if (eden) { scene.remove(eden.group); eden = null; }
   if (cain) { scene.remove(cain.group); cain = null; }
+  if (field) { scene.remove(field.group); field = null; }
   if (basket) { player.remove(basket); basket = null; }
   scene.background = new THREE.Color(0xfdf3d8);
   setEdges(true);
@@ -1028,6 +1271,7 @@ function startAt(id) {
   if (id === 'prologue') return runPrologue();
   if (id.startsWith('creation-')) return runCreation(Number(id.split('-')[1]));
   if (id === 'cain') return runCain();
+  if (STAGE_MODS[id]) return runStage(id);
   return runEden(id);
 }
 
@@ -1117,7 +1361,8 @@ function showTitle() {
 const clock = new THREE.Clock();
 let menuMode = null;
 function tick() {
-  const dt = Math.min(clock.getDelta(), 0.05);
+  // 개발 서버에서만: __dev.speed로 게임 시간을 앞당긴다(자동화 창은 초당 2프레임 안팎이라 걷기가 매우 느리다)
+  const dt = Math.min(clock.getDelta(), 0.05) * (import.meta.env.DEV ? globalThis.__dev?.speed ?? 1 : 1);
   const canMenu = mode === 'walk' && !$('hud').hidden;
   if (canMenu !== menuMode) { menuMode = canMenu; $('menuBtn').hidden = !canMenu; } // 메뉴 버튼은 걷는 중에만 보인다
   const t = clock.elapsedTime;
@@ -1130,6 +1375,9 @@ function tick() {
   creation?.update(dt, t);
   eden?.update(dt, t, player.position);
   cain?.update(dt, t, player.position);
+  field?.update(dt, t, player.position);
+  challengeTick(dt);
+  if (import.meta.env.DEV) autoTick(dt);
   holdTick(dt);
   if (heaven.group.visible) heaven.pillar.userData.pulse(t);
   if (titleView) camAngle += dt * 0.06;
@@ -1145,7 +1393,7 @@ function tick() {
 }
 
 // 개발 서버에서만: 브라우저 점검용으로 캐릭터와 세계에 접근한다(배포 빌드에는 빠진다).
-if (import.meta.env.DEV) globalThis.__dev = { player, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude') };
+if (import.meta.env.DEV) globalThis.__dev = { player, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => startAt(id), interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`) };
 
 scene.background = new THREE.Color(0xfdf3d8);
 player.position.set(0, 0, -3);

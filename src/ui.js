@@ -3,6 +3,14 @@ import { SPEAKERS, fill } from './text.js';
 import { LOOK_LABELS } from './props.js';
 
 export const $ = (id) => document.getElementById(id);
+// ↑·↓로 묶음 안의 버튼 포커스를 옮긴다(막간 선택지, 퀴즈 보기, 지도 지점)
+export function moveFocus(box, dir) {
+  const list = [...box.querySelectorAll('button:not(:disabled)')];
+  if (!list.length) return;
+  const i = list.indexOf(document.activeElement);
+  const next = i < 0 ? (dir > 0 ? 0 : list.length - 1) : (i + dir + list.length) % list.length;
+  list[next].focus({ preventScroll: true });
+}
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const isTouch = () => matchMedia('(pointer: coarse)').matches;
@@ -118,6 +126,7 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
       if (choosing) {
         const n = Number(e.key) - 1;
         if (n >= 0 && n < choices.length) { e.preventDefault(); done(n); }
+        if (e.code === 'ArrowDown' || e.code === 'ArrowUp') { e.preventDefault(); moveFocus($('choices'), e.code === 'ArrowDown' ? 1 : -1); }
         return; // 고르는 동안 Space·Enter는 포커스된 선택지 버튼이 받는다
       }
       if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); show(); }
@@ -394,11 +403,19 @@ export function waitButton(label) {
 }
 
 // 구절 퀴즈: 틀리면 다시 고르고, 맞히면 장절을 보여 준 뒤 다음 문제로 간다.
+// 키보드: 1~3 키로 고르고, ↑·↓로 포커스를 옮긴다(막간 선택지와 같은 번호 키캡).
 export function askQuiz(questions) {
   const box = $('quiz');
   box.hidden = false;
   return new Promise((resolve) => {
     let i = 0;
+    const onKey = (e) => {
+      const n = Number(e.key) - 1;
+      const opts = [...$('quizOptions').querySelectorAll('button')];
+      if (n >= 0 && n < opts.length && !opts[n].disabled) { e.preventDefault(); opts[n].click(); }
+      if (e.code === 'ArrowDown' || e.code === 'ArrowUp') { e.preventDefault(); moveFocus(box, e.code === 'ArrowDown' ? 1 : -1); }
+    };
+    addEventListener('keydown', onKey);
     const render = () => {
       const q = questions[i];
       $('quizCount').textContent = `${i + 1} / ${questions.length}`;
@@ -412,7 +429,10 @@ export function askQuiz(questions) {
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'btn btn--option';
-        b.textContent = text;
+        const key = document.createElement('kbd');
+        key.className = 'choice__key';
+        key.textContent = n + 1;
+        b.append(key, text);
         b.onclick = () => {
           if (n !== q.answer) {
             b.removeAttribute('aria-invalid');
@@ -438,6 +458,7 @@ export function askQuiz(questions) {
       i += 1;
       if (i < questions.length) { render(); return; }
       box.hidden = true;
+      removeEventListener('keydown', onKey);
       resolve();
     };
     render();

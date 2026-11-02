@@ -1,5 +1,5 @@
 // 성장 계산: 경험치·레벨, 열매 단계, 관계, 도감 기록. 수치는 data/growth.js에 있다.
-import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, xpToNext, TITLES, BONDS, BOND_NAMES, slotsAt } from './data/growth.js';
+import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, xpToNext, TITLES, BONDS, BOND_NAMES, slotsAt, CHALLENGE, DEEP_LEVEL } from './data/growth.js';
 import { ITEMS } from './data/items.js';
 import { josa } from './text.js';
 import { LIKENESS } from './data/codex.js';
@@ -110,3 +110,9 @@ export function buyLook(state, id) {
   state.items.looks.push(id);
   return true;
 }
+
+// 도전 보조: 도전을 돕는 열매들 가운데 가장 높은 단계 × 8%, 최대 32%
+export const assistOf = (state, fruits = []) => Math.min(CHALLENGE.assistMax, CHALLENGE.assistPerStage * Math.max(0, ...fruits.map((id) => stageOf(state.spirit[id]))));
+
+// 깊은 대화: 관계가 "대화" 이상이고 레벨이 DEEP_LEVEL 이상이면 열린다.
+export const deepOpen = (state, who) => BONDS.indexOf(state.bonds[who]) >= 1 && levelOf(state.xp).level >= (DEEP_LEVEL[who] ?? Infinity);

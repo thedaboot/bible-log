@@ -7,6 +7,7 @@ import { CODEX, LIKENESS } from '../src/data/codex.js';
 import { SPIRIT, SPIRIT_STAGES } from '../src/data/growth.js';
 import { CHAPTERS } from '../src/data/chapters.js';
 import { SPEAKERS } from '../src/text.js';
+import { STAGE_MODS } from '../src/stages/index.js';
 
 // shortcut: 스테이지 데이터를 손으로 이어 둔다. 스테이지가 늘면 장 목록(chapters.js)에서 데이터를 찾게 바꾼다.
 const STAGES = {
@@ -20,6 +21,11 @@ const STAGES = {
     interludes: [CAIN_INTERLUDE],
     greetings: { CAIN_GREETING },
   },
+  ...Object.fromEntries(Object.values(STAGE_MODS).map(({ id, data }) => [id, {
+    lines: Object.fromEntries(Object.entries(data.lines).map(([k, v]) => [`${id}.${k}`, v])),
+    interludes: [data.interlude, ...(data.deep ? [{ ...data.deep, title: '깊은 대화' }] : [])],
+    greetings: { ...(data.greetings ?? {}), ...(data.deep ? { 'deep.locked': data.deep.locked } : {}) },
+  }])),
 };
 
 const who = (w) => SPEAKERS[w] || '서술';
@@ -37,7 +43,7 @@ for (const [id, st] of Object.entries(STAGES)) {
   }
 
   for (const it of st.interludes) {
-    out.push('', `## 막간: ${who(it.who)}`, '', '사건의 흐름을 바꾸지 않는지, 선택지가 모두 좋은 행동인지, 자라는 열매가 맞는지 본다.', '');
+    out.push('', `## ${it.title ?? '막간'}: ${who(it.who)}${it.level ? ` (관계 대화 이상, 레벨 조건)` : ''}`, '', '사건의 흐름을 바꾸지 않는지, 선택지가 모두 좋은 행동인지, 자라는 열매가 맞는지 본다.', '');
     let pick = 0;
     it.steps.forEach((step) => {
       if (step.say) { for (const l of step.say) out.push(line(l)); return; }

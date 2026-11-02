@@ -45,6 +45,15 @@ export const CODEX = [
   { id: 'place/nod', name: '놋 땅', stage: 'cain', fact: '가인이 여호와 앞을 떠나 머문 에덴 동쪽 땅', ref: '창 4:16', memo: '떠도는 사람이 되리라는 말씀(창 4:12)과 이름의 소리가 닮았다.' },
   { id: 'item/wool', name: '양털 한 줌', stage: 'cain', fact: '아벨은 양을 치는 사람이었다', ref: '창 4:2', memo: '아벨의 어린양을 쓰다듬을 때 손에 남은 털. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-4-7', name: '죄를 다스려라', stage: 'cain', fact: '죄가 문 앞에 엎드려 있으나 너는 죄를 다스려야 한다', ref: '창 4:7', memo: '화가 난 가인에게 하나님께서 먼저 건네신 말씀이다.' },
+
+  { id: 'person/noah', name: '노아', stage: 'noah', fact: '여호와께 은혜를 입고 하나님과 동행한 사람', ref: '창 6:8~9', memo: '굳은살 박인 손으로 마지막 판자까지 받쳤다.' },
+  { id: 'person/shem', name: '셈', stage: 'noah', fact: '노아의 세 아들 가운데 맏아들', ref: '창 6:10', memo: '먹이 자루를 메고 방주를 몇 번이고 오갔다.' },
+  { id: 'place/ark', name: '방주', stage: 'noah', fact: '고페르 나무로 짓고 안팎에 역청을 칠한 배', ref: '창 6:14', memo: '지붕 아래 창 하나와 옆으로 낸 문 하나가 있었다.' },
+  { id: 'place/ararat', name: '아라랏 산', stage: 'noah', fact: '물이 줄어들 때 방주가 머문 산', ref: '창 8:4', memo: '물이 걷히자 산비탈에 풀빛이 먼저 돌아왔다.' },
+  { id: 'creature/raven', name: '까마귀', stage: 'noah', fact: '노아가 창문을 열고 처음 내보낸 새', ref: '창 8:7', memo: '물이 마를 때까지 이리저리 날아다녔다.' },
+  { id: 'creature/dove', name: '비둘기', stage: 'noah', fact: '새 올리브 잎을 물고 돌아온 새', ref: '창 8:11', memo: '세 번째로 날아간 뒤에는 돌아오지 않았다(창 8:12).' },
+  { id: 'item/olive-leaf', name: '올리브 잎', stage: 'noah', fact: '물이 걷혔음을 알린 새 잎', ref: '창 8:11', memo: '비둘기가 물고 온 잎. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-9-13', name: '구름 속의 무지개', stage: 'noah', fact: '무지개는 하나님과 땅 사이의 언약의 표다', ref: '창 9:13', memo: '다시는 홍수로 멸하지 않겠다는 약속이다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).
@@ -55,4 +64,5 @@ export const LIKENESS = {
   abel: { fruits: ['faith', 'gentle'], text: '첫 새끼를 먼저 드린 아벨처럼, 아끼는 것을 먼저 하나님께 드려요.', why: '히 11:4 믿음으로 더 나은 제사(신실), 창 4:2 양을 치는 사람(온유)' },
   seth: { fruits: ['faith', 'peace'], text: '여호와의 이름을 부르기 시작한 셋의 집안처럼, 날마다 하나님을 불러요.', why: '창 4:26 여호와의 이름을 부름(신실), 창 4:25 슬픔 뒤에 주신 아들(화평)' },
   eve: { fruits: ['love', 'kindness'], text: '모든 산 사람의 어머니가 된 하와처럼, 곁에 있는 사람을 따뜻하게 품어요.', why: '창 3:20 모든 산 사람의 어머니(사랑), 창 4:1 생명을 품고 돌봄(친절)' },
+  noah: { fruits: ['faith', 'patience'], text: '아무도 믿지 않을 때 방주를 끝까지 지은 노아처럼, 맡은 일을 오래 참고 해내요.', why: '히 11:7 믿음으로 방주를 준비함(신실), 벧전 3:20 오래 참으심 속에 방주를 지음(인내)' },
 };

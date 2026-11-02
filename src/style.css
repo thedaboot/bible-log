@@ -389,6 +389,22 @@ body:has(#dialog:not([hidden])) .controls, body:has(.modal:not([hidden])) .contr
 .gauge__track { display: block; height: 10px; background: var(--color-paper-2); box-shadow: inset 0 0 0 2px var(--color-frame); overflow: hidden; }
 .gauge__fill { display: block; height: 100%; background: var(--color-accent); transform-origin: left; transform: scaleX(0); }
 
+/* 도전: 머무르기 게이지 패널을 넓혀 쓴다. 표시가 금빛 구간에 들어오면 패널이 금빛으로 바뀐다(성공이 가까움). */
+.challenge { width: min(24rem, calc(100% - var(--space-md) * 2)); }
+.challenge__track { position: relative; height: 18px; }
+.challenge__zone { position: absolute; top: 2px; bottom: 2px; left: 0; width: 100%; background: var(--color-gold); transform-origin: left; }
+.challenge__mark { position: absolute; top: 0; bottom: 0; left: 0; width: 4px; margin-left: -2px; background: var(--color-frame); }
+.challenge.is-gold { box-shadow: 0 0 0 var(--px) var(--color-accent), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); }
+.challenge.is-gold .challenge__mark { background: var(--color-accent-ink); }
+.challenge.is-miss .challenge__track { animation: shake var(--dur-long) var(--ease-out); }
+.challenge.is-hit .challenge__track { animation: bump var(--dur-long) var(--ease-out); }
+.challenge__keys { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-sm); }
+.challenge__key { display: inline-flex; align-items: center; gap: var(--space-3xs); padding: 0; font: 600 var(--text-label) / 1.2 var(--font-body); color: var(--color-frame); background: none; border: 0; white-space: nowrap; cursor: pointer; }
+.challenge__key .key--inline { margin-left: 0; }
+.challenge__key:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+body:has(#dialog:not([hidden])) .challenge, body:has(.modal:not([hidden])) .challenge { display: none; }
+@media (prefers-reduced-motion: reduce) { .challenge.is-miss .challenge__track, .challenge.is-hit .challenge__track { animation: none; } }
+
 /* 도감 카드: 동물 이름을 얻으면 펼쳐진다 */
 .dexcard {
   position: fixed;
@@ -859,6 +875,10 @@ body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
 .chip:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 .codex__count { display: flex; justify-content: space-between; margin: 0; padding-bottom: var(--space-3xs); font-size: var(--text-small); font-weight: 800; color: var(--color-frame); box-shadow: inset 0 -2px 0 var(--color-paper-3); }
 .codex__countnum { color: var(--color-accent-ink); font-variant-numeric: tabular-nums; }
+.profile__badge { margin: var(--space-3xs) 0 0; font-size: var(--text-label); font-weight: 700; color: var(--color-accent-ink); white-space: nowrap; }
+.codex__keys { margin: var(--space-xs) 0 0; text-align: center; font-size: var(--text-label); color: var(--color-ink-2); white-space: nowrap; }
+.btn--option { display: flex; align-items: center; gap: var(--space-sm); }
+.btn--option .choice__key { flex: none; }
 .codex__empty { margin: 0; padding: var(--space-lg) 0; text-align: center; font-size: var(--text-small); color: var(--color-ink-2); }
 /* 칸은 같은 너비 격자, 한 줄의 칸은 같은 높이. 페이지마다 6칸이라 PC에서는 3열 2줄이다. */
 .codex__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(11rem, 100%), 1fr)); grid-auto-rows: 1fr; gap: var(--space-xs); margin: 0; padding: 0; list-style: none; }

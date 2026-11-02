@@ -66,7 +66,24 @@ export const REWARDS = {
   sheep: { xp: 6, talent: 1 }, // ★ 양 한 마리를 우리로 데려감(다섯 마리)
   sheepDone: { xp: 10, spirit: 'gentle' }, // ★
   offering: { xp: 15, talent: 2, spirit: 'faith' }, // ★ 첫 새끼를 아벨에게 데려감
+  // 1-4부터의 공용 보상. 퀘스트마다 자라는 열매와 근거는 스테이지 파일(src/stages/*.js)의 reward 호출 옆 주석과
+  // docs/review/decisions.md에 적는다(spirit을 호출에서 넘긴다).
+  step: { xp: 6, talent: 1 }, // ★ 퀘스트 목표 하나
+  questDone: { xp: 12 }, // ★ 퀘스트를 마침(열매는 호출에서 정한다)
+  challenge: { xp: 20, talent: 3 }, // ★ 도전을 마침(열매는 호출에서 정한다)
+  deep: { xp: 12, talent: 2 }, // ★ 깊은 대화를 끝까지 마침
+  codexDone: { xp: 30, talent: 15 }, // ★ 월드 도감을 모두 채움(칭호는 CODEX_TITLES)
   interlude: { xp: 10 }, // ★ 막간 대화를 끝까지 마침(열매는 선택마다 SPIRIT_GAIN.choice)
   quiz: { xp: 15, talent: 5 }, // ★ 장 끝 구절 퀴즈
   clear: { xp: 20, talent: 10 }, // ★ 스테이지 마침
 };
+
+// 도전(docs/design.md "도전 조작"): 표시가 오가는 막대에서 금빛 구간에 Space를 누른다.
+// 열매 단계당 구간이 8% 넓어지고 최대 32%까지 넓어진다. 실패해도 감점 없이 다시 한다. ★
+export const CHALLENGE = { zone: 0.2, speed: 0.75, assistPerStage: 0.08, assistMax: 0.32 };
+
+// 깊은 대화가 열리는 레벨(관계 "대화" 이상과 함께). 창세기 끝까지의 레벨 속도(스테이지당 경험치 약 100)에 맞췄다. ★
+export const DEEP_LEVEL = { abraham: 5, jacob: 8, joseph: 10 };
+
+// 도감 완성 보상: 칭호만 준다(design.md "도감 칸"). 월드의 도감을 모두 채우면 상태 창 칭호 아래에 붙는다.
+export const CODEX_TITLES = { genesis: { title: '창세기를 기록한 이', ref: '창 5:1' } };

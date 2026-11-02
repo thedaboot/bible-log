@@ -44,6 +44,15 @@
       <p id="gaugeLabel" class="gauge__label"></p>
       <span class="gauge__track" aria-hidden="true"><span id="gaugeFill" class="gauge__fill"></span></span>
     </div>
+    <div id="challenge" class="panel gauge challenge" hidden>
+      <p id="chLabel" class="gauge__label"></p>
+      <span id="chTrack" class="gauge__track challenge__track" aria-hidden="true"><span id="chZone" class="challenge__zone"></span><span id="chMark" class="challenge__mark"></span></span>
+      <div class="challenge__keys">
+        <span class="challenge__key"><kbd class="key key--inline">WASD</kbd>이동</span>
+        <button id="chAct" class="challenge__key" type="button"><kbd class="key key--inline">Space</kbd><span id="chActName">행동</span></button>
+        <button id="chTool" class="challenge__key" type="button" hidden><kbd class="key key--inline">F</kbd><span id="chToolName">도구</span></button>
+      </div>
+    </div>
     <div id="dexCard" class="panel dexcard" role="status" hidden>
       <p class="quest__label">바이블로그 도감</p>
       <p id="dexTitle" class="dexcard__title"></p>

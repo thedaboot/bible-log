@@ -148,8 +148,23 @@ export function openMap(state) {
     const draw = () => drawPath(path, nodes, world.stages, cells, marks);
     const ro = new ResizeObserver(draw);
     ro.observe(nodes);
+    // Enter: 고른 표지의 첫 지점에 들어간다. ↓: 지점 버튼으로, ↑: 표지로 포커스를 옮긴다.
     const onKey = (e) => {
       if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); close(null); }
+      const onMark = document.activeElement?.classList.contains('map__node');
+      const points = [...detail.querySelectorAll('.map__point')];
+      if (e.code === 'Enter' && onMark) {
+        e.preventDefault();
+        sel = marks.indexOf(document.activeElement);
+        paint();
+        if (infos[sel].open.length && infos[sel].status !== 'locked') close(infos[sel].open[0].id);
+      }
+      if (e.code === 'ArrowDown' && points.length) { e.preventDefault(); (points[points.indexOf(document.activeElement) + 1] ?? points[0]).focus({ preventScroll: true }); }
+      if (e.code === 'ArrowUp' && !onMark) {
+        e.preventDefault();
+        const k = points.indexOf(document.activeElement);
+        (k > 0 ? points[k - 1] : marks[sel]).focus({ preventScroll: true });
+      }
       if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
         e.preventDefault();
         sel = (sel + (e.code === 'ArrowRight' ? 1 : infos.length - 1)) % infos.length;

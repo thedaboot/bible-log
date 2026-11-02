@@ -18,6 +18,11 @@ import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt,
 import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook } from '../src/growth.js';
 import { ITEMS } from '../src/data/items.js';
 import { ITEM_ICONS } from '../src/icons.js';
+import { STAGE_MODS } from '../src/stages/index.js';
+
+const MODS = Object.values(STAGE_MODS);
+// 스테이지 데이터의 대사 묶음과 막간(steps를 [위치, 대사] 목록으로 펼친다)
+const stepsLines = (name, it) => it.steps.flatMap((st, i) => (st.say ? [[`${name}.steps[${i}]`, st.say]] : st.choose.map((c, j) => [`${name}.steps[${i}].choose[${j}]`, c.reply])));
 
 // 대사 묶음을 [위치, 대사 배열] 목록으로 모은다.
 const groups = [
@@ -31,6 +36,12 @@ const groups = [
   ...Object.entries(CAIN).map(([k, v]) => [`CAIN.${k}`, v]),
   ...CAIN_INTERLUDE.steps.flatMap((st, i) => (st.say ? [[`CAIN_INTERLUDE.steps[${i}]`, st.say]] : st.choose.map((c, j) => [`CAIN_INTERLUDE.steps[${i}].choose[${j}]`, c.reply]))),
   ['CAIN_GREETING', CAIN_GREETING],
+  ...MODS.flatMap(({ id, data }) => [
+    ...Object.entries(data.lines).map(([k, v]) => [`${id}.${k}`, v]),
+    ...stepsLines(`${id}.interlude`, data.interlude),
+    ...(data.deep ? [...stepsLines(`${id}.deep`, data.deep), [`${id}.deep.locked`, data.deep.locked]] : []),
+    ...Object.entries(data.greetings ?? {}).map(([k, v]) => [`${id}.${k}`, v]),
+  ]),
 ];
 const { acts } = makeCreation({ background: new THREE.Color() });
 for (let day = 1; day <= 7; day++) {
@@ -96,7 +107,7 @@ for (const [where, lines] of groups) {
 assert.deepEqual(problems, [], '줄바꿈 2판 위반');
 assert.equal(RIVERS.length, 4, '강은 네 줄기');
 assert.ok(ANIMALS.every((a) => a.name && a.size > 0), '동물 데이터 오류');
-for (const [i, q] of [...QUIZ, ...CAIN_QUIZ].entries()) {
+for (const [i, q] of [...QUIZ, ...CAIN_QUIZ, ...MODS.flatMap((m) => m.data.quiz)].entries()) {
   assert.ok(q.options[q.answer], `QUIZ[${i}]: 정답 번호 오류`);
   assert.ok(REF.test(q.ref), `QUIZ[${i}]: 장절 형식 오류`);
 }
@@ -175,7 +186,8 @@ assert.equal(load(null), null);
 
 // 막간: say와 choose가 번갈아 오고 choose 앞에는 반드시 say가 있다(그 마지막 대사에서 고른다).
 // choose마다 기본 선택지 셋(need 없음)과 열매 단계로 열리는 선택지 0~1개. 열매가 모두 다르고, 각색 대사에는 근거(basis)가 있다.
-for (const [name, it, greet] of [['INTERLUDE', INTERLUDE, EVE_GREETING], ['CAIN_INTERLUDE', CAIN_INTERLUDE, CAIN_GREETING]]) {
+for (const [name, it, greet] of [['INTERLUDE', INTERLUDE, EVE_GREETING], ['CAIN_INTERLUDE', CAIN_INTERLUDE, CAIN_GREETING],
+  ...MODS.flatMap(({ id, data }) => [[`${id}.interlude`, data.interlude, Object.values(data.greetings ?? {}).flat()], ...(data.deep ? [[`${id}.deep`, data.deep, data.deep.locked]] : [])])]) {
   const { steps } = it;
   assert.ok(it.who in SPEAKERS, `${name}: 막간 인물`);
   let exchanges = 0;
@@ -337,6 +349,7 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
     ...RIVERS.map((r) => `place/${r.id}`), 'place/eden', 'creature/serpent', 'person/adam', 'item/fig-leaf', 'word/gen-2-7', 'word/gen-3-15',
     'person/cain', 'person/abel', 'person/seth', 'creature/lamb', 'place/nod', 'item/wool', 'word/gen-4-7',
     ...Object.keys(LIKENESS).map((w) => `person/${w}`),
+    ...MODS.flatMap((m) => m.records), ...MODS.flatMap((m) => [m.data.interlude.bond ?? m.data.interlude.who, ...(m.data.deep ? [m.data.deep.who] : [])].map((w) => `person/${w}`)),
   ];
   for (const id of need) assert.ok(ids.includes(id), `도감에 없는 항목: ${id}`);
   for (const [who, l] of Object.entries(LIKENESS)) {
@@ -532,3 +545,17 @@ console.log('OK: 동물이 고르는 자리 점검 통과(자기 구역 유지)'
   }
   console.log('OK: 가인과 아벨 점검 통과(다음 지점 열기, 양 터, 비킬 자리)');
 }
+
+// 1-4부터의 스테이지(field.js): 지점이 장 목록에 있고, 인물·동물·연출 자리(spots)가 장애물 밖이며, 무대마다 비킬 자리가 있다.
+for (const mod of MODS) {
+  const ch = CHAPTERS.find((c) => c.id === mod.id);
+  assert.ok(ch?.points.some((p) => p.id === mod.id), `${mod.id}: 장 목록에 지점이 없음`);
+  const f = mod.build({ background: new THREE.Color() });
+  for (const fig of Object.values(f.people)) assert.ok(!f.collide(fig.position.clone(), 0.3), `${mod.id}: 인물이 장애물 위에 섬`);
+  for (const an of f.animals) assert.ok(!f.collide(an.position.clone(), an.userData.radius), `${mod.id}: 동물이 장애물 위에 섬`);
+  for (const [k, p] of Object.entries(f.spots)) if (!(f.solid ?? []).includes(k)) assert.ok(!f.collide(p.clone(), 0.3), `${mod.id}: 자리 ${k}가 장애물 위`);
+  for (const [name, st] of Object.entries(f.stages)) {
+    for (const from of [st.c, st.c.clone().add(new THREE.Vector3(1, 0, -1))]) assert.ok(f.stepAside(name, from).length, `${mod.id}/${name}: 비킬 자리가 없음`);
+  }
+}
+console.log(`OK: 스테이지 점검 통과(${MODS.map((m) => m.id).join(', ') || '없음'})`);

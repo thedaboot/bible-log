@@ -534,9 +534,10 @@ export function makeThornBush(s = 1) {
 }
 
 // 동물: 머리는 +x 쪽이다. kind마다 실루엣 특징을 더해 그 동물로 바로 알아보게 한다(docs/standards/art-3d.md).
-// kind: 'lion' | 'sheep' | 'elephant' | 'deer' | 'horse' | 'bear' | 'generic'
+// kind: 'lion' | 'sheep' | 'ram' | 'elephant' | 'deer' | 'horse' | 'bear' | 'camel' | 'cow' | 'donkey' | 'generic'
 // 다리는 엉덩이에 축을 둔 그룹(userData.legs)이라 걸을 때 앞뒤로 흔든다. 나머지는 body 그룹에 모은다.
 const ANIMAL_GAIT = { // walk: 걷는 속도, run: 서두를 때 속도
+  camel: { walk: 0.7, run: 1.4 }, cow: { walk: 0.55, run: 1.2 }, donkey: { walk: 0.65, run: 1.4 }, ram: { walk: 0.6, run: 1.4 },
   elephant: { walk: 0.55, run: 1.1 }, sheep: { walk: 0.6, run: 1.4 }, lion: { walk: 0.8, run: 1.8 },
   bear: { walk: 0.65, run: 1.4 }, deer: { walk: 1.0, run: 2.2 }, horse: { walk: 1.0, run: 2.2 }, generic: { walk: 0.7, run: 1.5 },
 };
@@ -624,6 +625,47 @@ export function makeAnimal(color, s, kind = 'generic') {
       for (const z of [-1, 1]) box(0.06, 0.06, 0.14, 0.55, 0.86, z * 0.15, face);
       break;
     }
+    case 'ram': { // 숫양(창 22:13): 양 몸에 둥글게 말린 큰 뿔
+      const face = mat(0x3a3330);
+      const hornM = mat(PAL.horn);
+      legs(0.08, 0.38, 0.26, 0.13, face);
+      blob(new THREE.IcosahedronGeometry(0.48 * s, 1).scale(1.25, 0.9, 1), 0, 0.68, 0);
+      box(0.24, 0.26, 0.2, 0.62, 0.8, 0, face);
+      for (const z of [-1, 1]) {
+        const horn = new THREE.Mesh(new THREE.TorusGeometry(0.13 * s, 0.05 * s, 4, 8, Math.PI * 1.5), hornM);
+        horn.position.set(0.56 * s, 0.9 * s, z * 0.16 * s);
+        horn.rotation.y = Math.PI / 2;
+        body.add(horn);
+      }
+      break;
+    }
+    case 'camel': { // 낙타(창 24:10): 긴 다리, 등의 혹, 앞으로 굽은 긴 목
+      legs(0.11, 0.9, 0.34, 0.14);
+      box(1.0, 0.42, 0.42, 0, 1.08, 0);
+      blob(new THREE.IcosahedronGeometry(0.3 * s, 0).scale(1, 0.9, 0.9), -0.05, 1.38, 0, dark);
+      box(0.18, 0.62, 0.2, 0.56, 1.28, 0, m, -0.7);
+      box(0.36, 0.2, 0.2, 0.86, 1.5, 0);
+      box(0.05, 0.4, 0.06, -0.52, 0.95, 0, dark, 0.3);
+      break;
+    }
+    case 'cow': { // 소(창 41:2): 넓은 몸, 짧은 뿔, 흰 얼룩
+      legs(0.13, 0.5, 0.36, 0.16);
+      box(1.1, 0.55, 0.5, 0, 0.82, 0);
+      box(0.4, 0.34, 0.34, 0.68, 0.92, 0);
+      box(0.4, 0.3, 0.52, -0.1, 0.92, 0, light);
+      for (const z of [-1, 1]) box(0.06, 0.16, 0.06, 0.66, 1.16, z * 0.15, mat(PAL.horn), z * 0.4);
+      box(0.05, 0.5, 0.05, -0.6, 0.78, 0, m, 0.3);
+      break;
+    }
+    case 'donkey': { // 나귀(창 22:3): 작은 몸, 긴 귀
+      legs(0.09, 0.5, 0.3, 0.12);
+      box(0.85, 0.4, 0.36, 0, 0.76, 0);
+      box(0.18, 0.4, 0.2, 0.46, 0.98, 0, m, -0.5);
+      box(0.36, 0.18, 0.18, 0.66, 1.15, 0, m, -0.3);
+      for (const z of [-1, 1]) box(0.05, 0.3, 0.06, 0.58, 1.38, z * 0.07, m, z * 0.2);
+      box(0.05, 0.4, 0.05, -0.48, 0.7, 0, dark, 0.3);
+      break;
+    }
     case 'horse': { // 긴 목, 갈기, 긴 꼬리
       const hair = mat(0x2e2018);
       legs(0.1, 0.75, 0.36, 0.13);
@@ -696,6 +738,69 @@ export function makeSerpent() {
     head.add(eye);
   }
   g.userData.wiggle = (t) => g.children.forEach((seg, i) => (seg.position.z = Math.sin(t * 4 - i * 0.7) * 0.08 * Math.min(1, i)));
+  return g;
+}
+
+// ---------- 족장 시대의 소품: 여러 스테이지가 같이 쓴다 ----------
+// 장막(창 12:8, 18:1): 기둥 셋에 천을 덮은 낮은 집. 입구는 +x 쪽이다.
+export function makeTent(color = 0x6b4a32, s = 1) {
+  const g = new THREE.Group();
+  const cloth = mat(color, { side: THREE.DoubleSide });
+  const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 1.5 * s, 1.5 * s, 4, 1, true), cloth);
+  roof.position.y = 0.75 * s;
+  roof.rotation.y = Math.PI / 4;
+  roof.scale.set(1.3, 1, 1);
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(0.6 * s, 0.9 * s), mat(0x2a1d14, { side: THREE.DoubleSide }));
+  door.position.set(1.0 * s, 0.45 * s, 0);
+  door.rotation.y = Math.PI / 2;
+  g.add(roof, door);
+  return g;
+}
+// 돌 제단(창 8:20, 12:7, 22:9): 쌓은 돌. 위에 나무를 놓을 수 있다(userData.top).
+export function makeAltar(s = 1) {
+  const g = new THREE.Group();
+  const stone = mat(0x9a9488);
+  for (const [x, y, z, h] of [[0, 0.2, 0, 0.42], [0.36, 0.17, 0.18, 0.32], [-0.32, 0.17, 0.24, 0.34], [0.05, 0.17, -0.34, 0.32], [-0.2, 0.17, -0.2, 0.3], [0, 0.52, 0.02, 0.3]]) {
+    const b = new THREE.Mesh(new THREE.DodecahedronGeometry(h * s, 0), stone);
+    b.position.set(x * s, y * s, z * s);
+    g.add(b);
+  }
+  g.userData.top = new THREE.Vector3(0, 0.85 * s, 0);
+  return g;
+}
+// 우물(창 24:11, 21:19): 둥근 돌 둘레와 물빛
+export function makeWell() {
+  const g = new THREE.Group();
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.5, 10, 1, true), mat(0xa39a8a, { side: THREE.DoubleSide }));
+  rim.position.y = 0.25;
+  const water = new THREE.Mesh(new THREE.CircleGeometry(0.72, 10), mat(PAL.water));
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = 0.3;
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.08, 4, 10), mat(0x8a8274));
+  lip.rotation.x = Math.PI / 2;
+  lip.position.y = 0.5;
+  g.add(rim, water, lip);
+  return g;
+}
+// 곡식 자루(창 42:25)
+export function makeSack(color = 0xc8b088) {
+  const g = new THREE.Group();
+  const bag = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0).scale(0.9, 1.2, 0.9), mat(color));
+  bag.position.y = 0.3;
+  const tie = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 0.14, 5), mat(new THREE.Color(color).multiplyScalar(0.7)));
+  tie.position.y = 0.66;
+  g.add(bag, tie);
+  return g;
+}
+// 나뭇단(창 22:6 번제 나무, 창 6:14 방주 나무)
+export function makeLogs(n = 3, color = PAL.bark) {
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 5), mat(color));
+    log.rotation.z = Math.PI / 2;
+    log.position.set(0, 0.06 + Math.floor(i / 2) * 0.1, (i % 2 - 0.5) * 0.13);
+    g.add(log);
+  }
   return g;
 }
 

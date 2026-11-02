@@ -1,7 +1,7 @@
 // 메뉴: 상태 창(레벨, 성령의 열매 레이더 차트, 닮은 인물)과 도감(장별 페이지, 다섯 분류, 칸마다 세 상태).
 // 게임 중에는 걷는 중에만 열고, 첫 화면에서는 도감만 연다. 규칙은 docs/standards/ui.md "메뉴".
-import { $ } from './ui.js';
-import { SPIRIT, SPIRIT_STAGES, slotsAt } from './data/growth.js';
+import { $, isTouch } from './ui.js';
+import { SPIRIT, SPIRIT_STAGES, slotsAt, CODEX_TITLES } from './data/growth.js';
 import { CODEX, CODEX_TABS } from './data/codex.js';
 import { CHAPTERS } from './data/chapters.js';
 import { levelOf, stageOf, likeness, codexState, ownsLook } from './growth.js';
@@ -85,6 +85,8 @@ function statusView(state) {
   badge.append(el('span', 'profile__lvword', 'Lv.'), el('span', 'profile__lvnum', lv.level));
   const who = el('div', 'profile__who');
   who.append(el('p', 'quest__label', lv.title), el('p', 'profile__name', state.name || '관찰자'));
+  // 도감 완성 칭호(CODEX_TITLES): 월드 도감을 다 채우면 이름 아래에 붙는다
+  for (const [w, t] of Object.entries(CODEX_TITLES)) if (state.claimed.includes(`${w}/codex`)) who.append(el('p', 'profile__badge', `${t.title} (${t.ref})`));
   const xp = el('div', 'profile__xp');
   const bar = el('span', 'gauge__track profile__track');
   const fill = el('span', 'gauge__fill');
@@ -380,6 +382,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
     }
     codexBox = el('div', 'codex__box');
     wrap.append(bookPager, cats, codexBox);
+    if (!isTouch()) wrap.append(el('p', 'codex__keys', `${TABS.length ? 'Q·E 탭 · ' : ''}←·→ 페이지 · ↑·↓ 분류 · [·] 장`));
     codexBody(0);
     return wrap;
   };
@@ -407,8 +410,29 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
     open = null;
     resolve();
   };
+  // 키보드: Q·E(탭에 포커스가 있으면 ←·→도)로 탭을 옮긴다. 도감에서는 ←·→ 페이지, ↑·↓ 분류, [·] 장.
   const onKey = (e) => {
-    if (e.code === 'Escape' || (e.code === 'KeyM' && !only)) { e.preventDefault(); e.stopPropagation(); close(); }
+    if (e.code === 'Escape' || (e.code === 'KeyM' && !only)) { e.preventDefault(); e.stopPropagation(); close(); return; }
+    const onTab = document.activeElement?.classList.contains('tab');
+    const side = e.code === 'ArrowRight' || e.code === 'KeyE' ? 1 : e.code === 'ArrowLeft' || e.code === 'KeyQ' ? -1 : 0;
+    if (TABS.length && side && (onTab || e.code.startsWith('Key'))) {
+      e.preventDefault();
+      const k = (TABS.findIndex((t) => t.id === tab) + side + TABS.length) % TABS.length;
+      setTab(TABS[k].id);
+      tabsEl.querySelector(`[data-id="${TABS[k].id}"]`).focus({ preventScroll: true });
+      return;
+    }
+    if (tab !== 'codex') return;
+    const click = (sel) => { const b = body.querySelector(sel); if (b && !b.disabled) { e.preventDefault(); b.click(); } };
+    if (e.code === 'ArrowRight') click('.pager--page .pager__btn--next');
+    if (e.code === 'ArrowLeft') click('.pager--page .pager__btn--prev');
+    if (e.code === 'BracketRight') click('.pager--book .pager__btn--next');
+    if (e.code === 'BracketLeft') click('.pager--book .pager__btn--prev');
+    if (e.code === 'ArrowDown' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      const k = CODEX_TABS.findIndex((t) => t.id === cat) + (e.code === 'ArrowDown' ? 1 : -1);
+      body.querySelectorAll('.codex__cats .chip')[(k + CODEX_TABS.length) % CODEX_TABS.length]?.click();
+    }
   };
   addEventListener('keydown', onKey, true);
   $('menuClose').onclick = close;
