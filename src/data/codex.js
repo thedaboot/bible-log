@@ -126,6 +126,13 @@ export const CODEX = [
   { id: 'creature/grain', name: '충실한 이삭', stage: 'joseph', fact: '한 줄기에 일곱 이삭이 충실하게 맺힌 곡식', ref: '창 41:22', memo: '마른 이삭이 충실한 이삭을 삼켰다.' },
   { id: 'item/coat-thread', name: '채색옷 실', stage: 'joseph', fact: '야곱이 요셉에게 지어 입힌 채색옷', ref: '창 37:3', memo: '구덩이 곁에 떨어진 옷의 실 한 가닥. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-39-23', name: '형통하게 하심', stage: 'joseph', fact: '여호와께서 요셉과 함께하사 그가 하는 일을 형통하게 하셨다', ref: '창 39:23', memo: '옥 안에서 들은 말씀이다.' },
+
+  { id: 'person/judah', name: '유다', stage: 'brothers', fact: '베냐민 대신 종이 되겠다고 한 야곱의 아들', ref: '창 44:33', memo: '오래전 동생을 팔자고 했던 사람이 이번에는 동생을 지켰다.' },
+  { id: 'person/benjamin', name: '베냐민', stage: 'brothers', fact: '야곱의 막내아들, 요셉의 친동생', ref: '창 35:18', memo: '처음 가는 먼 길에 신이 나 있었다.' },
+  { id: 'item/silver-cup', name: '은잔', stage: 'brothers', fact: '요셉이 베냐민의 자루에 넣게 한 잔', ref: '창 44:2', memo: '막내의 자루에서 나와 형들의 마음을 드러냈다.' },
+  { id: 'place/goshen', name: '고센 땅', stage: 'brothers', fact: '야곱의 온 집안이 내려와 산 애굽 땅', ref: '창 45:10', memo: '요셉 곁에서 가축을 치며 살게 된 땅이다.' },
+  { id: 'item/grain-handful', name: '곡식 한 줌', stage: 'brothers', fact: '기근 때 애굽에서 산 곡식', ref: '창 42:25', memo: '형들의 자루에 채운 곡식 한 줌. 창세기 마지막 기념물이다.' },
+  { id: 'word/gen-50-20', name: '선으로 바꾸심', stage: 'brothers', fact: '당신들은 해하려 하였으나 하나님은 선으로 바꾸셨다', ref: '창 50:20', memo: '구덩이에서 궁정까지 이어진 길 끝에서 요셉이 한 말이다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).
@@ -146,4 +153,5 @@ export const LIKENESS = {
   jacob: { fruits: ['patience', 'faith'], text: '돌베개를 베고도 약속을 붙든 야곱처럼, 먼 길 위에서도 함께하시는 분을 기억해요.', why: '창 29:20 칠 년을 며칠같이 여김(인내), 창 28:20~22 서원(신실)' },
   esau: { fruits: ['love', 'gentle'], text: '스무 해 만에 동생을 먼저 달려가 껴안은 에서처럼, 먼저 다가가 화해의 손을 내밀어요.', why: '창 33:4 달려와 껴안음(사랑), 창 33:9 넉넉하니 네 것은 네가 가지라(온유)' },
   joseph: { fruits: ['patience', 'faith'], text: '구덩이와 옥에서도 맡은 일을 해낸 요셉처럼, 어디에 있든 하나님이 함께하심을 믿고 성실하게 일해요.', why: '창 39:20~23 옥에서 형통함(인내), 창 41:16 하나님께서 대답하심(신실)' },
+  judah: { fruits: ['love', 'faith'], text: '동생 대신 종이 되겠다고 나선 유다처럼, 맡은 사람을 끝까지 책임져요.', why: '창 44:33 대신 종이 되겠다(사랑), 창 43:9 담보가 되겠다(신실)' },
 };

@@ -272,9 +272,15 @@ function questFind({ title, targets, text, radius = 1.6, onFound, hold = 0, hold
 
 // ---------- 대천사 ----------
 let angelFollow = false;
+let angelAway = null; // 막간 상대: 대천사가 이 인물의 반대쪽(관찰자 뒤)에 서서 둘 사이를 가리지 않는다
 const angelGoal = new THREE.Vector3();
 function moveAngel(dt, t) {
-  if (angelFollow && angel.position.distanceTo(player.position) > 1.4) {
+  if (angelFollow && angelAway) {
+    // 화면 가로 방향(1, 0, -1)으로만 비킨다. 카메라 쪽으로 나오면 관찰자를 가린다.
+    const side = Math.sign((player.position.x - angelAway.position.x) - (player.position.z - angelAway.position.z)) || 1;
+    angelGoal.set(side, 0, -side).setLength(1.4).add(player.position);
+    angel.position.lerp(angelGoal, Math.min(1, dt * 2.5));
+  } else if (angelFollow && angel.position.distanceTo(player.position) > 1.4) {
     // (+x, +z)는 카메라 쪽이라 관찰자를 가린다. 화면 오른쪽 옆인 (+x, -z)에 선다.
     angelGoal.copy(player.position).add(new THREE.Vector3(1, 0, -1));
     angel.position.lerp(angelGoal, Math.min(1, dt * 2.5));
@@ -1120,6 +1126,7 @@ function stageApi(id, mod) {
     // 막간: 인물과 끝까지 대화한다. 마치면 관계 "대화"와 보상.
     interlude: async (fig, data = mod.data.interlude) => {
       g.lookAt(fig);
+      angelAway = fig;
       // 선택지 패널(화면 아래 오른쪽)이 두 사람을 가리지 않게, 둘 사이에서 카메라 쪽으로 옮긴 점을 비춘다(인물이 화면 위로 오른다)
       camFocus = fig.position.clone().lerp(player.position, 0.5).add(new THREE.Vector3(1.4, 0, 1.4));
       setView(11);
@@ -1127,6 +1134,7 @@ function stageApi(id, mod) {
       reward(`${id}/interlude`, 'interlude');
       meet(data.bond ?? data.who, 'talked', id);
       playerFace = null;
+      angelAway = null;
     },
     // 걷는 동안 인물 곁을 지나가면 한 번 듣는 짧은 인사(관계 "만남"). 지울 함수를 돌려준다.
     greet: (fig, lines, who) => {
@@ -1146,9 +1154,11 @@ function stageApi(id, mod) {
         g.lookAt(fig);
         if (deepOpen(state, data.who)) {
           const back = camFocus;
+          angelAway = fig;
           camFocus = fig.position.clone().lerp(player.position, 0.5).add(new THREE.Vector3(1.4, 0, 1.4));
           await runInterlude(data, `${id}/deep`);
           camFocus = back;
+          angelAway = null;
           reward(`${id}/deep`, 'deep');
         } else await talk(data.locked, state);
         meet(data.who, 'met', id);
