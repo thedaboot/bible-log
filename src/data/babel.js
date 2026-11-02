@@ -86,8 +86,8 @@ const interlude = {
 
 const quiz = [
   { q: '사람들은 돌 대신 무엇으로 탑을 쌓았나요?', options: ['벽돌', '나무', '흙덩이'], answer: 0, ref: '창 11:3' },
-  { q: '사람들이 탑을 쌓아 하려던 것은 무엇인가요?', options: ['자기 이름을 내려고', '홍수를 피하려고', '양을 지키려고'], answer: 0, ref: '창 11:4' },
-  { q: '그 성읍의 이름을 무엇이라 하였나요?', options: ['바벨', '하란', '시날'], answer: 0, ref: '창 11:9' },
+  { q: '사람들이 탑을 쌓아 하려던 것은 무엇인가요?', options: ['홍수를 피하려고', '자기 이름을 내려고', '양을 지키려고'], answer: 1, ref: '창 11:4' },
+  { q: '그 성읍의 이름을 무엇이라 하였나요?', options: ['하란', '시날', '바벨'], answer: 2, ref: '창 11:9' },
 ];
 
 export default { id: 'babel', lines, interlude, quiz };

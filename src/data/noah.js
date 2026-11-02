@@ -103,8 +103,8 @@ const greetings = {
 
 const quiz = [
   { q: '노아는 무슨 나무로 방주를 지었나요?', options: ['고페르 나무', '올리브나무', '무화과나무'], answer: 0, ref: '창 6:14' },
-  { q: '비둘기는 저녁에 무엇을 물고 돌아왔나요?', options: ['새 올리브 잎', '포도송이', '작은 돌'], answer: 0, ref: '창 8:11' },
-  { q: '하나님께서 구름 속에 두신 언약의 표는 무엇인가요?', options: ['무지개', '별', '빛기둥'], answer: 0, ref: '창 9:13' },
+  { q: '비둘기는 저녁에 무엇을 물고 돌아왔나요?', options: ['포도송이', '새 올리브 잎', '작은 돌'], answer: 1, ref: '창 8:11' },
+  { q: '하나님께서 구름 속에 두신 언약의 표는 무엇인가요?', options: ['별', '빛기둥', '무지개'], answer: 2, ref: '창 9:13' },
 ];
 
 export default { id: 'noah', lines, interlude, greetings, quiz };

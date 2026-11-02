@@ -70,8 +70,8 @@ const greetings = {
 
 const quiz = [
   { q: '에녹은 누구와 동행하였나요?', options: ['하나님', '아담', '노아'], answer: 0, ref: '창 5:24' },
-  { q: '에녹이 낳은 아들의 이름은 무엇인가요?', options: ['므두셀라', '셈', '에노스'], answer: 0, ref: '창 5:21' },
-  { q: '에녹은 몇 년을 살았나요?', options: ['삼백육십오 년', '구백육십구 년', '백이십 년'], answer: 0, ref: '창 5:23' },
+  { q: '에녹이 낳은 아들의 이름은 무엇인가요?', options: ['셈', '므두셀라', '에노스'], answer: 1, ref: '창 5:21' },
+  { q: '에녹은 몇 년을 살았나요?', options: ['구백육십구 년', '백이십 년', '삼백육십오 년'], answer: 2, ref: '창 5:23' },
 ];
 
 export default { id: 'enoch', lines, interlude, greetings, quiz };

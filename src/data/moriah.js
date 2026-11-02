@@ -130,8 +130,8 @@ const greetings = {
 
 const quiz = [
   { q: '이삭이 번제할 어린양은 어디 있냐고 묻자 아브라함은 어떻게 답했나요?', options: ['하나님께서 친히 준비하실 것이다', '산 위에 있다', '종들이 가져올 것이다'], answer: 0, ref: '창 22:8' },
-  { q: '덤불에 뿔이 걸려 있던 짐승은 무엇인가요?', options: ['숫양', '어린 송아지', '산양'], answer: 0, ref: '창 22:13' },
-  { q: '아브라함이 그곳에 붙인 이름은 무엇인가요?', options: ['여호와 이레', '브엘라해로이', '벧엘'], answer: 0, ref: '창 22:14' },
+  { q: '덤불에 뿔이 걸려 있던 짐승은 무엇인가요?', options: ['어린 송아지', '숫양', '산양'], answer: 1, ref: '창 22:13' },
+  { q: '아브라함이 그곳에 붙인 이름은 무엇인가요?', options: ['브엘라해로이', '벧엘', '여호와 이레'], answer: 2, ref: '창 22:14' },
 ];
 
 export default { id: 'moriah', lines, interlude, deep, greetings, quiz };
