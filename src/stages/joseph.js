@@ -167,7 +167,7 @@ export default {
 
     // 도전: 꿈 풀기. 꿈의 장면마다 다가가 금빛 구간에 맞추면 요셉이 풀이를 말한다.
     // 꿈을 푸는 이는 하나님이시라는 요셉의 고백(창 41:16)에 기대어 신실과 화평이 돕는다.
-    const names = ['살진 일곱 암소', '충실한 일곱 이삭', '파리한 일곱 암소', '마른 일곱 이삭'];
+    const names = ['살진 일곱 암소', '알이 꽉 찬 일곱 이삭', '뼈만 남은 일곱 암소', '마른 일곱 이삭']; // 요셉의 풀이 대사(data/joseph.js)와 같은 말
     await g.challenge({
       title: '바로의 꿈', spots: DREAMS.map((p, i) => ({ pos: p.clone().add(V(1.2, 1.2)), text: `${names[i]} 풀기`, i })),
       verb: '풀기', hits: 2, fruits: ['faith', 'peace'],
