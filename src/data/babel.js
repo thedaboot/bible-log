@@ -1,5 +1,5 @@
 // 1-5 바벨탑(창 11:1~9). 창 10장(민족의 족보)은 처음 서술로, 창 11:10~32(셈부터 아브람까지)는 끝 서술로 잇는다.
-// 언어가 흩어진 뒤의 말은 알아들을 수 없는 소리라서 대사 대신 서술로 전한다(본문에 그 말이 없다).
+// 언어가 흩어진 뒤의 말은 플레이어도 못 알아듣는 지어낸 말로 쓴다(본문에 그 말이 없어 각색, scattered 주석 참고).
 
 const lines = {
   arrive: [
@@ -23,14 +23,23 @@ const lines = {
     { who: 'narr', text: '여호와께서 사람들이 쌓는 성읍과 탑을 보려고 내려오셨다.', ref: '창 11:5' },
     { who: 'voice', text: '이들이 한 백성이요 언어도 하나라서 이 일을 시작하였으니,\n이제 하고자 하는 일을 막을 수 없을 것이다.', ref: '창 11:6' },
     { who: 'voice', text: '자, 내려가서 그들의 언어를 뒤섞어, 서로 알아듣지 못하게 하자.', ref: '창 11:7' },
-    { who: 'angel', text: '이제 일꾼들의 말이 달라졌어요.\n한 사람씩 곁에 가서 다시 들어 보아요.', ref: null },
+    { who: 'angel', text: '이제 일꾼들의 말이 달라졌어요.\n아까 그 일꾼들에게 다시 가서 들어 보아요.', ref: null },
   ],
-  // 퀘스트 2: 흩어지는 말. 알아들을 수 없어 서술로만 전한다.
+  // 퀘스트 2: 흩어지는 말. 일꾼 한 사람에 두 줄(뒤섞인 말, 아까의 말과 견주는 서술)이다.
+  // 뒤섞인 말은 지어낸 말이고 일꾼마다 규칙이 다르다. 실제 언어를 흉내 내지 않고, 프리텐다드에 있는 글자만 쓴다.
+  //   0 벽돌: 소리는 나지만 뜻이 없는 한글 음절(겹받침·된소리 위주). 아까 말과 띄어쓰기·느낌표 자리가 같다.
+  //   1 역청: 아까 한 말을 음절 단위로 거꾸로 읽은 소리.
+  //   2 꼭대기: 도형·수학 기호로 지어낸 글자.
+  //   3 터: 낱자로 흩어진 자모(옛한글 ㆍ ㅿ ㆆ ㆁ 포함). 소리 내 읽을 수도 없다.
   scattered: [
-    { who: 'narr', text: '일꾼이 손짓하며 소리쳤지만, 낯선 소리만 들렸다.\n옆 사람이 고개를 저었다.', ref: null, basis: '창 11:7 언어를 혼잡하게 하심' },
-    { who: 'narr', text: '역청 통을 든 사람이 몇 번이나 같은 말을 했다.\n아무도 통을 받아 주지 않았다.', ref: null, basis: '창 11:7' },
-    { who: 'narr', text: '꼭대기를 가리키던 사람이 말을 멈추고,\n자기 말을 알아듣는 몇 사람과 짐을 쌌다.', ref: null, basis: '창 11:8 흩으심' },
-    { who: 'narr', text: '아이를 안은 사람이 서쪽 길을 보았다.\n함께 갈 사람을 찾는 눈빛이었다.', ref: null, basis: '창 11:8~9 온 땅에 흩으심' },
+    { who: 'worker', text: '뷁둙 똷! 쀍뜗흙 퉯닳붥끏!', ref: null, basis: '창 11:7 언어를 혼잡하게 하심, 각색' },
+    { who: 'narr', text: '아까 "벽돌 더!" 하고 외치던 그 목소리다.\n옆 사람이 고개를 갸웃하더니 벽돌을 내려놓았다.', ref: null, basis: '창 11:7 서로 알아듣지 못함' },
+    { who: 'worker', text: '다는붙 야라발 때 할뜻따 은청역.', ref: null, basis: '창 11:7 언어를 혼잡하게 하심, 각색' },
+    { who: 'narr', text: '역청은 따뜻할 때 발라야 한다던 사람이다.\n몇 번을 되풀이해도 아무도 통을 받아 주지 않았다.', ref: null, basis: '창 11:7 서로 알아듣지 못함' },
+    { who: 'worker', text: '◁⊥ ∴◇⌒ ▷∠! ⊕△ ∵⊥◇?', ref: null, basis: '창 11:7 언어를 혼잡하게 하심, 각색' },
+    { who: 'narr', text: '구름을 가리키던 손이 천천히 내려왔다.\n그는 자기 말을 알아듣는 몇 사람과 짐을 쌌다.', ref: null, basis: '창 11:8 흩으심' },
+    { who: 'worker', text: 'ㅎㆍㄹ ㅿㅢ ㆆㅜㅁㅁ, ㅊㅑ ㆁㆍ ㄸㅢ…', ref: null, basis: '창 11:7 언어를 혼잡하게 하심, 각색' },
+    { who: 'narr', text: '여기 모여 살자던 사람이 아이를 안고 서쪽 길을 보았다.\n제 말을 알아듣는 사람을 찾는 눈빛이었다.', ref: null, basis: '창 11:8~9 온 땅에 흩으심' },
   ],
   name: [
     { who: 'narr', text: '여호와께서 그들을 온 땅에 흩으시니, 그들이 성읍 쌓기를 그쳤다.', ref: '창 11:8' },
@@ -50,17 +59,18 @@ const interlude = {
       { who: 'builder', text: '처음 보는 얼굴이구려. 일하러 왔소?\n하루에 벽돌 삼백 장은 구워야 탑이 자라오.', ref: null, basis: '막간: 인물이 관찰자를 알아본다, 창 11:3' },
     ] },
     { choose: [
-      { text: '삼백 장이나요?', fruit: 'patience', reply: [
-        { who: 'builder', text: '어제는 삼백열 장이었소. 가마 불을 밤새 지키느라 눈이 따갑소.', ref: null, basis: '창 11:3 굽자' },
+      { text: '삼백 장이면 몇 층이에요?', fruit: 'patience', reply: [
+        { who: 'builder', text: '삼백 장이면 담 한 줄 반이오. 한 층은 아직 멀었지.\n그래서 가마 불은 밤에도 안 끄오.', ref: null, basis: '창 11:3 굽자' },
       ] },
-      { text: '(벽돌을 함께 나른다)', fruit: 'kindness', reply: [
-        { who: 'narr', text: '구운 벽돌은 아직 따뜻했다.\n벽돌 굽는 이가 장갑 대신 천 조각을 건네주었다.', ref: null, basis: '창 11:3 벽돌' },
+      { text: '(벽돌을 맨손으로 든다)', fruit: 'kindness', reply: [
+        { who: 'narr', text: '갓 구운 벽돌은 생각보다 뜨거웠다.\n벽돌 굽는 이가 웃으며 손에 감을 천 조각을 건넸다.', ref: null, basis: '창 11:3 벽돌을 굽자' },
+        { who: 'builder', text: '맨손은 다들 첫날만 하오. 나도 그렇게 배웠지.', ref: null, basis: '창 11:3' },
       ] },
-      { text: '탑은 왜 쌓아요?', fruit: 'faith', reply: [
-        { who: 'builder', text: '꼭대기가 하늘에 닿으면 우리 이름이 높아진다더군.\n위에서 그렇게 정했소.', ref: null, basis: '창 11:4 이름을 내자' },
+      { text: '하늘에 진짜 닿아요?', fruit: 'faith', reply: [
+        { who: 'builder', text: '닿으면 우리 이름이 높아진다더군.\n그런데 꼭대기에 벽돌 올릴 사람은 아직 손을 안 들었소.', ref: null, basis: '창 11:4 꼭대기를 하늘에 닿게, 이름을 내자' },
       ] },
-      { text: '불 지키는 거 대신할게요.', fruit: 'goodness', need: { kindness: 1 }, reply: [
-        { who: 'builder', text: '정말이오? 그럼 잠깐 눈 좀 붙이겠소. 불이 하얘지면 나를 깨우시오.', ref: null, basis: '창 11:3' },
+      { text: '불은 제가 볼게요. 주무세요.', fruit: 'goodness', need: { kindness: 1 }, reply: [
+        { who: 'builder', text: '정말이오? 불이 하얘지면 깨우시오.\n노래지면 괜찮고, 빨개지면… 그냥 나를 깨우시오.', ref: null, basis: '창 11:3 불에 굽자' },
       ] },
     ] },
     { say: [
@@ -68,18 +78,18 @@ const interlude = {
       { who: 'builder', text: '여기 모이니 좋긴 한데, 요즘은 탑만 보고 사오.', ref: null, basis: '창 11:4 흩어짐을 면하자' },
     ] },
     { choose: [
-      { text: '고향 이야기 더 들려주세요.', fruit: 'love', reply: [
-        { who: 'builder', text: '봄이면 언덕마다 새끼 양이 뛰어다녔소.\n그 소리를 들은 지 오래됐구려.', ref: null, basis: '창 4:2 양 치는 일, 창 11:2' },
+      { text: '고향 양들은 잘 있을까요?', fruit: 'love', reply: [
+        { who: 'builder', text: '봄이면 언덕마다 새끼 양이 뛰었소.\n새끼가 매에 하고 울면 어미는 백 마리 중에도 알아들었지.', ref: null, basis: '창 4:2 양 치는 일, 창 11:2, 요 10:4 양이 목소리를 앎' },
       ] },
-      { text: '쉬는 날도 있어요?', fruit: 'peace', reply: [
-        { who: 'builder', text: '탑이 다 서면 쉰다고들 하오. 그게 언제일지는 아무도 모르지.', ref: null, basis: '창 11:4~6' },
+      { text: '탑 다 지으면 뭐 하세요?', fruit: 'peace', reply: [
+        { who: 'builder', text: '꼭대기에 올라가 한잠 자겠소.\n거기까지는 가마 연기도 못 올라올 테니.', ref: null, basis: '창 11:4~6' },
       ] },
-      { text: '벽돌이 참 반듯해요.', fruit: 'joy', reply: [
-        { who: 'builder', text: '틀을 내가 짰소. 모서리가 안 깨지게 진흙에 짚을 섞지.', ref: null, basis: '창 11:3, 출 5:7 벽돌과 짚' },
+      { text: '벽돌에 짚이 보여요!', fruit: 'joy', reply: [
+        { who: 'builder', text: '눈이 밝구려. 짚을 섞어야 모서리가 안 깨지오.\n틀도 내가 짰소. 삼백 장이 다 쌍둥이지.', ref: null, basis: '창 11:3, 출 5:7 벽돌과 짚' },
       ] },
     ] },
     { say: [
-      { who: 'builder', text: '어이쿠, 불이 꺼지겠소. 이야기 고맙소.', ref: null, basis: '창 11:3' },
+      { who: 'builder', text: '어이쿠, 불이 빨개졌소! 이야기 고맙소. 내일 또 오시오.', ref: null, basis: '창 11:3' },
     ] },
   ],
 };

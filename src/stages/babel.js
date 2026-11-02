@@ -149,7 +149,8 @@ export default {
       text: (t) => `${['벽돌 나르는', '역청 바르는', '꼭대기를 보는', '터를 고르는'][t.i]} 일꾼 곁에 머물기`,
       radius: 2, hold: 1, holdLabel: () => '곁에서 듣는 중',
       onFound: async (t) => {
-        await g.talk([data.lines.scattered[t.i]]);
+        F.acts.face(workers[t.i], g.player.position);
+        await g.talk(data.lines.scattered.slice(t.i * 2, t.i * 2 + 2));
         F.acts.carry(F.bricks[t.i], null);
         F.bricks[t.i].position.copy(workers[t.i].position).setY(0.06);
         const w = workers[t.i];
