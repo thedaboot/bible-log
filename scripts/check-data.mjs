@@ -15,7 +15,7 @@ import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
 import { layout } from '../src/map.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL } from '../src/data/growth.js';
-import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook } from '../src/growth.js';
+import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook, codexDone } from '../src/growth.js';
 import { ITEMS } from '../src/data/items.js';
 import { ITEM_ICONS } from '../src/icons.js';
 import { STAGE_MODS } from '../src/stages/index.js';
@@ -176,6 +176,18 @@ assert.equal(load(null), null);
   assert.ok(buyLook(s, 'timbrel') && s.talents === 25 && ownsLook(s, 'timbrel'));
   assert.equal(buyLook(s, 'timbrel'), false, '같은 꾸미기를 두 번 삼');
   assert.equal(buyLook(s, 'staff'), false, '레벨로 여는 꾸미기를 삼');
+  // 도감 완성: 항목 하나가 빠지면 칭호 없음, 다 채우면 한 번만 받고 다시 받지 않는다
+  {
+    const w = WORLDS[0], c = newState();
+    const entries = CODEX.filter((e) => w.stages.includes(e.stage));
+    for (const e of entries.slice(1)) c.codex[e.id] = e.stage;
+    assert.equal(codexDone(c, w), false, '도감 항목이 빠졌는데 칭호를 받음');
+    c.codex[entries[0].id] = entries[0].stage;
+    assert.ok(codexDone(c, w), '도감을 다 채웠는데 칭호를 못 받음');
+    assert.ok(grant(c, `${w.id}/codex`, REWARDS.codexDone));
+    assert.equal(codexDone(c, w), false, '칭호를 두 번 받음');
+    assert.equal(grant(c, `${w.id}/codex`, REWARDS.codexDone), null);
+  }
   // 예전 저장값: 고른 꾸미기는 갖게 하고, 고른 도구는 맨손으로
   mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { item: 'scroll' } }));
   const a = load(storage);

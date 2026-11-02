@@ -16,7 +16,7 @@ import { load, save, reach, newState, openNext } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
 import { josa } from './text.js';
 import { REWARDS, SPIRIT } from './data/growth.js';
-import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook, addTool, useTool, assistOf, deepOpen } from './growth.js';
+import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook, addTool, useTool, assistOf, deepOpen, codexDone } from './growth.js';
 import { CHALLENGE, CODEX_TITLES } from './data/growth.js';
 import { WORLDS } from './data/chapters.js';
 import { ITEMS } from './data/items.js';
@@ -397,6 +397,7 @@ async function runCreation(fromDay = 1) {
     setControls(null);
   }
   reward('creation/clear', 'clear');
+  codexReward();
   reach(state, 'eden'); // 다음 스테이지를 연다
   await fade(1);
   runShelter();
@@ -834,6 +835,7 @@ async function runEdenFall() {
   note('item/fig-leaf'); // 스테이지 기념물: 인벤토리에 두지 않고 도감에만 남는다
   reward('eden/quiz', 'quiz');
   reward('eden/clear', 'clear');
+  codexReward();
   await new Promise((r) => setTimeout(r, 2400)); // 마친 보상 알림을 본 뒤 화면을 덮는다
   await fade(1);
   runShelter();
@@ -976,6 +978,7 @@ async function runCain() {
   note('item/wool', 'cain'); // 스테이지 기념물: 도감에만 남는다
   reward('cain/quiz', 'quiz');
   reward('cain/clear', 'clear');
+  codexReward();
   await new Promise((r) => setTimeout(r, 2400));
   await fade(1);
   runShelter();
@@ -1193,11 +1196,9 @@ function stageApi(id, mod) {
 function codexReward() {
   for (const w of WORLDS) {
     const t = CODEX_TITLES[w.id];
-    if (!t || state.claimed.includes(`${w.id}/codex`)) continue;
-    if (CODEX.filter((c) => w.stages.includes(c.stage)).every((c) => state.codex[c.id])) {
-      reward(`${w.id}/codex`, 'codexDone');
-      toast(`칭호 · ${t.title}`, { gain: true });
-    }
+    if (!t || !codexDone(state, w)) continue;
+    reward(`${w.id}/codex`, 'codexDone');
+    toast(`칭호 · ${t.title}`, { gain: true });
   }
 }
 

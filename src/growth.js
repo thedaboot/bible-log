@@ -2,7 +2,7 @@
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, xpToNext, TITLES, BONDS, BOND_NAMES, slotsAt, CHALLENGE, DEEP_LEVEL } from './data/growth.js';
 import { ITEMS } from './data/items.js';
 import { josa } from './text.js';
-import { LIKENESS } from './data/codex.js';
+import { LIKENESS, CODEX } from './data/codex.js';
 
 export function levelOf(xp) {
   let level = 1, left = xp;
@@ -48,6 +48,10 @@ export function record(state, entry, stage) {
   state.codex[entry] = stage;
   return true;
 }
+
+// 도감 완성: 월드(data/chapters.js WORLDS)의 도감 항목을 모두 만났고 아직 칭호를 받지 않았으면 true
+export const codexDone = (state, world) => !state.claimed.includes(`${world.id}/codex`)
+  && CODEX.filter((c) => world.stages.includes(c.stage)).every((c) => state.codex[c.id]);
 
 // 닮은 인물: 도감에서 만난 인물 가운데, 그 인물의 두 열매 점수 합이 가장 큰 사람. 열매가 모두 0이면 없다.
 export function likeness(state) {
