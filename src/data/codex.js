@@ -94,6 +94,14 @@ export const CODEX = [
   { id: 'creature/ram', name: '숫양', stage: 'moriah', fact: '덤불에 뿔이 걸려 있던 숫양', ref: '창 22:13', memo: '이삭 대신 드려졌다.' },
   { id: 'item/firewood', name: '번제 나무', stage: 'moriah', fact: '아브라함이 쪼개어 이삭에게 지운 나무', ref: '창 22:6', memo: '이삭이 끈을 고쳐 매던 나뭇단의 한 토막. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-22-14', name: '여호와 이레', stage: 'moriah', fact: '여호와의 산에서 준비되리라', ref: '창 22:14', memo: '어린양은 하나님께서 친히 준비하신다는 말이 이루어졌다.' },
+
+  { id: 'person/rebekah', name: '리브가', stage: 'rebekah', fact: '브두엘의 딸, 이삭의 아내', ref: '창 24:15', memo: '처음 본 나그네의 낙타 열 마리에게 물을 길어 주었다.' },
+  { id: 'person/laban', name: '라반', stage: 'rebekah', fact: '리브가의 오라버니', ref: '창 24:29', memo: '누이의 금 코걸이를 보고 우물로 달려 나왔다.' },
+  { id: 'person/servant', name: '늙은 종', stage: 'rebekah', fact: '아브라함의 모든 소유를 맡은 늙은 종', ref: '창 24:2', memo: '우물가에서 먼저 기도하고, 응답을 잠잠히 지켜보았다.' },
+  { id: 'creature/camel', name: '낙타', stage: 'rebekah', fact: '종이 끌고 간 주인의 낙타 열 마리', ref: '창 24:10', memo: '한 마리가 한 번에 물동이 여러 개를 비웠다.' },
+  { id: 'place/nahor', name: '나홀의 성', stage: 'rebekah', fact: '아브라함의 동생 나홀의 집안이 사는 성', ref: '창 24:10', memo: '저녁이면 여인들이 성 밖 우물로 물을 길으러 나왔다.' },
+  { id: 'item/gold-ring', name: '금 코걸이', stage: 'rebekah', fact: '종이 리브가에게 준 반 세겔 금 코걸이', ref: '창 24:22', memo: '응답을 받은 날의 기억. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-24-27', name: '인도하시는 하나님', stage: 'rebekah', fact: '여호와께서 길에서 나를 인도하셨다', ref: '창 24:27', memo: '종이 우물가에서 머리를 숙여 드린 찬송이다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).
@@ -110,4 +118,5 @@ export const LIKENESS = {
   sarah: { fruits: ['joy', 'patience'], text: '오래 기다린 끝에 웃음을 얻은 사라처럼, 기다림 속에서도 웃음을 잃지 않아요.', why: '창 21:6 하나님이 나를 웃게 하심(기쁨), 히 11:11 약속하신 이를 미쁘신 줄 앎(인내)' },
   hagar: { fruits: ['patience', 'faith'], text: '광야에서 살피시는 하나님을 만난 하갈처럼, 혼자라고 느낄 때도 그분이 보고 계심을 믿어요.', why: '창 16:9 돌아가 견딤(인내), 창 16:13 살피시는 하나님을 고백함(신실)' },
   isaac: { fruits: ['gentle', 'faith'], text: '나무를 지고 아버지와 함께 산을 오른 이삭처럼, 묵묵히 믿고 따라가요.', why: '창 22:6~8 함께 나아감(온유), 히 11:20 믿음으로 축복함(신실)' },
+  rebekah: { fruits: ['kindness', 'goodness'], text: '낯선 나그네의 낙타에게까지 물을 길어 준 리브가처럼, 부탁받은 것보다 한 걸음 더 도와요.', why: '창 24:19 낙타도 마시게 하겠다(친절), 창 24:20 급히 물을 길음(선함)' },
 };

@@ -1011,7 +1011,14 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       mode = 'walk';
       ch.busy = false;
       if (sp.n >= (sp.hits ?? hits)) { left.delete(sp); render(); }
-      if (!left.size) { stopWalk(); if (tool) useTool(state, tool); save(state); resolve(); return; }
+      if (!left.size) {
+        stopWalk();
+        // 도구는 다 쓰면 사라진다. 손에 들고 있었으면 맨손이 되는 모습을 보여 준다.
+        if (tool && useTool(state, tool) && state.earthLook.item === 'none') dressWith(earthSpec)(state.earthLook, 'item');
+        save(state);
+        resolve();
+        return;
+      }
       newZone();
     };
     const useIt = async () => {
@@ -1031,7 +1038,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       if (e.code === 'Space') { e.preventDefault(); act(); }
       if (e.code === 'KeyF') { e.preventDefault(); useIt(); }
     };
-    ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, panel, busy: false, msg: '', msgT: 0 };
+    ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, panel, busy: false, msg: '', msgT: 0, toolName };
     newZone();
     addEventListener('keydown', onKey);
     $('chAct').onclick = act;
@@ -1066,7 +1073,7 @@ function challengeTick(dt) {
   $('chMark').style.transform = `translateX(${ch.m * $('chTrack').clientWidth}px)`;
   ch.panel.classList.toggle('is-gold', near.ready && ch.m >= ch.zone[0] && ch.m <= ch.zone[1]);
   ch.msgT -= dt;
-  $('chLabel').textContent = ch.msgT > 0 ? ch.msg : near.ready ? `${ch.verb} ${near.n} / ${near.hits ?? ch.hits}` : 'F 키로 도구 쓰기';
+  $('chLabel').textContent = ch.msgT > 0 ? ch.msg : near.ready ? `${ch.verb} ${near.n} / ${near.hits ?? ch.hits}` : `F 키로 ${ch.toolName || '도구'} 쓰기`;
 }
 
 // ---------- 1-4부터의 스테이지: src/stages/<id>.js가 장면(build)과 진행(run)을 맡고, 여기는 공용 기능(g)만 건넨다 ----------
