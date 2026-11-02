@@ -59,6 +59,12 @@ export const CODEX = [
   { id: 'person/methuselah', name: '므두셀라', stage: 'enoch', fact: '에녹의 아들, 노아의 할아버지', ref: '창 5:21~29', memo: '저녁이면 언덕 쪽을 보며 아버지를 기다렸다.' },
   { id: 'item/path-stone', name: '길가의 돌', stage: 'enoch', fact: '에녹이 하나님과 동행하던 길', ref: '창 5:24', memo: '언덕길 가장자리에서 주운 매끈한 돌. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-5-24', name: '하나님과 동행', stage: 'enoch', fact: '에녹이 하나님과 동행하더니 하나님이 그를 데려가셨다', ref: '창 5:24', memo: '죽음을 보지 않고 옮겨진 사람이다(히 11:5).' },
+
+  { id: 'person/builder', name: '벽돌 굽는 이', stage: 'babel', fact: '시날 들판에서 벽돌을 구워 탑을 쌓던 사람들', ref: '창 11:3', memo: '본문에 이름이 없는 일꾼이다. 가마 불을 밤새 지켰다(각색 인물).' },
+  { id: 'place/shinar', name: '시날 땅', stage: 'babel', fact: '사람들이 동쪽에서 옮겨 와 머문 들판', ref: '창 11:2', memo: '돌이 귀해 진흙을 구워 벽돌을 만들었다.' },
+  { id: 'place/babel', name: '바벨', stage: 'babel', fact: '여호와께서 온 땅의 언어를 뒤섞으신 곳', ref: '창 11:9', memo: '꼭대기를 하늘에 닿게 하려던 탑이 거기서 멈추었다.' },
+  { id: 'item/brick', name: '구운 벽돌', stage: 'babel', fact: '사람들이 돌 대신 쓴 벽돌', ref: '창 11:3', memo: '모서리가 반듯한 벽돌 한 장. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-11-9', name: '흩으심', stage: 'babel', fact: '여호와께서 거기서 언어를 뒤섞고 사람들을 온 땅에 흩으셨다', ref: '창 11:9', memo: '자기 이름을 내려던 일이 흩어짐으로 끝났다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).

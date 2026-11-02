@@ -3,5 +3,6 @@
 // main.js startAt이 여기서 찾아 runStage로 돌리고, scripts/check-data.mjs와 review.mjs도 이 목록을 돈다.
 import noah from './noah.js';
 import enoch from './enoch.js';
+import babel from './babel.js';
 
-export const STAGE_MODS = Object.fromEntries([noah, enoch].map((m) => [m.id, m]));
+export const STAGE_MODS = Object.fromEntries([noah, enoch, babel].map((m) => [m.id, m]));

@@ -16,7 +16,7 @@ export const CHAPTERS = [
   // 곁길(side): 본 스테이지(값)에서 갈라지는 짧은 스테이지. 지도에서 본 길 아래에 작게 놓인다.
   { id: 'enoch', title: '에녹의 동행', range: '창세기 5:21~24', points: [{ id: 'enoch', title: '언덕길의 동행' }], side: 'cain' },
   { id: 'noah', title: '노아의 방주', range: '창세기 6~9장', points: [{ id: 'noah', title: '방주와 무지개' }] },
-  { id: 'babel', title: '바벨탑', range: '창세기 11:1~9', points: [] },
+  { id: 'babel', title: '바벨탑', range: '창세기 11:1~9', points: [{ id: 'babel', title: '탑을 쌓는 들판' }] },
   { id: 'abram', title: '아브람의 부르심', range: '창세기 12, 15장', points: [] },
   { id: 'hagar', title: '감찰하시는 하나님', range: '창세기 16, 21장', points: [], side: 'abram' },
   { id: 'mamre', title: '세 손님과 약속', range: '창세기 18장', points: [] },
