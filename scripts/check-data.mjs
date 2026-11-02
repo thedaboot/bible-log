@@ -319,7 +319,7 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
   assert.deepEqual(grant(s, 'eden/rivers-done', REWARDS.riversDone).at(-1), '기쁨이 자랐어요');
   assert.equal(s.spirit.joy, SPIRIT_GAIN.quest);
   // 레벨: 누적 40에서 2, 100에서 3
-  assert.deepEqual([levelOf(39).level, levelOf(40).level, levelOf(99).level, levelOf(100).level], [1, 2, 2, 3]);
+  assert.deepEqual([levelOf(39).level, levelOf(40).level, levelOf(92).level, levelOf(93).level], [1, 2, 2, 3]);
   assert.equal(levelOf(0).title, TITLES[0].title);
   assert.equal(TITLES[0].level, 1, '첫 칭호는 레벨 1');
   assert.ok(TITLES.every((t, i) => REF.test(t.ref) && (i === 0 || t.level > TITLES[i - 1].level)), '칭호 데이터 오류');
@@ -327,6 +327,8 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
   const lvAt = (k) => levelOf(PLAN.xpPerStage * k).level;
   assert.ok(lvAt(1) >= 3 && lvAt(1) <= 4, `에덴 뒤 레벨 ${lvAt(1)}`);
   assert.ok(lvAt(PLAN.stages) < MAX_LEVEL, `끝 레벨 ${lvAt(PLAN.stages)}`);
+  // 창세기(15개)를 마치면 레벨 10 이상이고, 레벨 15 꾸미기(두루마리)는 창세기 뒤에 열린다
+  assert.ok(lvAt(WORLDS[0].stages.length) >= 10 && lvAt(WORLDS[0].stages.length) < 15, `창세기 끝 레벨 ${lvAt(WORLDS[0].stages.length)}`);
   assert.ok(lvAt(PLAN.stages * 0.8) < TITLES.at(-1).level && lvAt(PLAN.stages) >= TITLES.at(-1).level, '마지막 칭호가 너무 일찍 또는 늦게 열림');
   // 열매: 고르게 키우면 끝까지 결실에 못 이르고, 한 열매를 평균의 두 배로 키워도 결실은 전체의 60% 뒤에 온다
   const avg = (k) => (PLAN.spiritPerStage * k) / SPIRIT.length;

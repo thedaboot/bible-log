@@ -22,13 +22,16 @@ export const SPIRIT_STAGES = ['씨앗', '새싹', '줄기', '꽃', '결실'];
 export const STAGE_AT = [0, 5, 30, 90, 200]; // ★
 export const SPIRIT_GAIN = { quest: 4, choice: 2, walk: 3 }; // ★ 퀘스트 완료, 막간 선택, 동행 도달
 
-// 레벨: 다음 레벨까지 필요한 경험치는 40에서 시작해 20씩 는다(누적 40, 100, 180, 280…). ★
-// 스테이지 하나가 경험치 150쯤이면 에덴을 마칠 때 레벨 3, 창세기를 마칠 때 13쯤, 요한계시록에서 41쯤이 된다(PLAN).
-export const xpToNext = (level) => 40 + 20 * (level - 1);
+// 레벨: 다음 레벨까지 필요한 경험치는 40에서 시작해 13씩 는다(누적 40, 93, 159, 238…). ★
+// 스테이지당 경험치 약 100(창세기 자동 플레이 실측, 2026-11-02)이면 에덴을 마칠 때 레벨 3, 창세기를 마칠 때 13쯤,
+// 요한계시록에서 41쯤이 된다(PLAN). 전에는 20씩 늘어서(스테이지당 150 가정) 끝에서 레벨 34에 그쳤다.
+export const xpToNext = (level) => 40 + 13 * (level - 1);
 export const MAX_LEVEL = 50;
 
-// 성장 속도를 정할 때 쓴 성경 전체 분량 가정(미확인 추정, 스테이지 목록을 정하면 고친다). npm run check가 이 가정으로 속도를 점검한다.
-export const PLAN = { stages: 120, xpPerStage: 150, spiritPerStage: 12 };
+// 성장 속도를 정할 때 쓴 성경 전체 분량 가정. npm run check가 이 가정으로 속도를 점검한다.
+// stages는 미확인 추정(스테이지 목록을 정하면 고친다). xpPerStage·spiritPerStage는 창세기 1-4~1-13 자동 플레이 실측
+// (경험치 1226 ÷ 12 = 102, 열매 141 ÷ 12 = 11.8, 2026-11-02)에 맞췄다.
+export const PLAN = { stages: 120, xpPerStage: 100, spiritPerStage: 12 };
 
 // 칭호: 정해진 레벨에 이르면 바뀐다. 성경 표현에서 가져왔다. 마지막 칭호는 요한계시록 즈음에 연다. ★
 export const TITLES = [
@@ -85,7 +88,7 @@ export const REWARDS = {
 export const CHALLENGE = { zone: 0.12, speed: 1.25, assistPerStage: 0.08, assistMax: 0.32 };
 
 // 깊은 대화가 열리는 레벨(관계 "대화" 이상과 함께). 창세기 끝까지의 레벨 속도(스테이지당 경험치 약 100)에 맞췄다. ★
-export const DEEP_LEVEL = { abraham: 5, jacob: 8, joseph: 10 };
+export const DEEP_LEVEL = { abraham: 8, jacob: 9, joseph: 11 };
 
 // 도감 완성 보상: 칭호만 준다(design.md "도감 칸"). 월드의 도감을 모두 채우면 상태 창 칭호 아래에 붙는다.
 export const CODEX_TITLES = { genesis: { title: '창세기를 기록한 이', ref: '창 5:1' } };
