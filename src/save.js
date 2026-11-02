@@ -24,7 +24,8 @@ const cleanEarth = (look) => cleanLook({ aura: look.color, ...look }, LOOK.earth
 // 예전 저장값이나 깨진 값은 여기서 기본값으로 채운다.
 const nat = (n) => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
 const strs = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []);
-function cleanGrowth(s = {}) {
+function cleanGrowth(s) {
+  s ??= {}; // 저장값이 없으면 null이 온다(기본값은 undefined에만 적용된다). 첫 방문의 "처음부터"가 여기서 멈췄다
   const obj = (o) => (o && typeof o === 'object' && !Array.isArray(o) ? o : {});
   return {
     xp: nat(s.xp),

@@ -128,6 +128,8 @@ const migrated = load(storage);
 assert.equal(migrated.scene, 'creation-1');
 assert.deepEqual(migrated.look, DEFAULT_LOOK);
 assert.ok(migrated.unlocked.includes('creation-7') && migrated.unlocked.includes('eden'), '예전 저장값 옮기기 오류');
+// 첫 방문(저장값 없음): 첫 화면의 '처음부터'는 newState(load())를 부르고, load()는 null을 돌려준다
+assert.equal(newState(null).xp, 0, '저장값이 없을 때 newState(null)이 새 상태를 만든다');
 const st = newState({ unlocked: ['prologue', 'creation-1'] });
 assert.deepEqual(st.unlocked, ['prologue', 'creation-1'], '처음부터를 눌러도 열린 지점은 남는다');
 reach(st, 'creation-3');
