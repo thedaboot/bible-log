@@ -138,6 +138,22 @@
       </div>
     </div>
 
+    <div id="clearBox" class="modal" hidden>
+      <div class="panel modal__panel clear" role="dialog" aria-labelledby="clearTitle">
+        <div class="clear__head"><span class="clear__check" aria-hidden="true"></span><p id="clearKicker" class="quest__label"></p></div>
+        <h2 id="clearTitle" class="modal__title clear__title"></h2>
+        <div id="clearNext" class="clear__next">
+          <p class="clear__nextlabel">다음 이야기</p>
+          <p id="clearNextTitle" class="clear__nexttitle"></p>
+        </div>
+        <button id="clearGo" class="btn clear__go" type="button">입장</button>
+        <div class="clear__more">
+          <button id="clearMap" class="btn btn--quiet" type="button">지도</button>
+          <button id="clearHome" class="btn btn--quiet" type="button">쉼터로</button>
+        </div>
+      </div>
+    </div>
+
     <div id="fade" class="fade"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

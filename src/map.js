@@ -48,33 +48,37 @@ export function layout(stages, COLS = DEFAULT_COLS) {
   });
 }
 
-// 표지 가운데를 이어 점선 길을 긋는다. 줄이 바뀌는 자리는 바깥으로 돌아 내려가고, 곁길은 짧은 가지로 잇는다.
-function drawPath(svg, box, stages, cells, marks, COLS) {
+// 표지 가운데를 이어 길을 긋는다. 줄이 바뀌는 자리는 바깥으로 돌아 오르고, 곁길은 짧은 가지로 잇는다.
+// 길은 흙길 띠 위에 점선을 긋고, 마친 스테이지 사이 구간은 금빛으로 칠한다(어디까지 왔는지 한눈에).
+function drawPath(svg, box, stages, cells, marks, COLS, done) {
   const base = box.getBoundingClientRect();
   const c = marks.map((b) => {
     const r = b.firstChild.getBoundingClientRect();
     return { x: r.left - base.left + r.width / 2, y: r.top - base.top + r.height / 2, w: b.getBoundingClientRect().width };
   });
   const main = stages.map((id, k) => k).filter((k) => !CHAPTERS.find((ch) => ch.id === stages[k]).side);
-  let d = '';
+  let d = '', gold = '';
   main.forEach((k, i) => {
     if (!i) { d += `M${c[k].x} ${c[k].y}`; return; }
     const a = c[main[i - 1]];
+    let seg;
     if (cells[k].row !== cells[main[i - 1]].row) {
-      const out = cells[k].col === COLS ? 1 : -1; // 오른쪽 끝에서는 오른쪽으로, 왼쪽 끝에서는 왼쪽으로 돌아 내려간다
+      const out = cells[k].col === COLS ? 1 : -1; // 오른쪽 끝에서는 오른쪽으로, 왼쪽 끝에서는 왼쪽으로 돌아 오른다
       const x = a.x + out * (COLS === 2 ? a.w / 2 - 8 : a.w / 2 + 16); // 이름 칸 바깥으로 돈다(두 칸 지도는 지도 안쪽 가장자리로)
-      d += ` H${x} V${c[k].y} H${c[k].x}`;
-    } else d += ` H${c[k].x}`;
+      seg = ` H${x} V${c[k].y} H${c[k].x}`;
+    } else seg = ` H${c[k].x}`;
+    d += seg;
+    if (done(stages[main[i - 1]])) gold += `M${a.x} ${a.y}${seg}`; // 앞 스테이지를 마쳤으면 다음 표지까지 금빛
   });
   const spurs = stages.map((id, k) => k).filter((k) => CHAPTERS.find((ch) => ch.id === stages[k]).side).map((k) => {
     const p = c[stages.indexOf(CHAPTERS.find((ch) => ch.id === stages[k]).side)];
     return `M${p.x} ${p.y} V${c[k].y}`;
   }).join(' ');
   svg.setAttribute('viewBox', `0 0 ${base.width} ${base.height}`);
-  svg.innerHTML = `<path class="map__road" d="${d}"/><path class="map__spur" d="${spurs}"/>`;
+  svg.innerHTML = `<path class="map__band" d="${d}"/><path class="map__band map__band--spur" d="${spurs}"/><path class="map__gold" d="${gold}"/><path class="map__road" d="${d}"/><path class="map__spur" d="${spurs}"/>`;
 }
 
-const STATUS = { soon: '준비 중', locked: '잠김', open: '열림', cleared: '마침' };
+const STATUS = { soon: '준비 중', locked: '잠김', open: '', cleared: '마침' }; // 열림은 글자로 적지 않는다(밝은 표지가 열림이다)
 
 export function openMap(state) {
   const box = $('mapBox');
@@ -103,22 +107,30 @@ export function openMap(state) {
       const it = infos[sel];
       const view = el('div', 'map__info');
       const head = el('div', 'map__infohead');
-      head.append(el('p', 'quest__label', `${it.label} · ${STATUS[it.status]}`), el('p', 'map__stage', it.ch.title), el('p', 'map__range', it.ch.range));
+      const kicker = el('p', 'quest__label map__kicker', it.label);
+      if (it.status === 'cleared') kicker.append(el('span', 'map__badge map__badge--done', '마침'));
+      if (it.status === 'locked') kicker.append(el('span', 'map__badge map__badge--lock', '잠김'));
+      head.append(kicker, el('p', 'map__stage', it.ch.title), el('p', 'map__range', it.ch.range));
       view.append(head);
-      if (it.total) {
-        const stats = el('p', 'map__stats');
-        stats.append(el('span', null, `도감 ${it.met} / ${it.total}`));
-        if (it.star) stats.append(el('span', 'map__left', '볼거리가 남아 있어요'));
+      // 도감: 글자 대신 책 아이콘과 채워지는 막대(다 채우면 금빛 별)
+      if (it.total && it.status !== 'locked' && it.status !== 'soon') {
+        const stats = el('div', 'map__dex');
+        stats.setAttribute('role', 'img');
+        stats.setAttribute('aria-label', `도감 ${it.met} / ${it.total}`);
+        const bar = el('span', 'map__dexbar');
+        bar.style.setProperty('--p', it.met / it.total);
+        stats.append(el('span', 'map__dexicon'), bar, el('span', 'map__dexnum', `${it.met}/${it.total}`));
+        if (it.met === it.total) stats.append(el('span', 'map__dexstar'));
         view.append(stats);
       }
       const go = el('div', 'map__go');
       if (it.status === 'soon') go.append(el('p', 'map__note', '아직 만드는 중이에요.'));
-      else if (it.status === 'locked') go.append(el('p', 'map__note', '앞 스테이지를 마치면 열려요.'));
+      else if (it.status === 'locked') go.append(el('p', 'map__note', '앞 이야기를 마치면 열려요.'));
       else {
         // 스테이지 안의 중간 지점(예: 타락과 추방)도 여기서 함께 고른다
         for (const p of it.open) {
-          // 지점이 하나면 '들어가기' 한 버튼, 여럿이면 '○○부터'로 어디서 시작하는지 적는다
-          const b = el('button', 'btn map__point', it.open.length === 1 ? '들어가기' : `${p.title}부터`);
+          // 지점이 하나면 '입장' 한 버튼, 여럿이면 '○○부터'로 어디서 시작하는지 적는다
+          const b = el('button', 'btn map__point', it.open.length === 1 ? '입장' : `${p.title}부터`);
           b.setAttribute('aria-label', `${p.title}에서 시작`);
           b.type = 'button';
           b.onclick = () => close(p.id);
@@ -130,7 +142,10 @@ export function openMap(state) {
     };
     // 굽이치는 길: 본 스테이지는 한 줄에 COLS개씩 놓고 줄마다 방향을 바꾼다. 곁길은 갈라지는 본 스테이지 바로 아래 줄에 둔다.
     const cols = colsFor();
-    const cells = layout(world.stages, cols);
+    // 길은 아래에서 위로 오른다(1-1이 맨 아래). 줄 번호만 뒤집는다.
+    const flat = layout(world.stages, cols);
+    const rows = Math.max(...flat.map((c) => c.row));
+    const cells = flat.map((c) => ({ ...c, row: rows - c.row + 1 }));
     nodes.style.setProperty('--map-cols', cols);
     nodes.style.setProperty('--map-rows', Math.max(...cells.map((c) => c.row)));
     const marks = infos.map((it, k) => {
@@ -140,9 +155,16 @@ export function openMap(state) {
       if (it.side) b.dataset.side = '';
       b.style.gridRow = cells[k].row;
       b.style.gridColumn = cells[k].col;
-      b.setAttribute('aria-label', `${it.label} ${it.ch.title}, ${STATUS[it.status]}`);
+      b.setAttribute('aria-label', `${it.label} ${it.ch.title}${STATUS[it.status] ? `, ${STATUS[it.status]}` : ''}`);
       const mark = el('span', 'map__mark', it.side ? '곁길' : it.label);
+      if (it.status === 'locked') mark.append(el('span', 'map__lock')); // 잠긴 표지: 자물쇠
       if (it.star) mark.append(el('span', 'map__star'));
+      // 도감을 얼마나 채웠는지: 표지 아래 얇은 막대(열린 스테이지만)
+      if (it.total && (it.status === 'open' || it.status === 'cleared')) {
+        const bar = el('span', 'map__markbar');
+        bar.style.setProperty('--p', it.met / it.total);
+        mark.append(bar);
+      }
       b.append(mark, el('span', 'map__name', it.ch.title));
       b.onclick = () => { sel = k; paint(); };
       return b;
@@ -152,7 +174,7 @@ export function openMap(state) {
     path.setAttribute('aria-hidden', 'true');
     nodes.replaceChildren(path, ...marks);
     requestAnimationFrame(() => marks[sel]?.scrollIntoView({ block: 'center', inline: 'nearest' })); // 고른 스테이지가 보이게
-    const draw = () => drawPath(path, nodes, world.stages, cells, marks, cols);
+    const draw = () => drawPath(path, nodes, world.stages, cells, marks, cols, (sid) => state.claimed.includes(`${sid}/clear`));
     const ro = new ResizeObserver(draw);
     ro.observe(nodes);
     // Enter: 고른 표지의 첫 지점에 들어간다. ↓: 지점 버튼으로, ↑: 표지로 포커스를 옮긴다.

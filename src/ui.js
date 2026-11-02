@@ -686,3 +686,26 @@ export function popHud({ xp = 0, talent = 0 } = {}) {
   if (xp) at($('hudXpTrack'), `+${xp}`, 'hud__pop--xp');
   if (talent) at($('hudTalent'), `${talent > 0 ? '+' : ''}${talent}`, talent > 0 ? 'hud__pop--talent' : 'hud__pop--spend');
 }
+
+// 마침 창(2026-11-02 S29): 스테이지를 마치면 다음 이야기 입장(먼저), 지도, 쉼터 가운데 고른다. 'next' | 'map' | 'home'
+// next가 없으면(마지막 이야기) 다음 칸과 입장 버튼을 숨긴다. Enter는 입장, Esc는 쉼터.
+export function askClear({ kicker, title, next }) {
+  const box = $('clearBox');
+  $('clearKicker').textContent = kicker;
+  $('clearTitle').textContent = title;
+  $('clearNext').hidden = $('clearGo').hidden = !next;
+  if (next) $('clearNextTitle').textContent = next;
+  box.classList.remove('is-closing');
+  box.hidden = false;
+  (next ? $('clearGo') : $('clearMap')).focus({ preventScroll: true });
+  return new Promise((resolve) => {
+    const done = (v) => { hideModal(box); removeEventListener('keydown', onKey, true); resolve(v); };
+    const onKey = (e) => {
+      if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); done('home'); }
+    };
+    addEventListener('keydown', onKey, true);
+    $('clearGo').onclick = () => done('next');
+    $('clearMap').onclick = () => done('map');
+    $('clearHome').onclick = () => done('home');
+  });
+}

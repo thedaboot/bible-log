@@ -22,10 +22,10 @@ import { WORLDS } from './data/chapters.js';
 import { ITEMS } from './data/items.js';
 import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
-import { openMap } from './map.js';
+import { openMap, stageInfo } from './map.js';
 import { tween, easeOut, setInstant } from './anim.js';
 import {
-  $, isTouch, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, popHud,
+  $, isTouch, say, askName, askLook, askClear, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, popHud,
 } from './ui.js';
 
 // ---------- 렌더링: 쿼터뷰 정사영 카메라 + 픽셀화 후처리 ----------
@@ -457,15 +457,14 @@ async function runCreation(fromDay = 1) {
     }
     mode = 'orbit';
     showControls('look');
-    await waitButton(day < 7 ? `${DAY_NAMES[day + 1]}로` : '쉼터로 돌아가기');
+    await waitButton(day < 7 ? `${DAY_NAMES[day + 1]}로` : '이야기 마치기');
     mode = 'none';
     setControls(null);
   }
   reward('creation/clear', 'clear');
   codexReward();
   reach(state, 'eden'); // 다음 스테이지를 연다
-  await fade(1);
-  runShelter();
+  afterStage('creation');
 }
 
 // 꾸미기에서 고를 때: 항목마다 그 항목다운 방식으로 바뀐다(정말 입고 물드는 느낌). docs/standards/ui.md '꾸미기 창' 참고.
@@ -903,9 +902,8 @@ async function runEdenFall() {
   reward('eden/quiz', 'quiz');
   reward('eden/clear', 'clear');
   codexReward();
-  await new Promise((r) => setTimeout(r, 2400)); // 마친 보상 알림을 본 뒤 화면을 덮는다
-  await fade(1);
-  runShelter();
+  await new Promise((r) => setTimeout(r, 2400)); // 마친 보상 알림을 본 뒤 마침 창을 띄운다
+  afterStage('eden');
 }
 
 // ---------- 장면: 가인과 아벨(창 4장) ----------
@@ -1052,8 +1050,7 @@ async function runCain() {
   reward('cain/clear', 'clear');
   codexReward();
   await new Promise((r) => setTimeout(r, 2400));
-  await fade(1);
-  runShelter();
+  afterStage('cain');
 }
 
 // ---------- 도전(docs/design.md "도전 조작"): 이동 WASD, 행동 Space, 도구 F ----------
@@ -1259,8 +1256,7 @@ function stageApi(id, mod) {
       reward(`${id}/clear`, 'clear');
       codexReward();
       await new Promise((r) => setTimeout(r, 2400));
-      await fade(1);
-      runShelter();
+      afterStage(id);
     },
   };
   return g;
@@ -1307,6 +1303,33 @@ function autoTick(dt) {
   }
   if (holdQuest?.cur) { holdQuest.p = 1; return; }
   if (aimPos) { player.position.copy(aimPos).add(new THREE.Vector3(0.6, 0, 0.6)); land()?.collide(player.position, 0.35); }
+}
+
+// ---------- 스테이지 끝: 마침 창(2026-11-02 사용자 요청 S29) ----------
+// 매번 쉼터로 나갔다가 빛의 문까지 걸어가는 것이 번거로워서, 마친 자리에서 다음 이야기로 바로 들어가게 한다.
+// 다음 이야기는 월드 순서에서 이 스테이지 뒤의 열린(아직 안 마친) 본 이야기, 없으면 곁길, 없으면 앞쪽에서 찾는다.
+function nextStage(id) {
+  const order = WORLDS[0].stages;
+  const k = order.indexOf(id);
+  const after = [...order.slice(k + 1), ...order.slice(0, Math.max(0, k))];
+  const open = after.map((s) => stageInfo(state, s)).filter((i) => i.status === 'open');
+  return open.find((i) => !i.ch.side) ?? open[0] ?? null;
+}
+async function afterStage(id) {
+  stopWalk();
+  openNext(state);
+  save(state);
+  const cur = stageInfo(state, id);
+  const next = nextStage(id);
+  const label = (info) => { const n = WORLDS[0].stages.filter((s) => !stageInfo(state, s).ch.side).indexOf(info.ch.id); return info.ch.side ? '곁길' : `1-${n + 1}`; };
+  const pick = await askClear({ kicker: `${label(cur)} · 마침`, title: cur.ch.title, next: next && `${label(next)} ${next.ch.title}` });
+  if (pick === 'next' && next) { await fade(1); startAt(next.open[0].id); return; }
+  if (pick === 'map') {
+    const pid = await openMap(state);
+    if (pid) { await fade(1); startAt(pid); return; }
+  }
+  await fade(1);
+  runShelter();
 }
 
 // ---------- 쉼터: 천국을 넓힌 광장. 스테이지를 마치면 돌아오고, 이어하기도 여기서 시작한다 ----------
@@ -1358,7 +1381,13 @@ async function runShelter() {
   ];
   const arm = (sp) => addTrigger(sp.pos, sp.r, async () => {
     mode = 'none';
+    // 탭으로 정한 목적지가 문 한가운데라 닫은 뒤 다시 걸어 들어가 지도가 또 열렸다(S10). 목적지·조이스틱·눌린 키를 지운다.
+    target = null;
+    stickEnd();
+    keys.clear();
     if (await sp.open()) return;
+    target = null;
+    keys.clear();
     // 한 걸음 물러나 다시 닿을 수 있게 한다
     const away = new THREE.Vector3().subVectors(player.position, sp.pos).setY(0);
     if (away.lengthSq() < 1e-6) away.set(0, 0, -1); // 정확히 그 자리에 서 있으면 광장 안쪽으로

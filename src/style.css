@@ -1303,3 +1303,47 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
   .quest.is-open .quest__items li.is-later { display: list-item; }
 }
 @media (prefers-reduced-motion: reduce) { .edge-arrow::before, .edge-arrow::after { animation: none; } }
+
+/* ---------- 월드 지도(2026-11-02 S10): 아래에서 위로 오르는 흙길, 지나온 길은 금빛, 잠긴 표지는 자물쇠, 도감은 막대 ---------- */
+.map__band { fill: none; stroke: var(--color-paper-3); stroke-width: 18; stroke-linejoin: round; stroke-linecap: round; }
+.map__band--spur { stroke-width: 10; }
+.map__gold { fill: none; stroke: var(--color-gold); stroke-width: 10; stroke-linejoin: round; stroke-linecap: round; }
+.map__road { stroke: var(--color-frame); stroke-width: 3; stroke-dasharray: 6 9; opacity: 0.45; }
+.map__spur { stroke: var(--color-frame); stroke-width: 2; opacity: 0.4; }
+.map__lock { position: absolute; right: -8px; top: -8px; width: 20px; height: 22px; }
+.map__lock::before { content: ''; position: absolute; left: 4px; top: 0; width: 12px; height: 12px; box-sizing: border-box; border: 3px solid var(--color-ink-2); border-bottom: 0; border-radius: 6px 6px 0 0; }
+.map__lock::after { content: ''; position: absolute; left: 0; bottom: 0; width: 20px; height: 13px; background: var(--color-ink-2); box-shadow: inset 0 0 0 2px var(--color-frame); }
+.map__node[data-status="locked"] .map__mark { color: color-mix(in oklch, var(--color-ink-2) 60%, transparent); }
+.map__markbar { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 4px; background: var(--color-paper-3); }
+.map__markbar::after { content: ''; position: absolute; inset: 0; background: var(--color-accent); transform-origin: left; transform: scaleX(var(--p, 0)); }
+.map__mark { padding-bottom: 6px; }
+.map__kicker { display: flex; align-items: center; gap: var(--space-2xs); }
+.map__badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; font-size: var(--text-label); font-weight: 800; color: var(--color-frame); background: var(--color-paper-2); }
+.map__badge--done { background: var(--color-gold); }
+.map__badge--done::before { content: ''; width: 10px; height: 10px; background: var(--color-frame); clip-path: polygon(14% 52%, 38% 76%, 86% 22%, 98% 34%, 38% 96%, 2% 64%); }
+.map__badge--lock::before { content: ''; width: 9px; height: 10px; background: var(--color-ink-2); }
+.map__dex { grid-column: 1; display: flex; align-items: center; gap: var(--space-2xs); }
+.map__dexicon { flex: none; width: 18px; height: 14px; background: var(--color-frame); clip-path: polygon(0 0, 46% 8%, 50% 14%, 54% 8%, 100% 0, 100% 86%, 54% 92%, 50% 100%, 46% 92%, 0 86%); }
+.map__dexbar { position: relative; flex: 1; max-width: 10rem; height: var(--bar-h); background: var(--color-paper-2); box-shadow: inset 0 0 0 2px var(--color-frame); }
+.map__dexbar::after { content: ''; position: absolute; inset: 2px; background: var(--color-accent); transform-origin: left; transform: scaleX(var(--p, 0)); }
+.map__dexnum { font-size: var(--text-label); font-weight: 800; color: var(--color-ink-2); font-variant-numeric: tabular-nums; }
+.map__dexstar { width: 16px; height: 16px; background: var(--color-gold); clip-path: polygon(50% 0, 62% 36%, 100% 38%, 70% 60%, 80% 100%, 50% 76%, 20% 100%, 30% 60%, 0 38%, 38% 36%); }
+.modal__panel .map__point { min-width: 8rem; }
+
+/* ---------- 마침 창(S29): 스테이지를 마치면 쉼터로 돌아가지 않고 다음 이야기로 바로 ---------- */
+.clear { width: min(26rem, 100%); justify-items: stretch; text-align: left; }
+.clear__title { font-size: 1.5rem; }
+.clear__next { display: grid; gap: var(--space-3xs); padding: var(--space-sm) var(--space-md); background: var(--color-light); box-shadow: inset 0 0 0 2px var(--color-paper-3); }
+.clear__nextlabel { margin: 0; font-size: var(--text-label); font-weight: 800; color: var(--color-accent-ink); }
+.clear__nexttitle { margin: 0; font-size: var(--text-lede); font-weight: 800; color: var(--color-frame); }
+.modal__panel .clear__go { justify-self: stretch; }
+.clear__more { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs); }
+.modal__panel .clear__more .btn { justify-self: stretch; font-size: var(--text-small); }
+.clear__check { width: 28px; height: 28px; background: var(--color-gold); box-shadow: 0 0 0 var(--px) var(--color-frame); display: grid; place-items: center; animation: gain-in-fixed var(--dur-long) var(--ease-out); }
+.clear__check::before { content: ''; width: 16px; height: 16px; background: var(--color-frame); clip-path: polygon(14% 52%, 38% 76%, 86% 22%, 98% 34%, 38% 96%, 2% 64%); }
+@keyframes gain-in-fixed { from { opacity: 0; transform: scale(0.5); } 60% { transform: scale(1.15); } }
+.clear__head { display: flex; align-items: center; gap: var(--space-xs); }
+@media (max-width: 39.99rem) {
+  #clearBox { padding: 0; place-items: end stretch; }
+  #clearBox > .modal__panel { width: 100%; padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); animation-name: sheet-up; }
+}
