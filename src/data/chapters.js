@@ -17,7 +17,7 @@ export const CHAPTERS = [
   { id: 'enoch', title: '에녹의 동행', range: '창세기 5:21~24', points: [{ id: 'enoch', title: '언덕길의 동행' }], side: 'cain' },
   { id: 'noah', title: '노아의 방주', range: '창세기 6~9장', points: [{ id: 'noah', title: '방주와 무지개' }] },
   { id: 'babel', title: '바벨탑', range: '창세기 11:1~9', points: [{ id: 'babel', title: '탑을 쌓는 들판' }] },
-  { id: 'abram', title: '아브람의 부르심', range: '창세기 12, 15장', points: [] },
+  { id: 'abram', title: '아브람의 부르심', range: '창세기 12, 15장', points: [{ id: 'abram', title: '하란에서 벧엘까지' }] },
   { id: 'hagar', title: '감찰하시는 하나님', range: '창세기 16, 21장', points: [], side: 'abram' },
   { id: 'mamre', title: '세 손님과 약속', range: '창세기 18장', points: [] },
   { id: 'moriah', title: '모리아 산', range: '창세기 22장', points: [] },

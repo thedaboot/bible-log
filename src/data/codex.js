@@ -65,6 +65,15 @@ export const CODEX = [
   { id: 'place/babel', name: '바벨', stage: 'babel', fact: '여호와께서 온 땅의 언어를 뒤섞으신 곳', ref: '창 11:9', memo: '꼭대기를 하늘에 닿게 하려던 탑이 거기서 멈추었다.' },
   { id: 'item/brick', name: '구운 벽돌', stage: 'babel', fact: '사람들이 돌 대신 쓴 벽돌', ref: '창 11:3', memo: '모서리가 반듯한 벽돌 한 장. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-11-9', name: '흩으심', stage: 'babel', fact: '여호와께서 거기서 언어를 뒤섞고 사람들을 온 땅에 흩으셨다', ref: '창 11:9', memo: '자기 이름을 내려던 일이 흩어짐으로 끝났다.' },
+
+  { id: 'person/abraham', name: '아브라함', stage: 'abram', fact: '말씀을 따라 하란을 떠난 믿음의 조상', ref: '창 12:4', memo: '아브람이라 불리다가 많은 민족의 아버지라는 이름을 받았다(창 17:5).' },
+  { id: 'person/sarah', name: '사라', stage: 'abram', fact: '아브라함의 아내, 이삭의 어머니', ref: '창 17:15', memo: '처음 만났을 때는 사래였다. 맷돌을 돌리며 웃음을 잃지 않았다.' },
+  { id: 'person/lot', name: '롯', stage: 'abram', fact: '아브람의 조카, 함께 길을 떠난 사람', ref: '창 12:4', memo: '양 떼를 몰 때 목소리가 가장 컸다.' },
+  { id: 'place/haran', name: '하란', stage: 'abram', fact: '아브람이 일흔다섯 살에 떠난 곳', ref: '창 12:4', memo: '흙벽돌 집을 뒤로하고 길을 나섰다.' },
+  { id: 'place/shechem', name: '모레 상수리나무', stage: 'abram', fact: '세겜 땅에서 아브람이 처음 제단을 쌓은 곳', ref: '창 12:6~7', memo: '그늘이 넓어 무리가 다 쉬어 갈 수 있었다.' },
+  { id: 'item/oak-leaf', name: '상수리나무 잎', stage: 'abram', fact: '세겜 모레 상수리나무', ref: '창 12:6', memo: '처음 제단을 쌓은 나무에서 떨어진 잎. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-12-2', name: '복이 되리라', stage: 'abram', fact: '큰 민족을 이루고 이름을 크게 하리니 너는 복이 될 것이다', ref: '창 12:2', memo: '바벨에서 사람들이 스스로 내려던 이름을 하나님께서 주신다.' },
+  { id: 'word/gen-15-6', name: '믿음과 의', stage: 'abram', fact: '아브람이 여호와를 믿으니 이를 그의 의로 여기셨다', ref: '창 15:6', memo: '셀 수 없는 별 아래에서 들은 말씀이다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).
@@ -77,4 +86,6 @@ export const LIKENESS = {
   eve: { fruits: ['love', 'kindness'], text: '모든 산 사람의 어머니가 된 하와처럼, 곁에 있는 사람을 따뜻하게 품어요.', why: '창 3:20 모든 산 사람의 어머니(사랑), 창 4:1 생명을 품고 돌봄(친절)' },
   noah: { fruits: ['faith', 'patience'], text: '아무도 믿지 않을 때 방주를 끝까지 지은 노아처럼, 맡은 일을 오래 참고 해내요.', why: '히 11:7 믿음으로 방주를 준비함(신실), 벧전 3:20 오래 참으심 속에 방주를 지음(인내)' },
   enoch: { fruits: ['faith', 'peace'], text: '날마다 같은 길을 하나님과 걸은 에녹처럼, 하루하루를 그분께 이야기하며 걸어요.', why: '히 11:5 하나님을 기쁘시게 함(신실), 창 5:22 동행(화평)' },
+  abraham: { fruits: ['faith', 'patience'], text: '갈 곳을 모르고도 길을 떠난 아브라함처럼, 약속을 믿고 오래 기다려요.', why: '히 11:8 믿음으로 나아감(신실), 히 6:15 오래 참아 약속을 받음(인내)' },
+  sarah: { fruits: ['joy', 'patience'], text: '오래 기다린 끝에 웃음을 얻은 사라처럼, 기다림 속에서도 웃음을 잃지 않아요.', why: '창 21:6 하나님이 나를 웃게 하심(기쁨), 히 11:11 약속하신 이를 미쁘신 줄 앎(인내)' },
 };
