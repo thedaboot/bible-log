@@ -1214,7 +1214,7 @@ function autoTick(dt) {
     return;
   }
   if (holdQuest?.cur) { holdQuest.p = 1; return; }
-  if (aimPos) player.position.copy(aimPos).add(new THREE.Vector3(0.6, 0, 0.6));
+  if (aimPos) { player.position.copy(aimPos).add(new THREE.Vector3(0.6, 0, 0.6)); land()?.collide(player.position, 0.35); }
 }
 
 // ---------- 쉼터: 천국을 넓힌 광장. 스테이지를 마치면 돌아오고, 이어하기도 여기서 시작한다 ----------

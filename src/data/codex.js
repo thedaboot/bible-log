@@ -74,6 +74,13 @@ export const CODEX = [
   { id: 'item/oak-leaf', name: '상수리나무 잎', stage: 'abram', fact: '세겜 모레 상수리나무', ref: '창 12:6', memo: '처음 제단을 쌓은 나무에서 떨어진 잎. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-12-2', name: '복이 되리라', stage: 'abram', fact: '큰 민족을 이루고 이름을 크게 하리니 너는 복이 될 것이다', ref: '창 12:2', memo: '바벨에서 사람들이 스스로 내려던 이름을 하나님께서 주신다.' },
   { id: 'word/gen-15-6', name: '믿음과 의', stage: 'abram', fact: '아브람이 여호와를 믿으니 이를 그의 의로 여기셨다', ref: '창 15:6', memo: '셀 수 없는 별 아래에서 들은 말씀이다.' },
+
+  { id: 'person/hagar', name: '하갈', stage: 'hagar', fact: '사래의 애굽인 여종, 이스마엘의 어머니', ref: '창 16:1', memo: '광야에서 자기 이름을 불러 주신 분을 만났다.' },
+  { id: 'person/ishmael', name: '이스마엘', stage: 'hagar', fact: '하나님이 들으신다는 이름의 아들', ref: '창 16:11', memo: '광야에서 자라 활 쏘는 사람이 되었다(창 21:20).' },
+  { id: 'place/beer-lahai-roi', name: '브엘라해로이', stage: 'hagar', fact: '나를 살피시는 살아 계신 이의 우물', ref: '창 16:14', memo: '마른 땅 사이에 풀빛이 돋은 샘이었다.' },
+  { id: 'place/beersheba', name: '브엘세바 광야', stage: 'hagar', fact: '하갈과 아이가 물이 떨어져 헤맨 광야', ref: '창 21:14', memo: '덤불 그늘 말고는 숨을 곳이 없었다.' },
+  { id: 'item/waterskin', name: '가죽 부대', stage: 'hagar', fact: '아브라함이 하갈에게 준 물 부대', ref: '창 21:14', memo: '샘물을 가득 채워 아이에게 건넨 부대. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-16-13', name: '살피시는 하나님', stage: 'hagar', fact: '하갈이 자기에게 말씀하신 여호와를 나를 살피시는 하나님이라 불렀다', ref: '창 16:13', memo: '아무도 보지 않는다고 여긴 자리에서 들은 이름이다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).
@@ -88,4 +95,5 @@ export const LIKENESS = {
   enoch: { fruits: ['faith', 'peace'], text: '날마다 같은 길을 하나님과 걸은 에녹처럼, 하루하루를 그분께 이야기하며 걸어요.', why: '히 11:5 하나님을 기쁘시게 함(신실), 창 5:22 동행(화평)' },
   abraham: { fruits: ['faith', 'patience'], text: '갈 곳을 모르고도 길을 떠난 아브라함처럼, 약속을 믿고 오래 기다려요.', why: '히 11:8 믿음으로 나아감(신실), 히 6:15 오래 참아 약속을 받음(인내)' },
   sarah: { fruits: ['joy', 'patience'], text: '오래 기다린 끝에 웃음을 얻은 사라처럼, 기다림 속에서도 웃음을 잃지 않아요.', why: '창 21:6 하나님이 나를 웃게 하심(기쁨), 히 11:11 약속하신 이를 미쁘신 줄 앎(인내)' },
+  hagar: { fruits: ['patience', 'faith'], text: '광야에서 살피시는 하나님을 만난 하갈처럼, 혼자라고 느낄 때도 그분이 보고 계심을 믿어요.', why: '창 16:9 돌아가 견딤(인내), 창 16:13 살피시는 하나님을 고백함(신실)' },
 };

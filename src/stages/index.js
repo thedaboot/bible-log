@@ -5,5 +5,6 @@ import noah from './noah.js';
 import enoch from './enoch.js';
 import babel from './babel.js';
 import abram from './abram.js';
+import hagar from './hagar.js';
 
-export const STAGE_MODS = Object.fromEntries([noah, enoch, babel, abram].map((m) => [m.id, m]));
+export const STAGE_MODS = Object.fromEntries([noah, enoch, babel, abram, hagar].map((m) => [m.id, m]));
