@@ -5,7 +5,7 @@ import { SPIRIT, SPIRIT_STAGES, slotsAt, CODEX_TITLES } from './data/growth.js';
 import { CODEX, CODEX_TABS } from './data/codex.js';
 import { CHAPTERS } from './data/chapters.js';
 import { levelOf, stageOf, likeness, codexState, ownsLook } from './growth.js';
-import { TALENT, BAG, ITEM_ICONS } from './icons.js';
+import { TALENT, ITEM_ICONS } from './icons.js';
 import { ITEMS } from './data/items.js';
 
 const el = (tag, cls, text) => {
@@ -81,7 +81,7 @@ function statTile(icon, name, value, unit) {
   i.innerHTML = icon;
   const v = el('p', 'stat__value');
   v.append(el('span', 'stat__num', value), el('span', 'stat__unit', unit));
-  t.append(i, el('p', 'stat__name', name), v);
+  t.append(i, ...(name ? [el('p', 'stat__name', name)] : []), v);
   return t;
 }
 
@@ -108,7 +108,7 @@ function statusView(state) {
   xp.append(xpText, bar);
   card.append(badge, who, xp);
   const stats = el('div', 'stats');
-  stats.append(statTile(TALENT, '달란트', state.talents, '달란트'), statTile(BAG, '인벤토리', slotsAt(lv.level), '칸'));
+  stats.append(statTile(TALENT, null, state.talents, '달란트')); // 인벤토리 칸 수는 인벤토리 탭에서 보인다
   wrap.append(card, stats);
 
   const stages = SPIRIT.map((s) => stageOf(state.spirit[s.id]));
@@ -117,8 +117,11 @@ function statusView(state) {
   const fig = el('figure', 'radar');
   fig.append(radar(stages));
   fruits.append(fig);
-  // 표 보기: 차트를 글로도 읽을 수 있게 열매마다 단계를 적는다. 개역개정 단어는 여기서 한 번 함께 보여 준다.
-  const list = el('ul', 'fruit-list');
+  // 한 줄 요약: 가장 많이 자란 열매. 아홉 칸 표는 화면에서 빼고(레이더와 같은 내용) 화면 읽기용으로만 남긴다.
+  const top = Math.max(...stages);
+  const grown = SPIRIT.filter((_, i) => stages[i] === top && top > 0).map((s) => s.name);
+  fruits.append(el('p', 'fruits__summary', grown.length ? `가장 자란 열매: ${grown.join(', ')} · ${SPIRIT_STAGES[top]}` : '아홉 열매 모두 씨앗이에요. 걸으며 키워 가요.'));
+  const list = el('ul', 'fruit-list sr-only');
   SPIRIT.forEach((s, i) => {
     const li = el('li', 'fruit-list__item');
     li.dataset.stage = stages[i];

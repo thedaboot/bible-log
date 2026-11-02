@@ -115,7 +115,9 @@ export function openMap(state) {
       else {
         // 스테이지 안의 중간 지점(예: 타락과 추방)도 여기서 함께 고른다
         for (const p of it.open) {
-          const b = el('button', 'btn map__point', p.title);
+          // 지점이 하나면 '들어가기' 한 버튼, 여럿이면 '○○부터'로 어디서 시작하는지 적는다
+          const b = el('button', 'btn map__point', it.open.length === 1 ? '들어가기' : `${p.title}부터`);
+          b.setAttribute('aria-label', `${p.title}에서 시작`);
           b.type = 'button';
           b.onclick = () => close(p.id);
           go.append(b);

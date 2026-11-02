@@ -1172,3 +1172,6 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
   .codex__cats { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3xs); }
   .codex__cats .chip { padding-inline: 0; }
 }
+.fruits__summary { margin: 0; text-align: center; font-size: var(--text-small); font-weight: 700; color: var(--color-frame); }
+.stats { grid-template-columns: minmax(0, 1fr); }
+.stat:not(:has(.stat__name)) { grid-template-areas: "icon value"; }
