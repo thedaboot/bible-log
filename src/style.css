@@ -91,6 +91,9 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
   text-shadow: 0 var(--px) 0 var(--color-gold);
   overflow-wrap: anywhere;
 }
+/* 제목 앞 마크: 파비콘과 같은 그림. 픽셀이 뭉개지지 않게 확대한다. */
+.title__name { display: flex; align-items: center; gap: var(--space-xs); }
+.title__mark { width: 1.1em; height: 1.1em; flex: none; image-rendering: pixelated; }
 .title__lede { margin: 0 0 var(--space-xs); font-size: var(--text-lede); line-height: 1.7; color: var(--color-ink-2); word-break: keep-all; }
 /* 좁은 화면에서는 쉼표 뒤에서만 줄을 바꾼다 */
 .title__lede span { display: block; }

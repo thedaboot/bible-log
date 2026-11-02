@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>바이블로그</title>
+    <!-- 파비콘: 펼친 성경과 빛, 더다붓 로고에서 가져온 분홍 하트(public/, Codex 이미지 생성으로 그림) -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon-32.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2b1d14" />
     <!-- 부팅용 최소 스타일: CSS와 글꼴이 준비되기 전에는 빛 화면만 보인다. 색은 tokens.css의 --color-light와 같다. -->
     <style>
       html, body { margin: 0; height: 100%; background: oklch(98% 0.022 92); }
@@ -15,7 +20,7 @@
     <main id="title" class="title">
       <div class="title__veil" aria-hidden="true"></div>
       <div class="title__block">
-        <h1 class="title__name reveal" style="--i: 0">바이블로그</h1>
+        <h1 class="title__name reveal" style="--i: 0"><img class="title__mark" src="/icon-128.png" alt="" width="128" height="128" />바이블로그</h1>
         <p class="title__lede reveal" style="--i: 1"><span>천국의 부르심을 받아,</span> <span>태초부터 이어진 성경의 순간들을 직접 보고 기록합니다.</span></p>
         <nav id="menu" class="menu reveal" style="--i: 2" aria-label="시작 메뉴"></nav>
         <p class="title__note reveal" style="--i: 3">기록은 지금 쓰는 브라우저에 자동으로 저장됩니다.</p>
