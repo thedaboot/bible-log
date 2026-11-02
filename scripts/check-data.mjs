@@ -62,6 +62,7 @@ const LINE = 36, TAIL = 12;
 const len = (s) => s.replaceAll('{nameVoc}', '이름이야').replaceAll('{name}', '이름이').replace(/[.,?!…]/g, '').length;
 function wrapErrors(text) {
   const errs = [];
+  if (text.split('\n').length > 2) errs.push('대사는 두 줄까지(대사 창 높이)');
   if (len(text.replaceAll('\n', ' ')) <= LINE) return text.includes('\n') ? ['36자 이하는 한 줄로 둔다'] : [];
   // 문장 단위로 나누고, 문장 사이 구분자(공백/줄바꿈)를 기억한다.
   const parts = text.split(/(?<=[.?!…])([ \n])/);

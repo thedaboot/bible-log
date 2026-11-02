@@ -102,6 +102,13 @@ export const CODEX = [
   { id: 'place/nahor', name: '나홀의 성', stage: 'rebekah', fact: '아브라함의 동생 나홀의 집안이 사는 성', ref: '창 24:10', memo: '저녁이면 여인들이 성 밖 우물로 물을 길으러 나왔다.' },
   { id: 'item/gold-ring', name: '금 코걸이', stage: 'rebekah', fact: '종이 리브가에게 준 반 세겔 금 코걸이', ref: '창 24:22', memo: '응답을 받은 날의 기억. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-24-27', name: '인도하시는 하나님', stage: 'rebekah', fact: '여호와께서 길에서 나를 인도하셨다', ref: '창 24:27', memo: '종이 우물가에서 머리를 숙여 드린 찬송이다.' },
+
+  { id: 'person/jacob', name: '야곱', stage: 'bethel', fact: '에서의 발꿈치를 잡고 태어난 이삭의 아들', ref: '창 25:26', memo: '집을 떠난 첫날 밤, 돌베개를 베고 하늘의 문을 보았다.' },
+  { id: 'person/esau', name: '에서', stage: 'bethel', fact: '이삭의 맏아들, 들사람이 된 사냥꾼', ref: '창 25:27', memo: '배가 고파 장자의 명분을 팥죽 한 그릇과 바꾸었다.' },
+  { id: 'creature/lentil', name: '붉은 팥', stage: 'bethel', fact: '야곱이 끓인 팥죽의 콩', ref: '창 25:34', memo: '에서가 장자의 명분과 바꾼 한 그릇의 재료다.' },
+  { id: 'place/bethel', name: '벧엘', stage: 'bethel', fact: '하나님의 집, 하늘의 문', ref: '창 28:19', memo: '돌기둥 하나가 서 있는 들이었다.' },
+  { id: 'item/stone-pillow', name: '돌베개', stage: 'bethel', fact: '야곱이 베고 잔 뒤 기둥으로 세운 돌', ref: '창 28:18', memo: '매끈한 돌을 골라 건넨 기억. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-28-15', name: '너와 함께 있어', stage: 'bethel', fact: '내가 너와 함께 있어 네가 어디로 가든지 너를 지키리라', ref: '창 28:15', memo: '도망치던 밤에 들은 약속이다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).
@@ -119,4 +126,5 @@ export const LIKENESS = {
   hagar: { fruits: ['patience', 'faith'], text: '광야에서 살피시는 하나님을 만난 하갈처럼, 혼자라고 느낄 때도 그분이 보고 계심을 믿어요.', why: '창 16:9 돌아가 견딤(인내), 창 16:13 살피시는 하나님을 고백함(신실)' },
   isaac: { fruits: ['gentle', 'faith'], text: '나무를 지고 아버지와 함께 산을 오른 이삭처럼, 묵묵히 믿고 따라가요.', why: '창 22:6~8 함께 나아감(온유), 히 11:20 믿음으로 축복함(신실)' },
   rebekah: { fruits: ['kindness', 'goodness'], text: '낯선 나그네의 낙타에게까지 물을 길어 준 리브가처럼, 부탁받은 것보다 한 걸음 더 도와요.', why: '창 24:19 낙타도 마시게 하겠다(친절), 창 24:20 급히 물을 길음(선함)' },
+  jacob: { fruits: ['patience', 'faith'], text: '돌베개를 베고도 약속을 붙든 야곱처럼, 먼 길 위에서도 함께하시는 분을 기억해요.', why: '창 29:20 칠 년을 며칠같이 여김(인내), 창 28:20~22 서원(신실)' },
 };

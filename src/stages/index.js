@@ -9,5 +9,6 @@ import hagar from './hagar.js';
 import mamre from './mamre.js';
 import moriah from './moriah.js';
 import rebekah from './rebekah.js';
+import bethel from './bethel.js';
 
-export const STAGE_MODS = Object.fromEntries([noah, enoch, babel, abram, hagar, mamre, moriah, rebekah].map((m) => [m.id, m]));
+export const STAGE_MODS = Object.fromEntries([noah, enoch, babel, abram, hagar, mamre, moriah, rebekah, bethel].map((m) => [m.id, m]));
