@@ -28,10 +28,12 @@ export function stageInfo(state, id) {
   };
 }
 const SVG = 'http://www.w3.org/2000/svg';
-const COLS = 5;
+const DEFAULT_COLS = 5;
+// 휴대폰 폭(40rem 미만)은 두 칸씩 세로로 내려가는 길로 그린다(가로 스크롤 없이, 이름이 잘리지 않게)
+const colsFor = () => (innerWidth < 640 ? 2 : DEFAULT_COLS);
 
 // 지도 칸 자리. 본 스테이지 줄은 홀수 줄(1, 3, 5…), 곁길은 그 아래 짝수 줄이다.
-export function layout(stages) {
+export function layout(stages, COLS = DEFAULT_COLS) {
   const at = {};
   let m = 0;
   return stages.map((id) => {
@@ -47,7 +49,7 @@ export function layout(stages) {
 }
 
 // 표지 가운데를 이어 점선 길을 긋는다. 줄이 바뀌는 자리는 바깥으로 돌아 내려가고, 곁길은 짧은 가지로 잇는다.
-function drawPath(svg, box, stages, cells, marks) {
+function drawPath(svg, box, stages, cells, marks, COLS) {
   const base = box.getBoundingClientRect();
   const c = marks.map((b) => {
     const r = b.firstChild.getBoundingClientRect();
@@ -60,7 +62,7 @@ function drawPath(svg, box, stages, cells, marks) {
     const a = c[main[i - 1]];
     if (cells[k].row !== cells[main[i - 1]].row) {
       const out = cells[k].col === COLS ? 1 : -1; // 오른쪽 끝에서는 오른쪽으로, 왼쪽 끝에서는 왼쪽으로 돌아 내려간다
-      const x = a.x + out * (a.w / 2 + 16); // 이름 칸 바깥으로 돈다
+      const x = a.x + out * (COLS === 2 ? a.w / 2 - 8 : a.w / 2 + 16); // 이름 칸 바깥으로 돈다(두 칸 지도는 지도 안쪽 가장자리로)
       d += ` H${x} V${c[k].y} H${c[k].x}`;
     } else d += ` H${c[k].x}`;
   });
@@ -127,7 +129,9 @@ export function openMap(state) {
       detail.replaceChildren(view);
     };
     // 굽이치는 길: 본 스테이지는 한 줄에 COLS개씩 놓고 줄마다 방향을 바꾼다. 곁길은 갈라지는 본 스테이지 바로 아래 줄에 둔다.
-    const cells = layout(world.stages);
+    const cols = colsFor();
+    const cells = layout(world.stages, cols);
+    nodes.style.setProperty('--map-cols', cols);
     nodes.style.setProperty('--map-rows', Math.max(...cells.map((c) => c.row)));
     const marks = infos.map((it, k) => {
       const b = el('button', 'map__node');
@@ -147,7 +151,8 @@ export function openMap(state) {
     path.setAttribute('class', 'map__path');
     path.setAttribute('aria-hidden', 'true');
     nodes.replaceChildren(path, ...marks);
-    const draw = () => drawPath(path, nodes, world.stages, cells, marks);
+    requestAnimationFrame(() => marks[sel]?.scrollIntoView({ block: 'center', inline: 'nearest' })); // 고른 스테이지가 보이게
+    const draw = () => drawPath(path, nodes, world.stages, cells, marks, cols);
     const ro = new ResizeObserver(draw);
     ro.observe(nodes);
     // Enter: 고른 표지의 첫 지점에 들어간다. ↓: 지점 버튼으로, ↑: 표지로 포커스를 옮긴다.

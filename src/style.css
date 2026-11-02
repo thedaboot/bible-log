@@ -1196,3 +1196,38 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
 .modal.is-closing > .modal__panel { animation: pop-out 200ms var(--ease-in) forwards; }
 @keyframes fade-out { to { opacity: 0; } }
 @keyframes pop-out { to { opacity: 0; transform: scale(0.97); } }
+
+/* ==========================================================================
+ * 휴대폰 앱 게임 화면 정리(2026-11-02, hallmark audit 결과)
+ * ========================================================================== */
+/* 지도 칸 수는 map.js가 정한다(--map-cols). PC 5칸, 휴대폰 2칸 */
+.map__nodes { grid-template-columns: repeat(var(--map-cols, 5), minmax(8.5rem, 1fr)); }
+/* 창 머리 막대: 제목(또는 탭)과 닫기를 한 줄 가운데 높이에 맞춘다 */
+.menu-panel__top { align-items: center; }
+
+@media (max-width: 39.99rem) {
+  /* 시트: 내용은 위에서부터 쌓는다(화면 높이만큼 늘어나지 않게) */
+  .menu-panel { align-content: start; grid-auto-rows: max-content; }
+  /* 머리 막대: 앱처럼 위에 붙고, 닫기는 44px 정사각 ✕ */
+  .menu-panel__top { position: sticky; top: calc(-1 * max(var(--space-md), env(safe-area-inset-top))); z-index: 1; margin-inline: calc(-1 * var(--space-sm)); padding: var(--space-2xs) var(--space-sm); background: var(--color-paper); box-shadow: 0 2px 0 var(--color-paper-3); }
+  .menu-panel__title { flex: 1; margin: 0; font-size: var(--text-ui); }
+  .modal__panel .menu-panel__close, .modal__panel .map__top .menu-panel__close { flex: none; width: var(--hit); min-height: var(--hit); padding: 0; font-size: 0; display: grid; place-items: center; }
+  .modal__panel .menu-panel__close::before { content: ''; width: 16px; height: 16px; background: currentColor; clip-path: polygon(14% 0, 50% 36%, 86% 0, 100% 14%, 64% 50%, 100% 86%, 86% 100%, 50% 64%, 14% 100%, 0 86%, 36% 50%, 0 14%); }
+  /* 도감: 두 칸 격자, 칸은 짧게. 키보드 안내 줄은 휴대폰에서 뺀다 */
+  .codex__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2xs); }
+  .codex__keys { display: none; }
+  /* 지도: 세로로 내려가는 길, 지도 칸은 화면 안에서 세로로만 스크롤 */
+  #mapBox { padding: 0; place-items: stretch; }
+  .map { width: 100%; height: 100dvh; grid-template-rows: auto minmax(0, 1fr) auto; padding: max(var(--space-sm), env(safe-area-inset-top)) var(--space-sm) max(var(--space-sm), env(safe-area-inset-bottom)); }
+  .map__sheet { padding: var(--space-sm) var(--space-xs); overflow-x: clip; overflow-y: auto; }
+  .map__nodes { min-width: 0; grid-template-columns: repeat(var(--map-cols, 2), minmax(0, 1fr)); }
+  .map__name { white-space: normal; text-wrap: balance; text-align: center; }
+  .map__title { font-size: var(--text-ui); }
+  /* 퀴즈·이름 입력: 아래에서 올라오는 시트(엄지가 닿는 곳에 보기와 버튼) */
+  #quiz, #nameForm { padding: 0; place-items: end stretch; }
+  #quiz > .modal__panel, #nameForm > .modal__panel { width: 100%; padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); animation-name: sheet-up; }
+}
+@media (max-width: 39.99rem) {
+  /* 곁길 이름은 표지 오른쪽이 아니라 아래에(두 칸 지도에서 화면 밖으로 나가지 않게) */
+  .map__node[data-side] .map__name { position: static; transform: none; }
+}
