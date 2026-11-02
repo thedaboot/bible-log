@@ -222,7 +222,7 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
 .dialog__rest { visibility: hidden; }
 .dialog__foot {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   column-gap: var(--space-sm);
   min-height: 24px;
@@ -271,8 +271,9 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
 @media (hover: hover) { .dialog__back:hover { color: var(--color-frame); background: var(--color-paper-3); } }
 .dialog__back:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 .dialog__next {
-  grid-row: 1;
-  grid-column: 3;
+  position: absolute;
+  right: 0;
+  bottom: 0.5em;
   width: 12px;
   height: 9px;
   background: var(--color-frame);
@@ -1224,10 +1225,20 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
   .map__name { white-space: normal; text-wrap: balance; text-align: center; }
   .map__title { font-size: var(--text-ui); }
   /* 퀴즈·이름 입력: 아래에서 올라오는 시트(엄지가 닿는 곳에 보기와 버튼) */
-  #quiz, #nameForm { padding: 0; place-items: end stretch; }
-  #quiz > .modal__panel, #nameForm > .modal__panel { width: 100%; padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); animation-name: sheet-up; }
+  #quiz { padding: 0; place-items: end stretch; }
+  #quiz > .modal__panel { width: 100%; padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); animation-name: sheet-up; }
+  /* 이름 입력은 위에서 내려오는 시트: 화면 키보드가 아래에서 올라와도 입력 칸이 가려지지 않는다 */
+  #nameForm { padding: 0; place-items: start stretch; }
+  #nameForm > .modal__panel { width: 100%; padding-top: max(var(--space-lg), env(safe-area-inset-top)); animation-name: sheet-down; }
 }
 @media (max-width: 39.99rem) {
   /* 곁길 이름은 표지 오른쪽이 아니라 아래에(두 칸 지도에서 화면 밖으로 나가지 않게) */
   .map__node[data-side] .map__name { position: static; transform: none; }
 }
+@keyframes sheet-down { from { opacity: 0; transform: translateY(-24px); } }
+/* 대사 본문: 늘 창의 위쪽 왼편에서 읽기 시작한다. ▼(다음)은 본문 오른쪽 아래 끝에 두고, 아랫줄은 장절과 '이전'만 */
+.dialog__body { position: relative; }
+.dialog__line { align-content: start; }
+/* ▼는 본문 폭을 줄이지 않게 창의 오른쪽 여백 안에 둔다 */
+.dialog__next { right: calc(-1 * var(--pad) + 4px); width: 10px; height: 8px; }
+.dialog[data-who="voice"] .dialog__line, .dialog[data-who="elohim"] .dialog__line { align-content: center; padding-inline: 1.5rem; }

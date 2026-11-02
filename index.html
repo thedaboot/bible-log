@@ -70,19 +70,21 @@
     <div id="choices" class="choices" role="group" aria-label="고르기" hidden></div>
     <section id="dialog" class="panel dialog" hidden>
       <span id="speaker" class="dialog__speaker"></span>
-      <p id="line" class="dialog__line" aria-hidden="true"></p>
+      <div class="dialog__body">
+        <p id="line" class="dialog__line" aria-hidden="true"></p>
+        <span class="dialog__next" aria-hidden="true"></span>
+      </div>
       <p id="srLine" class="sr-only" aria-live="polite"></p>
       <div class="dialog__foot">
         <span id="ref" class="dialog__ref"></span>
         <button id="dialogBack" class="dialog__back" type="button" title="이전 대사 (← 또는 Backspace)" hidden>이전</button>
-        <span class="dialog__next" aria-hidden="true"></span>
       </div>
     </section>
 
     <form id="nameForm" class="modal" hidden>
       <div class="panel modal__panel" role="dialog" aria-labelledby="nameLabel">
         <label id="nameLabel" for="nameInput" class="modal__title">이름을 알려 주세요</label>
-        <input id="nameInput" class="field" maxlength="10" autocomplete="off" placeholder="최대 10자" />
+        <input id="nameInput" class="field" maxlength="10" autocomplete="off" enterkeyhint="done" placeholder="최대 10자" />
         <button type="submit" class="btn">확인</button>
       </div>
     </form>
