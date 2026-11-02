@@ -411,11 +411,12 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
     resolve();
   };
   // 키보드: Q·E(탭에 포커스가 있으면 ←·→도)로 탭을 옮긴다. 도감에서는 ←·→ 페이지, ↑·↓ 분류, [·] 장.
+  // 도감에서는 탭에 포커스가 있어도 ←·→가 페이지다(Q·E로 도감에 오면 포커스가 탭에 남는다).
   const onKey = (e) => {
     if (e.code === 'Escape' || (e.code === 'KeyM' && !only)) { e.preventDefault(); e.stopPropagation(); close(); return; }
     const onTab = document.activeElement?.classList.contains('tab');
     const side = e.code === 'ArrowRight' || e.code === 'KeyE' ? 1 : e.code === 'ArrowLeft' || e.code === 'KeyQ' ? -1 : 0;
-    if (TABS.length && side && (onTab || e.code.startsWith('Key'))) {
+    if (TABS.length && side && ((onTab && tab !== 'codex') || e.code.startsWith('Key'))) {
       e.preventDefault();
       const k = (TABS.findIndex((t) => t.id === tab) + side + TABS.length) % TABS.length;
       setTab(TABS[k].id);

@@ -99,10 +99,11 @@ let mode = 'none';
 const SPEED = 4;
 let walkRadius = 8.5;
 const keys = new Set();
+const tapped = new Set(); // 한 프레임 안에 눌렀다 뗀 키도 그 프레임에는 누른 것으로 친다(프레임이 느린 기기)
 let target = null;
 let dragX = null;
 
-addEventListener('keydown', (e) => keys.add(e.code));
+addEventListener('keydown', (e) => { keys.add(e.code); tapped.add(e.code); });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
@@ -123,7 +124,7 @@ canvas.addEventListener('pointermove', (e) => {
 });
 for (const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, () => (dragX = null));
 
-const held = (...codes) => (codes.some((c) => keys.has(c)) ? 1 : 0);
+const held = (...codes) => (codes.some((c) => keys.has(c) || tapped.has(c)) ? 1 : 0);
 
 // 걷기: 속도를 부드럽게 올리고 줄여서 출발과 멈춤이 자연스럽다. 흔들림과 기울기는 animateFigure가 맡는다.
 const vel = new THREE.Vector3();
@@ -1415,6 +1416,7 @@ function tick() {
     camAngle += (held('KeyE') - held('KeyQ')) * dt * 1.5 + dt * 0.05;
     if (dragX !== null || held('KeyQ', 'KeyE')) practiced('look', dt);
   }
+  tapped.clear();
   camTarget.lerp(camFocus ?? camFollow, Math.min(1, dt * 4));
   camera.position.copy(camTarget).add(camOffset.clone().applyAxisAngle(Y_AXIS, camAngle));
   camera.lookAt(camTarget);
