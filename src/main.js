@@ -25,7 +25,7 @@ import { openMenu, menuIsOpen } from './menu.js';
 import { openMap } from './map.js';
 import { tween, easeOut, setInstant } from './anim.js';
 import {
-  $, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, logGain,
+  $, isTouch, say, askName, askLook, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, logGain,
 } from './ui.js';
 
 // ---------- 렌더링: 쿼터뷰 정사영 카메라 + 픽셀화 후처리 ----------
@@ -69,7 +69,9 @@ function resize() {
   camera.right = (view * aspect) / 2;
   camera.top = view / 2;
   camera.bottom = -view / 2;
-  if (viewShift) camera.setViewOffset(w, h, aspect >= 1 ? viewShift.x * w : 0, aspect >= 1 ? 0 : viewShift.y * h, w, h);
+  // 메뉴·패널이 없을 때도 대사 창이 덮는 쪽을 피해 장면을 민다: 세로 화면은 위로, 높이가 낮은 가로 화면은 오른쪽으로
+  const shift = viewShift ?? (aspect < 1 ? { x: 0, y: 0.05 } : h < 480 ? { x: -0.16, y: 0 } : null);
+  if (shift) camera.setViewOffset(w, h, aspect >= 1 ? shift.x * w : 0, aspect >= 1 ? 0 : shift.y * h, w, h);
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
@@ -1015,7 +1017,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     const act = async () => {
       const sp = ch?.near;
       if (!sp || mode !== 'walk' || ch.busy) return;
-      if (!sp.ready) { label(`F 키로 ${toolName} 먼저 쓰기`); flash('is-miss'); return; }
+      if (!sp.ready) { label(`${isTouch() ? '' : 'F 키로 '}${toolName} 먼저 쓰기`); flash('is-miss'); return; }
       if (ch.m < ch.zone[0] || ch.m > ch.zone[1]) { label('다시 해 보세요'); flash('is-miss'); return; }
       flash('is-hit');
       sp.n++;
@@ -1087,7 +1089,7 @@ function challengeTick(dt) {
   $('chMark').style.transform = `translateX(${ch.m * $('chTrack').clientWidth}px)`;
   ch.panel.classList.toggle('is-gold', near.ready && ch.m >= ch.zone[0] && ch.m <= ch.zone[1]);
   ch.msgT -= dt;
-  $('chLabel').textContent = ch.msgT > 0 ? ch.msg : near.ready ? `${ch.verb} ${near.n} / ${near.hits ?? ch.hits}` : `F 키로 ${ch.toolName || '도구'} 쓰기`;
+  $('chLabel').textContent = ch.msgT > 0 ? ch.msg : near.ready ? `${ch.verb} ${near.n} / ${near.hits ?? ch.hits}` : `${isTouch() ? '' : 'F 키로 '}${ch.toolName || '도구'} 쓰기`;
 }
 
 // ---------- 1-4부터의 스테이지: src/stages/<id>.js가 장면(build)과 진행(run)을 맡고, 여기는 공용 기능(g)만 건넨다 ----------
@@ -1335,8 +1337,10 @@ function showTitle() {
   };
   const showMain = () => {
     menu.classList.remove('menu--list');
-    menu.replaceChildren(button('처음부터', begin(() => { state = newState(saved); dressFigure(player, lookSpec(state.look)); runPrologue(); })));
+    // 첫 화면은 고를 것만: 저장이 있으면 가장 자주 누르는 '이어하기'를 맨 위에 둔다
+    menu.replaceChildren();
     if (saved) menu.append(button('이어하기', begin(() => { state = saved; runShelter(); }))); // 이어하기는 쉼터에서 시작한다
+    menu.append(button('처음부터', begin(() => { state = newState(saved); dressFigure(player, lookSpec(state.look)); runPrologue(); })));
     if (saved?.name) menu.append(button('모습 바꾸기', showLooks)); // 천국 꾸미기를 마친 사용자만
     if (saved) menu.append(button('도감', () => openMenu(saved, { only: 'codex', stage: chapterOf(saved.scene) }).then(() => menu.querySelector('button').focus({ preventScroll: true }))));
     menu.querySelector('button').focus({ preventScroll: true });
@@ -1427,7 +1431,7 @@ function tick() {
 
 // 개발 서버에서만: 브라우저 점검용으로 캐릭터와 세계에 접근한다(배포 빌드에는 빠진다).
 // run은 쉼터의 걸어서 닿는 자리를 지우고 시작한다(지도에서 들어갈 때와 같다).
-if (import.meta.env.DEV) globalThis.__dev = { player, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => { stopWalk(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`) };
+if (import.meta.env.DEV) globalThis.__dev = { player, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => { stopWalk(); $('title').hidden = true; refreshHud(); showHud(true); titleView = false; viewShift = null; resize(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`) };
 
 scene.background = new THREE.Color(0xfdf3d8);
 player.position.set(0, 0, -3);

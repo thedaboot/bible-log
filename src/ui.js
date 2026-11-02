@@ -21,6 +21,27 @@ const TYPE_MS = 32; // 한 글자가 나오는 간격
 // onLine(line, i): 대사가 화면에 나올 때마다 부른다(대사에 맞춰 카메라·연출을 바꿀 때 쓴다).
 // choices: 마지막 대사가 다 나오면 대사 창 위에 선택지 패널을 띄우고, 고른 번호(0부터)로 끝난다.
 // 선택지는 [{ text, mark }]이고 mark(열매 이름)가 있으면 새싹 표시를 단다. PC는 1~4 키로도 고른다.
+// 좁은 화면에서 대사의 한 줄이 화면 한 줄을 넘으면, 그 줄을 가운데에 가까운 문장·쉼표 경계에서 나눈다
+// ("하나 / 남았소", "부어 / 보아요"처럼 말 중간에서 접히지 않게). 경계가 없으면 브라우저 줄바꿈에 맡긴다.
+let measureCtx = null; // 처음 쓸 때 만든다(npm run check는 document 없이 이 파일을 불러온다)
+export function fitLine(text, el) {
+  if (!el.clientWidth) return text;
+  measureCtx ??= document.createElement('canvas').getContext('2d');
+  const cs = getComputedStyle(el);
+  measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const split = (line) => {
+    if (measureCtx.measureText(line).width <= room) return line;
+    let best = -1;
+    for (const m of line.matchAll(/[.?!,] /g)) {
+      const k = m.index + 1;
+      if (best < 0 || Math.abs(k - line.length / 2) < Math.abs(best - line.length / 2)) best = k;
+    }
+    return best < 0 ? line : `${split(line.slice(0, best))}\n${split(line.slice(best + 1))}`;
+  };
+  return text.split('\n').map(split).join('\n');
+}
+
 export function say(lines, ctx, { onLine, choices = null } = {}) {
   const box = $('dialog');
   const lineEl = $('line');
@@ -91,7 +112,7 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
       const l = lines[i++];
       back.hidden = i < 2;
       onLine?.(l, i - 1);
-      full = fill(l.text, ctx);
+      full = fitLine(fill(l.text, ctx), lineEl);
       box.dataset.who = l.who;
       $('speaker').textContent = SPEAKERS[l.who];
       $('ref').textContent = l.ref ?? '';

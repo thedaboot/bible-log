@@ -30,6 +30,12 @@
   --text-title: 48px;
   --text-read: clamp(1.0625rem, 0.45vw + 0.95rem, 1.3125rem);
   --text-lede: 1.0625rem;
+  --text-read-m: 1.125rem; /* 휴대폰 대사 본문: 바닥에 붙은 대사 창에서 18px로 크게 읽는다 */
+
+  /* 누르는 칸과 막대 */
+  --hit: 44px;      /* 누르는 칸의 최소 높이(손가락 크기) */
+  --bar-h: 12px;    /* 게이지·경험치 막대 */
+  --bar-h-lg: 18px; /* 도전 막대처럼 맞춰 눌러야 하는 막대 */
 
   /* 4pt 간격 */
   --space-3xs: 0.25rem;
