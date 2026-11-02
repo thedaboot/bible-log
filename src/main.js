@@ -1302,6 +1302,7 @@ async function runShelter() {
     { pos: heaven.gatePos, r: 1.6, open: async () => {
       const id = await openMap(state);
       if (!id) return false;
+      setQuest(null);
       await fade(1);
       stopWalk();
       startAt(id);
@@ -1333,6 +1334,8 @@ async function runShelter() {
   });
   spots.forEach(arm);
   waypoint.set(heaven.gatePos);
+  // 쉼터에서 할 일: 빛의 문에서 다음 이야기를 고른다(상점 천사·동행 인물은 곁에 가면 말을 건다)
+  setQuest({ title: '쉼터', items: [{ text: '빛의 문으로 가서 다음 이야기 고르기', done: false }] });
   startWalk();
 }
 
