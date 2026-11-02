@@ -1116,20 +1116,23 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
 .menu-btn__key { padding: 4px 6px; box-shadow: inset 0 -3px 0 var(--color-paper-3); }
 
 @media (max-width: 39.99rem) {
-  /* 대사 창: 화면 바닥에 꽉 차게 붙이고 본문을 크게. 위쪽 두꺼운 테두리만 남긴다 */
+  /* 대사 창: 사방 테두리가 있는 떠 있는 창(.panel 그대로). 화면 가장자리·둥근 모서리·홈 막대(안전 영역)에서 띄워
+   * 잘리지 않게 한다. 바닥에 꽉 붙였을 때는 모서리가 잘리고 화면 바닥처럼 보여 대사 창인지 알기 어려웠다(2026-11-02). */
   .dialog {
     --pad: var(--space-sm);
-    left: 0; right: 0; bottom: 0; width: auto;
+    left: max(var(--space-xs), env(safe-area-inset-left));
+    right: max(var(--space-xs), env(safe-area-inset-right));
+    bottom: calc(max(var(--space-xs), env(safe-area-inset-bottom)) + var(--space-xs));
+    width: auto;
     transform: none;
-    padding: var(--space-sm) var(--pad) max(var(--space-xs), env(safe-area-inset-bottom));
-    box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--color-frame), inset 0 var(--px) 0 0 var(--color-paper-2);
+    padding: var(--space-sm) var(--pad) var(--space-2xs);
     animation-name: rise-in;
   }
   .dialog__line { font-size: var(--text-read-m); line-height: 1.6; min-height: calc(2 * 1.6em); font-weight: 600; }
   .dialog[data-who="narr"] .dialog__line { font-weight: 500; }
   .dialog__speaker { font-size: var(--text-small); }
   /* 선택 상자: 대사 창 오른쪽 위에 상자 하나, 줄마다 ▶ 커서 */
-  .choices { left: auto; right: var(--space-xs); width: min(22rem, calc(100% - var(--space-xs) * 2)); gap: 0; padding: var(--space-2xs) 0; background: var(--color-paper); box-shadow: 0 0 0 var(--px) var(--color-frame), inset 0 0 0 var(--px) var(--color-paper-2), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); }
+  .choices { left: auto; right: max(var(--space-xs), env(safe-area-inset-right)); width: min(22rem, calc(100% - var(--space-xs) * 2)); gap: 0; padding: var(--space-2xs) 0; background: var(--color-paper); box-shadow: 0 0 0 var(--px) var(--color-frame), inset 0 0 0 var(--px) var(--color-paper-2), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); }
   .choice { min-height: var(--hit); padding: var(--space-2xs) var(--space-sm); background: none; box-shadow: none; font-size: var(--text-lede); animation-name: rise-in; }
   .choice + .choice { box-shadow: inset 0 2px 0 var(--color-paper-2); }
   .choice:has(.choice__mark) { box-shadow: none; }
