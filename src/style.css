@@ -238,9 +238,9 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; }
   grid-column: 1;
   font-family: var(--font-small);
   font-size: var(--text-label);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--color-ink-2);
+  color: var(--color-accent-ink);
 }
 .dialog__ref:empty { visibility: hidden; }
 .dialog__foot:has(.dialog__ref:empty) { box-shadow: none; } /* 장절이 없으면 구분선도 숨긴다 */
@@ -902,8 +902,9 @@ body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
 .codex__name { font-size: var(--text-lede); font-weight: 800; line-height: 1.3; color: var(--color-frame); }
 .codex__fact { font-size: var(--text-small); font-weight: 600; line-height: 1.5; color: var(--color-ink); text-wrap: pretty; }
 /* 장절: 대사 창처럼 책갈피 표시와 함께 */
-.codex__ref { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-label); font-weight: 700; color: var(--color-accent-ink); }
-.codex__ref::before { content: ''; width: 6px; height: 9px; background: currentColor; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%); }
+/* 장절 표시는 대사 창과 같은 부품: 책갈피 7×11, 금빛 글자 */
+.codex__ref { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-label); font-weight: 700; color: var(--color-accent-ink); }
+.codex__ref::before { content: ''; width: 7px; height: 11px; background: var(--color-accent); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); }
 .codex__memo { margin-top: auto !important; padding-top: var(--space-2xs); font-size: var(--text-small); line-height: 1.5; color: var(--color-ink-2); text-wrap: pretty; box-shadow: inset 0 1px 0 var(--color-paper-3); }
 .codex__cell[data-state="missed"], .codex__cell[data-state="unknown"] { background: var(--color-paper-2); box-shadow: inset 0 0 0 2px var(--color-paper-3); }
 .codex__cell[data-state="missed"] .codex__name { color: var(--color-ink-2); letter-spacing: 0.1em; }

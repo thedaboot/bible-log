@@ -17,6 +17,7 @@ npm run check   # 데이터·저장·장면 점검
 npm run build
 ```
 
+- 배포: `main`에 push하면 GitHub Pages(https://thedaboot.github.io/bible-log/)에 자동으로 올라간다(`docs/standards/workflow.md` "배포").
 - PowerShell에서는 `npm.cmd`를 쓴다. 파이썬 도우미는 `python -X utf8`로 실행한다(한글 문자열 비교가 깨지지 않게).
 - 사용자 서버는 `npm run dev`(localhost:5173)다. 브라우저 점검은 별도 주소 `npx vite --host 127.0.0.1 --port 5174 --strictPort`에서 하고, 끝나면 5174 포트 프로세스를 끈다. 방법은 `docs/standards/workflow.md` "브라우저 확인".
 

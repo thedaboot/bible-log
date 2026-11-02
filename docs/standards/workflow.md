@@ -14,6 +14,12 @@
 
 - 성장 수치, 보상, 도감, 저장 형식 규칙은 [growth.md](growth.md)에 모은다.
 
+## 배포
+
+- `main`에 push하면 GitHub Actions(`.github/workflows/pages.yml`)가 `npm run check`·`npm run build` 뒤 GitHub Pages에 올린다. 주소: https://thedaboot.github.io/bible-log/ (휴대폰에서도 열린다)
+- 빌드는 상대 경로(`vite.config.js`의 `base: './'`)라 하위 경로에서 열린다. `index.html`의 파일 경로도 `./`로 쓴다.
+- 배포 결과는 `gh run list --limit 1`로 본다. 점검이 실패하면 배포되지 않는다.
+
 ## 브라우저 확인
 
 - 사용자의 저장값을 건드리지 않도록, 확인은 별도 주소의 점검용 서버에서 한다. 저장소는 주소(origin)마다 따로 있다.
