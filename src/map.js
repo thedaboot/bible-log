@@ -174,6 +174,7 @@ export function openMap(state) {
     };
     addEventListener('keydown', onKey, true);
     $('mapClose').onclick = () => close(null);
+    box.onclick = (e) => { if (e.target === box) close(null); }; // 다른 창처럼 바깥을 누르면 닫는다
     box.hidden = false;
     paint();
     marks[sel].focus({ preventScroll: true });

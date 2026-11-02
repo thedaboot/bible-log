@@ -30,13 +30,22 @@ function swap(node, view, dir = 0) {
 }
 // 고른 칩·칸이 눌렸다 튀어 오른다
 function pop(b) { b.classList.remove('is-picked'); void b.offsetWidth; b.classList.add('is-picked'); }
-const button = (cls, text, onClick, label) => {
+// key를 주면 누른 뒤 창을 다시 그려도 포커스를 같은 key의 버튼으로 돌려준다(키보드만으로 조작, ui.md "키보드").
+const button = (cls, text, onClick, label, key) => {
   const b = el('button', cls, text);
   b.type = 'button';
   if (label) b.setAttribute('aria-label', label);
-  b.onclick = onClick;
+  if (key) b.dataset.key = key;
+  b.onclick = (e) => { onClick(e); if (key) refocus(key); };
   return b;
 };
+function refocus(key) {
+  if (document.activeElement && document.activeElement !== document.body && document.activeElement.isConnected) return;
+  const ok = (n) => n && !n.disabled;
+  const group = key.split(':')[0];
+  const t = [document.querySelector(`[data-key="${key}"]`), ...document.querySelectorAll(`[data-key^="${group}:"]`), document.querySelector('.slot[aria-pressed="true"]')].find(ok);
+  t?.focus({ preventScroll: true });
+}
 
 // 레이더 차트: 아홉 축, 값은 단계(씨앗 0 ~ 결실 4). 씨앗도 안쪽 첫 고리에 찍히게 (단계+1)/5로 그린다.
 export function radarPoints(stages, R = 1) {
@@ -156,17 +165,17 @@ function inventoryView(state, ctx) {
     if (!owned) act.append(el('p', 'inv__lock', it.level ? `Lv.${it.level}에 열려요` : `상점 · ${it.price} 달란트`));
     else if (ctx.onHold) {
       const isHeld = heldId() === it.id;
-      const hold = button('btn inv__hold', isHeld ? '손에 든 중' : '손에 들기', () => { ctx.onHold(it.id); render(); });
+      const hold = button('btn inv__hold', isHeld ? '손에 든 중' : '손에 들기', () => { ctx.onHold(it.id); render(); }, null, 'inv:hold');
       hold.disabled = isHeld;
       act.append(hold);
-      if (isHeld) act.append(button('btn btn--quiet inv__hold', '내려놓기', () => { ctx.onHold('none'); render(); }));
+      if (isHeld) act.append(button('btn btn--quiet inv__hold', '내려놓기', () => { ctx.onHold('none'); render(); }, null, 'inv:drop'));
     }
     d.append(icon, text, act);
     return d;
   };
 
   const slot = (it, owned) => {
-    const b = button('slot', '', () => { picked = it.id; render(); });
+    const b = button('slot', '', () => { picked = it.id; render(); }, null, `slot:${it.id}`);
     b.dataset.state = owned ? 'owned' : 'locked';
     b.setAttribute('aria-pressed', String(picked === it.id));
     if (heldId() === it.id) b.dataset.held = '';
@@ -254,7 +263,7 @@ function shopView(state, ctx) {
     const grid = el('div', 'slots');
     for (const it of ITEMS.filter((i) => i.price)) {
       const owned = ownsLook(state, it.id);
-      const b = button('slot', '', () => { picked = it.id; render(); });
+      const b = button('slot', '', () => { picked = it.id; render(); }, null, `slot:${it.id}`);
       b.dataset.state = owned ? 'owned' : 'sale';
       b.setAttribute('aria-pressed', String(picked === it.id));
       const ic = el('span', 'slot__icon');
@@ -272,7 +281,7 @@ function shopView(state, ctx) {
       text.append(el('p', 'inv__name', it.name), el('p', 'codex__ref', it.ref), el('p', 'inv__note', it.note));
       const act = el('div', 'inv__actions');
       const owned = ownsLook(state, it.id);
-      const buy = button('btn inv__hold', owned ? '가지고 있어요' : `${it.price} 달란트로 사기`, () => { if (ctx.onBuy(it.id)) render(); });
+      const buy = button('btn inv__hold', owned ? '가짐' : `${it.price} 달란트로 사기`, () => { if (ctx.onBuy(it.id)) render(); }, null, 'shop:buy');
       buy.disabled = owned || state.talents < it.price;
       act.append(buy);
       if (!owned && state.talents < it.price) act.append(el('p', 'inv__lock', `${it.price - state.talents} 달란트 모자라요`));
@@ -340,8 +349,8 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
     }
     if (pages > 1) {
       const pager = el('div', 'pager pager--page');
-      const prev = button('pager__btn pager__btn--prev', '', () => { page--; codexBody(-1); }, '이전 페이지');
-      const next = button('pager__btn pager__btn--next', '', () => { page++; codexBody(1); }, '다음 페이지');
+      const prev = button('pager__btn pager__btn--prev', '', () => { page--; codexBody(-1); }, '이전 페이지', 'page:prev');
+      const next = button('pager__btn pager__btn--next', '', () => { page++; codexBody(1); }, '다음 페이지', 'page:next');
       prev.disabled = page === 0;
       next.disabled = page === pages - 1;
       const dots = el('span', 'pager__dots');
@@ -359,8 +368,8 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
     // 장 넘기기: 성경 순서대로 장마다 도감이 나뉜다.
     const ch = BOOK_CHAPTERS[chapter];
     const bookPager = el('div', 'pager pager--book');
-    const prev = button('pager__btn pager__btn--prev', '', () => { chapter--; page = 0; render(-1); }, '이전 장');
-    const next = button('pager__btn pager__btn--next', '', () => { chapter++; page = 0; render(1); }, '다음 장');
+    const prev = button('pager__btn pager__btn--prev', '', () => { chapter--; page = 0; render(-1); }, '이전 장', 'book:prev');
+    const next = button('pager__btn pager__btn--next', '', () => { chapter++; page = 0; render(1); }, '다음 장', 'book:next');
     prev.disabled = chapter === 0;
     next.disabled = chapter === BOOK_CHAPTERS.length - 1;
     const label = el('p', 'pager__label');
@@ -401,7 +410,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
 
   box.hidden = false;
   render();
-  (tabsEl.querySelector('[aria-selected="true"]') ?? $('menuClose')).focus({ preventScroll: true });
+  (tabsEl.querySelector('[aria-selected="true"]') ?? body.querySelector('.slot, .chip') ?? $('menuClose')).focus({ preventScroll: true });
   let resolve;
   const promise = new Promise((r) => (resolve = r));
   const close = () => {
@@ -413,7 +422,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
   // 키보드: Q·E(탭에 포커스가 있으면 ←·→도)로 탭을 옮긴다. 도감에서는 ←·→ 페이지, ↑·↓ 분류, [·] 장.
   // 도감에서는 탭에 포커스가 있어도 ←·→가 페이지다(Q·E로 도감에 오면 포커스가 탭에 남는다).
   const onKey = (e) => {
-    if (e.code === 'Escape' || (e.code === 'KeyM' && !only)) { e.preventDefault(); e.stopPropagation(); close(); return; }
+    if (e.code === 'Escape' || e.code === 'KeyM') { e.preventDefault(); e.stopPropagation(); close(); return; }
     const onTab = document.activeElement?.classList.contains('tab');
     const side = e.code === 'ArrowRight' || e.code === 'KeyE' ? 1 : e.code === 'ArrowLeft' || e.code === 'KeyQ' ? -1 : 0;
     if (TABS.length && side && ((onTab && tab !== 'codex') || e.code.startsWith('Key'))) {

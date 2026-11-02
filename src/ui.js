@@ -129,6 +129,7 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
         if (e.code === 'ArrowDown' || e.code === 'ArrowUp') { e.preventDefault(); moveFocus($('choices'), e.code === 'ArrowDown' ? 1 : -1); }
         return; // 고르는 동안 Space·Enter는 포커스된 선택지 버튼이 받는다
       }
+      if (e.repeat) return; // 누르고 있어도 여러 대사가 한꺼번에 넘어가지 않게
       if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); show(); }
       if (e.code === 'ArrowLeft' || e.code === 'Backspace') { e.preventDefault(); goBack(); }
     };
@@ -309,7 +310,7 @@ const CONTROLS = {
     touch: '<span class="gesture gesture--tap" aria-hidden="true"></span><p>가고 싶은 곳을 탭하세요</p>',
   },
   look: {
-    pc: '<div class="keys keys--row"><kbd class="key key--q">Q</kbd><kbd class="key key--e">E</kbd></div><p>화면을 드래그하거나, Q/E 키를 눌러<br>세상을 둘러보세요</p>',
+    pc: '<div class="keys keys--row"><kbd class="key key--q">Q</kbd><kbd class="key key--e">E</kbd></div><p>화면을 드래그하거나, Q·E 키를 눌러<br>세상을 둘러보세요</p>',
     touch: '<span class="gesture gesture--swipe" aria-hidden="true"></span><p>화면을 좌우로 밀어 세상을 둘러보세요</p>',
   },
 };
@@ -337,7 +338,7 @@ export function showCard({ title, text, ref, count }) {
   $('dexCount').textContent = count;
   el.hidden = false;
   return new Promise((resolve) => {
-    const onKey = (e) => { if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) { e.preventDefault(); close(); } };
+    const onKey = (e) => { if ((e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape') && !e.repeat) { e.preventDefault(); close(); } };
     const close = () => { clearTimeout(timer); el.hidden = true; el.onclick = null; removeEventListener('keydown', onKey); resolve(); };
     const timer = setTimeout(close, reducedMotion() ? 2000 : 2800);
     el.onclick = close;
