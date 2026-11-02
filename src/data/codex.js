@@ -116,6 +116,16 @@ export const CODEX = [
   { id: 'creature/goat', name: '염소', stage: 'jabbok', fact: '야곱이 에서에게 예물로 보낸 암염소 이백', ref: '창 32:14', memo: '떼마다 사이를 두고 앞서 보냈다.' },
   { id: 'item/jacob-staff', name: '야곱의 지팡이', stage: 'jabbok', fact: '지팡이만 가지고 요단을 건넜던 야곱', ref: '창 32:10', memo: '절뚝이는 걸음을 받쳐 준 지팡이. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-32-28', name: '이스라엘', stage: 'jabbok', fact: '네 이름을 이스라엘이라 하리니 하나님과 겨루어 이겼다', ref: '창 32:28', memo: '발꿈치를 잡던 이가 새 이름을 받았다.' },
+
+  { id: 'person/joseph', name: '요셉', stage: 'joseph', fact: '야곱이 사랑한 아들, 애굽을 다스린 이', ref: '창 41:41', memo: '옥에서도 죄수들의 빵을 나누고 맨 마지막에 앉았다.' },
+  { id: 'person/pharaoh', name: '바로', stage: 'joseph', fact: '꿈을 꾸고 요셉에게 풀이를 들은 애굽 왕', ref: '창 41:15', memo: '요셉을 하나님의 영에 감동된 사람이라 불렀다.' },
+  { id: 'person/cupbearer', name: '술 맡은 관원장', stage: 'joseph', fact: '옥에서 요셉에게 꿈 풀이를 들은 신하', ref: '창 40:9', memo: '두 해 동안 잊었다가 바로 앞에서 요셉을 기억해 냈다.' },
+  { id: 'place/dothan', name: '도단', stage: 'joseph', fact: '형들이 양을 치다 요셉을 판 들', ref: '창 37:17', memo: '빈 구덩이 하나가 들 가운데 있었다.' },
+  { id: 'place/egypt', name: '애굽', stage: 'joseph', fact: '요셉이 종으로 팔려 가 다스리는 자가 된 땅', ref: '창 39:1', memo: '옥에서 궁정까지, 요셉이 걸은 길은 끊기지 않고 이어졌다.' },
+  { id: 'creature/cow', name: '살진 암소', stage: 'joseph', fact: '바로의 꿈에서 일곱 해의 풍년을 뜻한 소', ref: '창 41:26', memo: '나일 강가에서 갈밭 풀을 뜯던 소들이었다.' },
+  { id: 'creature/grain', name: '충실한 이삭', stage: 'joseph', fact: '한 줄기에 일곱 이삭이 충실하게 맺힌 곡식', ref: '창 41:22', memo: '마른 이삭이 충실한 이삭을 삼켰다.' },
+  { id: 'item/coat-thread', name: '채색옷 실', stage: 'joseph', fact: '야곱이 요셉에게 지어 입힌 채색옷', ref: '창 37:3', memo: '구덩이 곁에 떨어진 옷의 실 한 가닥. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-39-23', name: '형통하게 하심', stage: 'joseph', fact: '여호와께서 요셉과 함께하사 그가 하는 일을 형통하게 하셨다', ref: '창 39:23', memo: '옥 안에서 들은 말씀이다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).
@@ -135,4 +145,5 @@ export const LIKENESS = {
   rebekah: { fruits: ['kindness', 'goodness'], text: '낯선 나그네의 낙타에게까지 물을 길어 준 리브가처럼, 부탁받은 것보다 한 걸음 더 도와요.', why: '창 24:19 낙타도 마시게 하겠다(친절), 창 24:20 급히 물을 길음(선함)' },
   jacob: { fruits: ['patience', 'faith'], text: '돌베개를 베고도 약속을 붙든 야곱처럼, 먼 길 위에서도 함께하시는 분을 기억해요.', why: '창 29:20 칠 년을 며칠같이 여김(인내), 창 28:20~22 서원(신실)' },
   esau: { fruits: ['love', 'gentle'], text: '스무 해 만에 동생을 먼저 달려가 껴안은 에서처럼, 먼저 다가가 화해의 손을 내밀어요.', why: '창 33:4 달려와 껴안음(사랑), 창 33:9 넉넉하니 네 것은 네가 가지라(온유)' },
+  joseph: { fruits: ['patience', 'faith'], text: '구덩이와 옥에서도 맡은 일을 해낸 요셉처럼, 어디에 있든 하나님이 함께하심을 믿고 성실하게 일해요.', why: '창 39:20~23 옥에서 형통함(인내), 창 41:16 하나님께서 대답하심(신실)' },
 };

@@ -552,8 +552,8 @@ for (const mod of MODS) {
   const ch = CHAPTERS.find((c) => c.id === mod.id);
   assert.ok(ch?.points.some((p) => p.id === mod.id), `${mod.id}: 장 목록에 지점이 없음`);
   const f = mod.build({ background: new THREE.Color() });
-  for (const fig of Object.values(f.people)) assert.ok(!f.collide(fig.position.clone(), 0.3), `${mod.id}: 인물이 장애물 위에 섬`);
-  for (const an of f.animals) assert.ok(!f.collide(an.position.clone(), an.userData.radius), `${mod.id}: 동물이 장애물 위에 섬`);
+  for (const [k, fig] of Object.entries(f.people)) assert.ok(!f.collide(fig.position.clone(), 0.3), `${mod.id}: 인물 ${k}가 장애물 위에 섬`);
+  for (const an of f.animals) assert.ok(!f.collide(an.position.clone(), an.userData.radius), `${mod.id}: 동물 ${an.userData.kind}(${an.position.x.toFixed(1)}, ${an.position.z.toFixed(1)})가 장애물 위에 섬`);
   for (const [k, p] of Object.entries(f.spots)) if (!(f.solid ?? []).includes(k)) assert.ok(!f.collide(p.clone(), 0.3), `${mod.id}: 자리 ${k}가 장애물 위`);
   for (const [name, st] of Object.entries(f.stages)) {
     for (const from of [st.c, st.c.clone().add(new THREE.Vector3(1, 0, -1))]) assert.ok(f.stepAside(name, from).length, `${mod.id}/${name}: 비킬 자리가 없음`);
