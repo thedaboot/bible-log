@@ -2,7 +2,7 @@
 // 창 4:8은 멀리서 비추고 쓰러지는 모습까지만 보인다(docs/standards/quests-and-staging.md "연출").
 import * as THREE from 'three';
 import {
-  PAL, mat, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, turnFigure, makeLightPillar, makeSpiritLight,
+  PAL, mat, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, collapseFigure, turnFigure, makeLightPillar, makeSpiritLight,
 } from './props.js';
 import { tween, easeOut } from './anim.js';
 import { FLOCK } from './data/cain.js';
@@ -305,10 +305,14 @@ export function makeCain(scene) {
     },
     approach: async () => {
       await walkTo(cain, abel.position.clone().add(V(0.6, -0.1)), 1);
-      await tween(500, () => {});
-      abel.userData.pose = 'lie';
-      const { rig } = abel.userData;
-      await tween(1000, (p) => { rig.rotation.set(-Math.PI / 2 * easeOut(p), 0, 0); rig.position.y = 0.3 * p; });
+      await tween(350, () => {});
+      // 아벨이 휘청이며 무너지고, 가인은 놀란 듯 한 걸음 물러선다
+      const back = cain.position.clone().addScaledVector(cain.position.clone().sub(abel.position).setY(0).normalize(), 0.7);
+      const from = cain.position.clone();
+      await Promise.all([
+        collapseFigure(abel),
+        tween(500, (p) => cain.position.lerpVectors(from, back, easeOut(p))).then(() => { cain.userData.pose = 'down'; return tween(500, (p) => (cain.userData.rig.rotation.x = 0.3 * p)); }),
+      ]);
     },
     // 창 4:15 표를 주신다
     mark: async () => {

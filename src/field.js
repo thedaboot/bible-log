@@ -3,7 +3,7 @@
 // 규칙은 docs/standards/art-3d.md(충돌, 겹침), quests-and-staging.md(무대, 비켜 서기, 연출)를 따른다.
 import * as THREE from 'three';
 import { PAL, mat, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, turnFigure, makeLightPillar, makeSpiritLight } from './props.js';
-import { tween, easeOut } from './anim.js';
+import { tween, easeOut, stagger } from './anim.js';
 
 export const V = (x, z) => new THREE.Vector3(x, 0, z);
 // 장면 앞(카메라 쪽, +x +z)으로 k만큼 옮긴 점. 무대 중심을 잡을 때 쓴다.
@@ -168,6 +168,23 @@ export function makeField(cfg) {
       fig.userData.pose = up ? null : 'lie';
       const { rig } = fig.userData;
       return tween(900, (p) => { const k = up ? 1 - easeOut(p) : easeOut(p); rig.rotation.set(-Math.PI / 2 * k, 0, 0); rig.position.y = 0.3 * k; });
+    },
+    // 껴안는다(창 33:4, 45:14). 마주 다가가 서로 몸을 기울여 안고 잠시 함께 흔들린 뒤 바로 선다.
+    embrace: async (a, b, ms = 1600) => {
+      const mid = a.position.clone().lerp(b.position, 0.5);
+      const gap = b.position.clone().sub(a.position).setY(0).normalize().multiplyScalar(0.28);
+      await Promise.all([walkTo(a, mid.clone().sub(gap), 2), walkTo(b, mid.clone().add(gap), 2)]);
+      face(a, b.position);
+      face(b, a.position);
+      for (const f of [a, b]) f.userData.pose = 'hug';
+      await tween(ms, (p) => {
+        const lean = Math.sin(Math.min(1, p * 4) * Math.PI / 2) * (1 - stagger(p, 0.8, 0.2));
+        for (const [f, s] of [[a, 1], [b, -1]]) { f.userData.rig.rotation.set(0.28 * lean, 0, s * Math.sin(p * Math.PI * 4) * 0.08 * lean); f.userData.rig.position.y = 0; }
+      });
+      for (const f of [a, b]) { f.userData.pose = null; f.userData.rig.rotation.set(0, 0, 0); }
+      await Promise.all([walkTo(a, mid.clone().addScaledVector(gap, -2.2), 1.2), walkTo(b, mid.clone().addScaledVector(gap, 2.2), 1.2)]);
+      face(a, b.position);
+      face(b, a.position);
     },
     wait: (ms) => tween(ms, () => {}),
   };

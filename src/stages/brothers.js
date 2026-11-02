@@ -150,9 +150,10 @@ export default {
     // 창 45:1~15 "나는 요셉입니다"
     await g.talk(data.lines.reveal.slice(0, 3));
     await F.acts.walkTo(joseph, benjamin.position.clone().addScaledVector(ALONG, -0.7), 1.6);
-    F.acts.face(joseph, benjamin.position);
-    F.acts.face(benjamin, joseph.position);
+    // 요셉이 베냐민의 목을 안고 운다(창 45:14)
+    const hug = F.acts.embrace(joseph, benjamin);
     await g.talk(data.lines.reveal.slice(3));
+    await hug;
     g.note('place/goshen');
 
     // 창 50:15~21

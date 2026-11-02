@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
 import { PAL, mat } from '../props.js';
-import { tween, easeOut } from '../anim.js';
+import { tween, easeOut, easeBack } from '../anim.js';
 import data from '../data/babel.js';
 
 const START = V(6, 5);
@@ -99,7 +99,7 @@ export default {
     // 탑이 한 층 오른다(창 11:4 쌓자)
     const tiers = tower.userData.tiers;
     tiers[3].visible = true;
-    await tween(800, (p) => tiers[3].scale.setScalar(Math.max(0.01, easeOut(p))));
+    await tween(800, (p) => tiers[3].scale.setScalar(Math.max(0.01, easeBack(p))));
     g.cam(null, 13);
     g.stage(null);
     await g.talk(data.lines.arrive.slice(7));
@@ -120,7 +120,7 @@ export default {
     // 한 마음으로 일하는 사람들 곁에 머물며 끝까지 듣는다(인내)
     g.reward('listen-done', 'questDone', null, 'patience');
     tiers[4].visible = true;
-    await tween(800, (p) => tiers[4].scale.setScalar(Math.max(0.01, easeOut(p))));
+    await tween(800, (p) => tiers[4].scale.setScalar(Math.max(0.01, easeBack(p))));
 
     // 막간: 해 질 녘 가마 앞에서 벽돌 굽는 이와 대화한다.
     g.cam(KILN, 12);

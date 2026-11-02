@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
 import { PAL, mat, makeWell, makeAngel, makeThornBush } from '../props.js';
-import { tween, easeOut } from '../anim.js';
+import { tween, easeOut, easeBack } from '../anim.js';
 import data from '../data/hagar.js';
 
 const START = V(6, 5);
@@ -89,7 +89,7 @@ export default {
       onFound: async (t) => { await g.talk([data.lines.dry[t.i]]); g.reward(`dry/${t.i}`, 'step'); },
     });
     spring.visible = true;
-    await tween(900, (p) => spring.scale.setScalar(Math.max(0.01, easeOut(p))));
+    await tween(900, (p) => spring.scale.setScalar(Math.max(0.01, easeBack(p))));
     await g.quest({ title: '광야의 샘', targets: [{ pos: SPRING }], text: () => '샘물 곁에 머무르기', radius: 2, hold: 1.2, holdLabel: () => '샘물을 떠 보는 중' });
     // 마른 땅을 끝까지 살피고 샘을 찾음(인내)
     g.reward('spring-done', 'questDone', null, 'patience');
@@ -135,7 +135,7 @@ export default {
     await g.talk(data.lines.years.slice(5, 7));
     F.acts.presence(null);
     well.visible = true;
-    await tween(900, (p) => well.scale.setScalar(Math.max(0.01, easeOut(p))));
+    await tween(900, (p) => well.scale.setScalar(Math.max(0.01, easeBack(p))));
     g.stage(null);
     g.cam(null, 13);
     await g.talk(data.lines.years.slice(7));

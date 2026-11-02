@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
 import { PAL, mat, makeAltar, makeLogs, makeThornBush, makeAngel } from '../props.js';
-import { tween, easeOut } from '../anim.js';
+import { tween, easeOut, easeBack } from '../anim.js';
 import data from '../data/moriah.js';
 
 const START = V(6, 5);
@@ -109,7 +109,7 @@ export default {
     g.cam(FAR, 16);
     F.acts.carry(wood, null);
     altar.visible = true;
-    await tween(800, (p) => altar.scale.setScalar(1.1 * Math.max(0.01, easeOut(p))));
+    await tween(800, (p) => altar.scale.setScalar(1.1 * Math.max(0.01, easeBack(p))));
     wood.position.copy(ALTAR).setY(0.95);
     await g.talk(data.lines.altar);
 

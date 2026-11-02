@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
 import { PAL, mat, makeTree, makeTent, makeAltar } from '../props.js';
-import { tween, easeOut } from '../anim.js';
+import { tween, easeOut, easeBack } from '../anim.js';
 import data from '../data/abram.js';
 
 const START = V(6, 5);
@@ -110,7 +110,7 @@ export default {
     await F.acts.walkTo(abram, SHECHEM_ALTAR.clone().add(V(0.9, 0.9)));
     F.acts.face(abram, SHECHEM_ALTAR);
     F.altar1.visible = true;
-    await tween(700, (p) => F.altar1.scale.setScalar(Math.max(0.01, easeOut(p))));
+    await tween(700, (p) => F.altar1.scale.setScalar(Math.max(0.01, easeBack(p))));
     await g.talk(data.lines.shechem.slice(2));
     g.stage(null);
     g.cam(null, 13);
@@ -128,7 +128,7 @@ export default {
     await F.acts.walkTo(abram, BETHEL_ALTAR.clone().add(V(0.9, 0.9)));
     F.acts.face(abram, BETHEL_ALTAR);
     F.altar2.visible = true;
-    await tween(700, (p) => F.altar2.scale.setScalar(Math.max(0.01, easeOut(p))));
+    await tween(700, (p) => F.altar2.scale.setScalar(Math.max(0.01, easeBack(p))));
     await g.talk(data.lines.bethel.slice(1));
 
     // 막간: 저녁 장막 앞에서 사래와 대화한다.

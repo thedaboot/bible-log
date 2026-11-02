@@ -111,14 +111,31 @@ export default {
 
     // 도전 자리는 야곱 왼쪽으로 떨어뜨린다(관찰자 오른쪽에 서는 대천사가 씨름하는 둘과 겹치지 않게).
     // 도전: 밤새 씨름. 금빛 구간에 맞춰 야곱과 함께 버틴다. 끝까지 놓지 않는 인내와 절제가 돕는다(창 32:26).
-    let t0 = 0;
-    const sway = (dt) => { t0 += dt; if (man.visible && !man.userData.pose) { jacob.userData.rig.rotation.z = Math.sin(t0 * 3) * 0.12; man.userData.rig.rotation.z = -Math.sin(t0 * 3) * 0.12; } };
+    // 씨름: 둘이 서로에게 몸을 기울여 맞붙고, 밀고 밀리며 좌우로 버틴다. 버틸 때마다(onHit) 야곱이 한 번 크게 밀어붙인다.
+    let t0 = 0, shove = 0, wrestling = true;
+    const jb = jacob.position.clone(), mb = man.position.clone();
+    const axis = mb.clone().sub(jb).setY(0).normalize();
+    for (const f of [jacob, man]) f.userData.pose = 'wrestle';
+    const sway = (dt) => {
+      if (!wrestling) return;
+      t0 += dt;
+      shove = Math.max(0, shove - dt * 2.5);
+      const off = Math.sin(t0 * 1.7) * 0.12 + Math.sin(t0 * 4.3) * 0.03 + shove * 0.3;
+      jacob.position.copy(jb).addScaledVector(axis, off);
+      man.position.copy(mb).addScaledVector(axis, off);
+      for (const [f, s] of [[jacob, 1], [man, -1]]) {
+        const { rig } = f.userData;
+        rig.rotation.set(0.3 + s * shove * 0.15, 0, s * Math.sin(t0 * 2.6) * 0.14);
+        rig.position.y = -0.04 - Math.abs(Math.sin(t0 * 1.3)) * 0.04;
+      }
+    };
     F.onUpdate(sway);
     await g.challenge({
       title: '밤새 씨름', spots: [{ pos: WRESTLE.clone().addScaledVector(ALONG, -2.6).addScaledVector(FRONT, 0.4), text: '야곱 곁에서 끝까지 버티기', hits: 5 }],
       verb: '버티기', fruits: ['patience', 'control'], radius: 2.2,
       onHit: async (sp, n) => {
         F.acts.speak('jacob');
+        shove = 1;
         // 버틸 때마다 하늘이 조금씩 밝아진다(날이 새도록, 창 32:24)
         await F.acts.sky(new THREE.Color(0x1c2340).lerp(new THREE.Color(0xe8b890), n / 6), 0.75 - n * 0.1, 0, 500);
         g.reward(`wrestle/${n}`, 'step');
@@ -126,12 +143,15 @@ export default {
     });
     // 축복하지 않으면 놓지 않겠다고 버팀(인내, 창 32:26)
     g.reward('wrestle-done', 'challenge', null, 'patience');
-    jacob.userData.rig.rotation.z = 0;
-    man.userData.rig.rotation.z = 0;
+    wrestling = false;
+    jacob.position.copy(jb);
+    man.position.copy(mb);
+    for (const f of [jacob, man]) { f.userData.pose = null; f.userData.rig.rotation.set(0, 0, 0); f.userData.rig.position.y = 0; }
 
     // 새벽: 허벅지 관절, 이스라엘, 브니엘
     await F.acts.sky(0xe8b890, 0.3, 0.6, 900);
     await g.talk(data.lines.dawn.slice(0, 1));
+    jacob.userData.limp = true; // 허벅지 관절이 어긋나 이 뒤로 절며 걷는다(창 32:25, 31)
     await F.acts.bow(jacob, 0.25);
     await g.talk(data.lines.dawn.slice(1, 7));
     await F.acts.bow(jacob, 0);
@@ -152,14 +172,16 @@ export default {
     await g.talk(data.lines.meet.slice(0, 1));
     await limp;
     F.acts.face(jacob, ESAU_FROM);
-    await g.talk(data.lines.meet.slice(1, 2));
-    // 야곱이 절하며 다가가는 동안 에서가 달려온다(창 33:3~4)
+    // 야곱이 일곱 번 엎드리며 다가가는 동안 에서가 달려온다(창 33:3~4). 절은 대사와 함께 진행한다.
+    const bows = (async () => { for (let i = 0; i < 7; i++) { await F.acts.bow(jacob, 0.6, 300); await F.acts.bow(jacob, 0, 300); } })();
     const run = F.acts.walkTo(esau, MEET.clone().addScaledVector(ALONG, 0.4), 3);
-    for (let i = 0; i < 3; i++) { await F.acts.bow(jacob, 0.6, 350); await F.acts.bow(jacob, 0, 350); }
-    await run;
-    F.acts.face(esau, jacob.position);
+    await g.talk(data.lines.meet.slice(1, 2));
+    await Promise.all([bows, run]);
+    // 에서가 야곱을 맞아 목을 안고 함께 운다(창 33:4)
+    const hug = F.acts.embrace(esau, jacob);
     men.forEach((m, i) => F.acts.walkTo(m, MEET.clone().addScaledVector(FRONT, -2.4).addScaledVector(ALONG, (i - 2) * 1.1), 1.4));
     await g.talk(data.lines.meet.slice(2));
+    await hug;
     g.meet('esau');
     g.note('creature/goat');
 

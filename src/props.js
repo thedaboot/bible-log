@@ -1,6 +1,7 @@
 // 3D 디자인 시스템: 모든 장면이 이 파일의 색표(PAL)와 부품만 써서 같은 모양을 유지한다.
 // 지금은 임시 도형이다. 직접 만든 .glb 모델이 나오면 같은 함수 안에서 모델을 불러오도록 바꾼다.
 import * as THREE from 'three';
+import { tween, easeOut } from './anim.js';
 
 // ---------- 색표 ----------
 export const PAL = {
@@ -194,12 +195,18 @@ export function dressFigure(fig, spec) {
   }
   if (spec.hair === 'bun') add(new THREE.SphereGeometry(0.14, 7, 5), hairM, 0, 1.58, -0.08);
   if (spec.beard === 'short') add(new THREE.BoxGeometry(0.3, 0.12, 0.12), hairM, 0, 1.17, 0.19);
-  if (spec.beard === 'long') add(new THREE.BoxGeometry(0.28, 0.32, 0.12), hairM, 0, 1.07, 0.2);
+  if (spec.beard === 'long') {
+    add(new THREE.BoxGeometry(0.3, 0.1, 0.12), hairM, 0, 1.17, 0.19);
+    add(new THREE.ConeGeometry(0.13, 0.3, 6), hairM, 0, 1.0, 0.21, Math.PI);
+  }
   if (spec.hair === 'curly') {
-    for (let i = 0; i < 7; i++) {
-      const a = (i / 7) * Math.PI * 2;
-      add(new THREE.IcosahedronGeometry(0.1, 0), hairM, Math.cos(a) * 0.25, 1.42 + (i % 2) * 0.06, Math.sin(a) * 0.25 - 0.04);
+    add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), hairM, 0, 1.35, -0.05);
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + 0.3;
+      if (Math.sin(a) > 0.75) continue; // 이마 앞은 비워 얼굴이 보이게
+      add(new THREE.IcosahedronGeometry(0.08, 0), hairM, Math.cos(a) * 0.25, 1.38, Math.sin(a) * 0.25 - 0.04);
     }
+    for (const [x, z] of [[0, 0.04], [-0.12, -0.08], [0.12, -0.08], [0, -0.18]]) add(new THREE.IcosahedronGeometry(0.08, 0), hairM, x, 1.56, z);
   }
 
   const cloth = m(spec.outfitColor ?? PAL.robe);
@@ -211,19 +218,33 @@ export function dressFigure(fig, spec) {
     add(new THREE.CylinderGeometry(0.27, 0.3, 0.1, 10), material, 0, 1.06, 0); // 목둘레 깃
     add(new THREE.IcosahedronGeometry(0.06, 0), m(PAL.gold), 0, 1.04, 0.27);
   }
+  // 어깨: 몸통 윗부분을 천으로 덮는다(옷이 허리 아래만 가린 치마처럼 보이지 않게)
+  const shoulders = (material) => add(new THREE.SphereGeometry(0.31, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.5), material, 0, 0.84, 0);
+  const sash = (y, r) => add(new THREE.TorusGeometry(r, 0.04, 4, 10), m(PAL.bark), 0, y, 0, Math.PI / 2);
   switch (spec.outfit) {
-    case 'tunic': add(new THREE.CylinderGeometry(0.31, 0.38, 0.55, 8), cloth, 0, 0.55, 0); break;
+    case 'tunic':
+      add(new THREE.CylinderGeometry(0.31, 0.38, 0.62, 8), cloth, 0, 0.53, 0);
+      shoulders(cloth);
+      sash(0.62, 0.32);
+      break;
     case 'cape':
-      add(new THREE.CylinderGeometry(0.31, 0.36, 0.45, 8), cloth, 0, 0.6, 0);
+      add(new THREE.CylinderGeometry(0.31, 0.36, 0.5, 8), cloth, 0, 0.6, 0);
+      shoulders(cloth);
       addCape(cloth);
       break;
-    case 'robe': add(new THREE.ConeGeometry(0.46, 1.08, 8), cloth, 0, 0.54, 0); break;
+    case 'robe': // 두루마기: 어깨에서 발목까지 덮고 아래로 넓어지는 긴 옷, 허리띠
+      add(new THREE.CylinderGeometry(0.31, 0.46, 0.92, 8), cloth, 0, 0.46, 0);
+      shoulders(cloth);
+      sash(0.66, 0.34);
+      break;
     case 'shepherd':
       add(new THREE.CylinderGeometry(0.31, 0.4, 0.7, 8), cloth, 0, 0.5, 0);
-      add(new THREE.TorusGeometry(0.31, 0.045, 4, 10), m(PAL.bark), 0, 0.72, 0, Math.PI / 2);
+      shoulders(cloth);
+      sash(0.72, 0.32);
       break;
     case 'traveler':
-      add(new THREE.CylinderGeometry(0.31, 0.38, 0.55, 8), cloth, 0, 0.55, 0);
+      add(new THREE.CylinderGeometry(0.31, 0.38, 0.62, 8), cloth, 0, 0.53, 0);
+      shoulders(cloth);
       addCape(cloth);
       add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth, 0, 1.25, -0.12, -0.5);
       break;
@@ -342,8 +363,22 @@ export function animateFigure(fig, speed, dt, t, ref = 4) {
   rig.position.y = Math.abs(Math.sin(p)) * 0.13 * s + Math.abs(Math.sin(t * 9)) * 0.05 * talk;
   rig.rotation.x = 0.14 * s + Math.sin(t * 7) * 0.06 * talk;
   rig.rotation.z = Math.sin(p) * 0.06 * s + Math.sin(t * 0.9 + (u.seed ??= Math.random() * 6)) * 0.025 * idle;
+  if (u.limp && s > 0) { rig.rotation.z += Math.max(0, Math.sin(p)) * 0.16 * s; rig.position.y -= Math.max(0, Math.sin(p)) * 0.08 * s; }
   const h = u.height ?? 1;
   rig.scale.set(h, h * (1 + Math.sin(t * 2 + u.seed) * 0.015 * idle), h);
+}
+
+// 쓰러진다(창 4:8). 휘청이다 무릎이 꺾이고, 무게에 끌려 점점 빨라지며 옆으로 넘어진 뒤 바닥에서 한 번 튄다.
+// 치는 동작은 그리지 않는다(quests-and-staging.md "연출"). 끝나면 pose 'lie'로 눕힌 채 둔다.
+export async function collapseFigure(fig) {
+  const { rig } = fig.userData;
+  fig.userData.pose = 'lie';
+  const h = fig.userData.height ?? 1;
+  rig.scale.setScalar(h);
+  await tween(260, (p) => { rig.rotation.set(-0.3 * Math.sin(p * Math.PI * 0.5), 0, 0.12 * Math.sin(p * Math.PI * 2)); rig.position.y = 0.04 * Math.sin(p * Math.PI); });
+  await tween(380, (p) => { const k = easeOut(p); rig.rotation.set(-0.3 + 0.75 * k, 0, 0.1 * k); rig.position.y = -0.22 * k; });
+  await tween(420, (p) => { const k = p * p; rig.rotation.set(0.45 - 0.45 * k, 0, 0.1 + (Math.PI / 2 - 0.1) * k); rig.position.y = -0.22 + 0.5 * k; });
+  await tween(260, (p) => { rig.rotation.z = Math.PI / 2 - 0.1 * Math.sin(p * Math.PI); rig.position.y = 0.28 + 0.05 * Math.sin(p * Math.PI); });
 }
 
 // 방향을 부드럽게 돌린다(가장 짧은 쪽으로).

@@ -21,3 +21,5 @@ export const easeOut = (p) => 1 - (1 - p) ** 3;
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // 0~1 진행값 p에서 delay부터 len 동안 0→1로 오르는 값 (여러 물체를 차례로 등장시킬 때 쓴다)
 export const stagger = (p, delay, len = 0.4) => Math.min(1, Math.max(0, (p - delay) / len));
+// 끝에서 살짝 넘쳤다가 자리 잡는다(제단·샘처럼 새로 나타나는 물체가 툭 놓이는 느낌)
+export const easeBack = (p) => 1 + 2.7 * (p - 1) ** 3 + 1.7 * (p - 1) ** 2;
