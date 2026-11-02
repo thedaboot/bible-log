@@ -87,6 +87,13 @@ export const CODEX = [
   { id: 'creature/calf', name: '송아지', stage: 'mamre', fact: '아브라함이 손님을 위해 고른 좋은 송아지', ref: '창 18:7', memo: '소 떼에서 가장 부드럽고 좋은 송아지였다.' },
   { id: 'item/cake', name: '고운 가루 떡', stage: 'mamre', fact: '사라가 고운 가루 세 스아로 만든 떡', ref: '창 18:6', memo: '나무 아래 상에 놓은 떡. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-18-14', name: '너무 어려운 일', stage: 'mamre', fact: '여호와에게 너무 어려운 일이 있겠느냐', ref: '창 18:14', memo: '웃던 사라에게 하신 말씀이다.' },
+
+  { id: 'person/isaac', name: '이삭', stage: 'moriah', fact: '아브라함과 사라가 늙어서 얻은 약속의 아들', ref: '창 21:3', memo: '이름은 웃음이라는 뜻이다. 번제 나무를 등에 지고 산을 올랐다.' },
+  { id: 'person/youth', name: '젊은 종 둘', stage: 'moriah', fact: '아브라함이 모리아로 데려간 젊은 종들', ref: '창 22:3', memo: '산 아래에서 나귀를 지키며 두 사람을 기다렸다.' },
+  { id: 'place/moriah', name: '모리아 산', stage: 'moriah', fact: '하나님께서 일러 주신 산', ref: '창 22:2', memo: '사흘 길 끝에 멀리 보인 산이었다.' },
+  { id: 'creature/ram', name: '숫양', stage: 'moriah', fact: '덤불에 뿔이 걸려 있던 숫양', ref: '창 22:13', memo: '이삭 대신 드려졌다.' },
+  { id: 'item/firewood', name: '번제 나무', stage: 'moriah', fact: '아브라함이 쪼개어 이삭에게 지운 나무', ref: '창 22:6', memo: '이삭이 끈을 고쳐 매던 나뭇단의 한 토막. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-22-14', name: '여호와 이레', stage: 'moriah', fact: '여호와의 산에서 준비되리라', ref: '창 22:14', memo: '어린양은 하나님께서 친히 준비하신다는 말이 이루어졌다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).
@@ -102,4 +109,5 @@ export const LIKENESS = {
   abraham: { fruits: ['faith', 'patience'], text: '갈 곳을 모르고도 길을 떠난 아브라함처럼, 약속을 믿고 오래 기다려요.', why: '히 11:8 믿음으로 나아감(신실), 히 6:15 오래 참아 약속을 받음(인내)' },
   sarah: { fruits: ['joy', 'patience'], text: '오래 기다린 끝에 웃음을 얻은 사라처럼, 기다림 속에서도 웃음을 잃지 않아요.', why: '창 21:6 하나님이 나를 웃게 하심(기쁨), 히 11:11 약속하신 이를 미쁘신 줄 앎(인내)' },
   hagar: { fruits: ['patience', 'faith'], text: '광야에서 살피시는 하나님을 만난 하갈처럼, 혼자라고 느낄 때도 그분이 보고 계심을 믿어요.', why: '창 16:9 돌아가 견딤(인내), 창 16:13 살피시는 하나님을 고백함(신실)' },
+  isaac: { fruits: ['gentle', 'faith'], text: '나무를 지고 아버지와 함께 산을 오른 이삭처럼, 묵묵히 믿고 따라가요.', why: '창 22:6~8 함께 나아감(온유), 히 11:20 믿음으로 축복함(신실)' },
 };

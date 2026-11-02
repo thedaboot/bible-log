@@ -3,7 +3,7 @@ export const SPEAKERS = { narr: '', voice: 'YHWH', elohim: '엘로힘', angel: '
   // 1-4부터
   noah: '노아', enoch: '에녹', methuselah: '므두셀라', builder: '벽돌 굽는 이', people: '사람들', worker: '일꾼', abram: '아브람', sarai: '사래', lot: '롯',
   abraham: '아브라함', sarah: '사라', hagar: '하갈', messenger: '여호와의 사자', ishmael: '이스마엘', guest: '손님', isaac: '이삭',
-  servant: '늙은 종', rebekah: '리브가', laban: '라반', jacob: '야곱', esau: '에서', man: '그 사람', joseph: '요셉', judah: '유다',
+  servant: '늙은 종', youth: '젊은 종', rebekah: '리브가', laban: '라반', jacob: '야곱', esau: '에서', man: '그 사람', joseph: '요셉', judah: '유다',
   reuben: '르우벤', pharaoh: '바로', cupbearer: '술 맡은 관원장', benjamin: '베냐민' };
 
 // 한글 이름 끝 글자에 받침이 있으면 '아', 없으면 '야'. 한글이 아니면 호격 조사를 붙이지 않는다.
