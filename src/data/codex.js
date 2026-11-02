@@ -109,6 +109,13 @@ export const CODEX = [
   { id: 'place/bethel', name: '벧엘', stage: 'bethel', fact: '하나님의 집, 하늘의 문', ref: '창 28:19', memo: '돌기둥 하나가 서 있는 들이었다.' },
   { id: 'item/stone-pillow', name: '돌베개', stage: 'bethel', fact: '야곱이 베고 잔 뒤 기둥으로 세운 돌', ref: '창 28:18', memo: '매끈한 돌을 골라 건넨 기억. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-28-15', name: '너와 함께 있어', stage: 'bethel', fact: '내가 너와 함께 있어 네가 어디로 가든지 너를 지키리라', ref: '창 28:15', memo: '도망치던 밤에 들은 약속이다.' },
+
+  { id: 'place/jabbok', name: '얍복 나루', stage: 'jabbok', fact: '야곱이 밤에 가족을 건너보낸 강 나루', ref: '창 32:22', memo: '여울에 디딤돌이 놓여 있었다.' },
+  { id: 'place/peniel', name: '브니엘', stage: 'jabbok', fact: '하나님을 대면하여 보았다는 뜻의 땅', ref: '창 32:30', memo: '해가 돋을 때 야곱이 절뚝이며 떠난 곳이다.' },
+  { id: 'person/the-man', name: '그 사람', stage: 'jabbok', fact: '날이 새도록 야곱과 씨름한 이', ref: '창 32:24', memo: '이름을 묻자 대답 대신 축복하였다(창 32:29).' },
+  { id: 'creature/goat', name: '염소', stage: 'jabbok', fact: '야곱이 에서에게 예물로 보낸 암염소 이백', ref: '창 32:14', memo: '떼마다 사이를 두고 앞서 보냈다.' },
+  { id: 'item/jacob-staff', name: '야곱의 지팡이', stage: 'jabbok', fact: '지팡이만 가지고 요단을 건넜던 야곱', ref: '창 32:10', memo: '절뚝이는 걸음을 받쳐 준 지팡이. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-32-28', name: '이스라엘', stage: 'jabbok', fact: '네 이름을 이스라엘이라 하리니 하나님과 겨루어 이겼다', ref: '창 32:28', memo: '발꿈치를 잡던 이가 새 이름을 받았다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).
@@ -127,4 +134,5 @@ export const LIKENESS = {
   isaac: { fruits: ['gentle', 'faith'], text: '나무를 지고 아버지와 함께 산을 오른 이삭처럼, 묵묵히 믿고 따라가요.', why: '창 22:6~8 함께 나아감(온유), 히 11:20 믿음으로 축복함(신실)' },
   rebekah: { fruits: ['kindness', 'goodness'], text: '낯선 나그네의 낙타에게까지 물을 길어 준 리브가처럼, 부탁받은 것보다 한 걸음 더 도와요.', why: '창 24:19 낙타도 마시게 하겠다(친절), 창 24:20 급히 물을 길음(선함)' },
   jacob: { fruits: ['patience', 'faith'], text: '돌베개를 베고도 약속을 붙든 야곱처럼, 먼 길 위에서도 함께하시는 분을 기억해요.', why: '창 29:20 칠 년을 며칠같이 여김(인내), 창 28:20~22 서원(신실)' },
+  esau: { fruits: ['love', 'gentle'], text: '스무 해 만에 동생을 먼저 달려가 껴안은 에서처럼, 먼저 다가가 화해의 손을 내밀어요.', why: '창 33:4 달려와 껴안음(사랑), 창 33:9 넉넉하니 네 것은 네가 가지라(온유)' },
 };
