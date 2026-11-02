@@ -949,22 +949,25 @@ async function runCain() {
   cain.acts.acceptEnd();
 
   // 창 4:8: 멀리서 비춘다. 가인이 다가가고 아벨이 쓰러지는 데까지만 보인다.
+  // 두 형제가 들로 걷는 동안 대사를 띄운다(대사 없이 기다리는 구간 3초 이하, quests-and-staging.md)
   setStage('field');
-  await talk(CAIN.field, state);
   camFocus = cain.spots.fieldView; // 들보다 카메라 쪽을 비춰 땅 끝 너머 하늘이 덜 보이게 한다
   setView(14);
-  await cain.acts.toField();
+  const toField = cain.acts.toField();
+  await talk(CAIN.field, state);
+  await toField;
   await cain.acts.approach();
   await talk(CAIN.fallen, state);
   // 창 4:9~16: 빛이 가인 곁에 머문다. 표를 주시고, 가인은 동쪽으로 떠난다.
   camFocus = cainFig.position;
   setView(15);
   await cain.acts.presence(cainFig);
+  let leave;
   await talk(CAIN.trial, state, { onLine: (l) => {
     if (l.ref === '창 4:15' && l.who === 'narr') cain.acts.mark();
-    if (l.ref === '창 4:16') note('place/nod', 'cain');
+    if (l.ref === '창 4:16') { note('place/nod', 'cain'); leave = cain.acts.leave(); } // 떠나는 걸음을 마지막 대사와 겹친다
   } });
-  await cain.acts.leave();
+  await leave;
   cain.acts.hideField();
 
   // 창 4:25~26 셋. 퀴즈(창 4:7).

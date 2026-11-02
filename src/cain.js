@@ -298,10 +298,10 @@ export function makeCain(scene) {
     toField: async () => {
       cain.userData.pose = null;
       pillar.visible = presence.visible = false;
-      await Promise.all([walkTo(abel, OPEN_FIELD, 1.5), walkTo(cain, OPEN_FIELD.clone().add(V(1.6, -0.2)), 1.4)]);
+      await Promise.all([walkTo(abel, OPEN_FIELD, 2.2), walkTo(cain, OPEN_FIELD.clone().add(V(1.6, -0.2)), 2.1)]);
       face(abel, cain.position);
       face(cain, abel.position);
-      await tween(900, () => {});
+      await tween(400, () => {});
     },
     approach: async () => {
       await walkTo(cain, abel.position.clone().add(V(0.6, -0.1)), 1);
@@ -318,7 +318,7 @@ export function makeCain(scene) {
     // 창 4:16 가인이 여호와 앞을 떠나 동쪽으로 걸어간다
     leave: async () => {
       presence.visible = false;
-      await walkTo(cain, cain.position.clone().addScaledVector(NOD_DIR, 9), 1.3);
+      await walkTo(cain, cain.position.clone().addScaledVector(NOD_DIR, 9), 2.2);
       cain.visible = false;
     },
     hideField: () => { abel.visible = false; },

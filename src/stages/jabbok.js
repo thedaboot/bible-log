@@ -96,10 +96,12 @@ export default {
     g.reward('ford-done', 'questDone', null, 'goodness');
 
     // 홀로 남은 야곱에게 돌아간다
+    // 밤이 드는 동안 야곱이 씨름 자리로 걷고, 관찰자는 곧바로 움직일 수 있다(기다리는 구간 3초 이하)
+    const toWrestle = F.acts.walkTo(jacob, WRESTLE, 1.4);
     await F.acts.night();
-    await F.acts.walkTo(jacob, WRESTLE, 1.4);
     g.cam(null, 13);
     await g.quest({ title: '홀로 남은 밤', targets: [{ pos: WRESTLE.clone().addScaledVector(ALONG, -1.6).addScaledVector(FRONT, 0.6) }], text: () => '이쪽 둑의 야곱에게 돌아가기', radius: 1.6 });
+    await toWrestle;
     man.visible = true;
     g.note('person/the-man');
     F.acts.face(jacob, man.position);
@@ -144,13 +146,17 @@ export default {
     g.cam(MEET, 14);
     g.stage('meet');
     [esau, ...men].forEach((f) => (f.visible = true));
+    // 장면이 바뀌는 사이 야곱은 강을 건너 건너편 둑에 와 있다(절뚝이는 걸음이 대사 한 줄 안에 끝나게)
+    jacob.position.copy(FAR.clone().addScaledVector(ALONG, 0.6));
     const limp = F.acts.walkTo(jacob, MEET.clone().addScaledVector(ALONG, -0.6), 0.9);
     await g.talk(data.lines.meet.slice(0, 1));
     await limp;
     F.acts.face(jacob, ESAU_FROM);
     await g.talk(data.lines.meet.slice(1, 2));
+    // 야곱이 절하며 다가가는 동안 에서가 달려온다(창 33:3~4)
+    const run = F.acts.walkTo(esau, MEET.clone().addScaledVector(ALONG, 0.4), 3);
     for (let i = 0; i < 3; i++) { await F.acts.bow(jacob, 0.6, 350); await F.acts.bow(jacob, 0, 350); }
-    await F.acts.walkTo(esau, MEET.clone().addScaledVector(ALONG, 0.4), 3);
+    await run;
     F.acts.face(esau, jacob.position);
     men.forEach((m, i) => F.acts.walkTo(m, MEET.clone().addScaledVector(FRONT, -2.4).addScaledVector(ALONG, (i - 2) * 1.1), 1.4));
     await g.talk(data.lines.meet.slice(2));

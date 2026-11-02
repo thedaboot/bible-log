@@ -68,10 +68,11 @@ export default {
     g.meet('joseph');
     g.cam(YARD, 14);
     g.stage('yard');
-    await g.talk(data.lines.arrive.slice(0, 2));
-    // 형들이 마당으로 와서 엎드린다(창 42:6, 요셉의 꿈이 이루어짐)
+    // 형들이 마당으로 와서 엎드린다(창 42:6, 요셉의 꿈이 이루어짐). 걷는 동안 대사를 띄운다.
     // 반 칸 비켜 서서 요셉과 화면에서 겹치지 않는다
-    await Promise.all(brothers.map((b, i) => F.acts.walkTo(b, YARD.clone().addScaledVector(ALONG, (i - 2) * 1.1 + 0.55), 1.6)));
+    const arrive = Promise.all(brothers.map((b, i) => F.acts.walkTo(b, YARD.clone().addScaledVector(ALONG, (i - 2) * 1.1 + 0.55), 1.6)));
+    await g.talk(data.lines.arrive.slice(0, 2));
+    await arrive;
     brothers.forEach((b) => F.acts.face(b, JOSEPH));
     F.acts.face(joseph, YARD);
     await Promise.all(brothers.map((b) => F.acts.bow(b, 0.6)));
@@ -110,16 +111,14 @@ export default {
     removeDeep();
 
     // 막간: 해 질 녘 장막 앞에서 유다와 대화한다(창 43:8~10 뒤).
-    await F.acts.dusk();
     benjamin.visible = true;
     g.meet('benjamin');
-    await F.acts.walkTo(judah, CANAAN.clone().addScaledVector(ALONG, 1.2).add(V(1.2, 1.2)), 1.4);
+    await Promise.all([F.acts.dusk(), F.acts.walkTo(judah, CANAAN.clone().addScaledVector(ALONG, 1.2).add(V(1.2, 1.2)), 1.8)]);
     g.meet('judah');
     await g.interlude(judah);
-    await F.acts.day();
 
-    // 다시 애굽으로(창 43:15). 베냐민도 함께 간다.
-    await Promise.all([...brothers, benjamin].map((b, i) => F.acts.walkTo(b, YARD.clone().addScaledVector(ALONG, (i - 2.5) * 1.05), 2.2)));
+    // 다시 애굽으로(창 43:15). 베냐민도 함께 간다. 날이 밝는 동안 걷는다.
+    await Promise.all([F.acts.day(), ...[...brothers, benjamin].map((b, i) => F.acts.walkTo(b, YARD.clone().addScaledVector(ALONG, (i - 2.5) * 1.05), 3))]);
     g.cam(YARD, 13);
     g.stage('yard');
     F.acts.face(joseph, benjamin.position);
