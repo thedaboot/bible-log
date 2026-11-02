@@ -47,7 +47,7 @@ const interlude = {
   steps: [
     { say: [
       { who: 'narr', text: '가마 앞에서 벽돌 굽는 이가 이마의 땀을 닦았다.', ref: null, basis: '창 11:3 벽돌을 굽자' },
-      { who: 'builder', text: '처음 보는 얼굴이네. 일하러 왔소?\n하루에 벽돌 삼백 장은 구워야 탑이 자라오.', ref: null, basis: '막간: 인물이 관찰자를 알아본다, 창 11:3' },
+      { who: 'builder', text: '처음 보는 얼굴이구려. 일하러 왔소?\n하루에 벽돌 삼백 장은 구워야 탑이 자라오.', ref: null, basis: '막간: 인물이 관찰자를 알아본다, 창 11:3' },
     ] },
     { choose: [
       { text: '삼백 장이나요?', fruit: 'patience', reply: [
@@ -64,7 +64,7 @@ const interlude = {
       ] },
     ] },
     { say: [
-      { who: 'builder', text: '우리 고향은 저 동쪽이오. 거기선 흩어져 양을 쳤지.', ref: null, basis: '창 11:2 동쪽에서 옮김' },
+      { who: 'builder', text: '우리 고향은 여기서 먼 곳이오. 거기선 흩어져 양을 쳤지.', ref: null, basis: '창 11:2 동방으로 옮기다가' },
       { who: 'builder', text: '여기 모이니 좋긴 한데, 요즘은 탑만 보고 사오.', ref: null, basis: '창 11:4 흩어짐을 면하자' },
     ] },
     { choose: [

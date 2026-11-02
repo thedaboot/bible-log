@@ -19,7 +19,7 @@ export const PROLOGUE = {
   ],
   angel: [
     { who: 'angel', text: '안녕하세요, {name}님! 저는 {name}님과 함께 다닐 대천사예요.', ref: null },
-    { who: 'angel', text: '우리는 지켜보는 입장이에요.\n일어난 일들을 바꿀 수는 없지만, 그 현장에 참여할 수 있어요.', ref: null },
+    { who: 'angel', text: '우리는 지켜보는 사람이에요.\n일어난 일을 바꿀 수는 없지만, 그 자리에 함께 있을 수 있어요.', ref: null },
     { who: 'angel', text: '땅의 기초가 놓일 때 하나님의 아들들이 모두 기뻐 소리쳤대요.\n우리도 보러 가요!', ref: '욥 38:7' },
     { who: 'angel', text: '저기 앞에 있는 빛의 문까지 걸어와 주세요!', ref: null },
   ],

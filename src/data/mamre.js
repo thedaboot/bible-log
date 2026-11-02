@@ -49,7 +49,7 @@ const interlude = {
         { who: 'abraham', text: '처음 보는 얼굴이오. 그래도 나그네는 그냥 보내는 법이 아니오.', ref: null, basis: '히 13:2 손님 대접하기를 잊지 말라' },
       ] },
       { text: '제가 상을 지킬게요.', fruit: 'goodness', need: { kindness: 1 }, reply: [
-        { who: 'abraham', text: '고맙소. 그럼 나는 손님들 곁에 서 있겠소.\n필요한 것이 있으면 바로 가져오게.', ref: null, basis: '창 18:8 곁에 섬' },
+        { who: 'abraham', text: '고맙소. 그럼 나는 손님들 곁에 서 있겠소.\n필요한 것이 있으면 내가 바로 가져오겠소.', ref: null, basis: '창 18:8 곁에 섬' },
       ] },
     ] },
     { say: [
@@ -75,7 +75,7 @@ const interlude = {
 
 const greetings = {
   sarah: [
-    { who: 'sarah', text: '가루는 세 스아요. 반죽이 식기 전에 얼른 가져가요.', ref: null, basis: '창 18:6 고운 가루 세 스아' },
+    { who: 'sarah', text: '고운 가루 세 스아로 구웠어요. 떡이 식기 전에 얼른 가져가요.', ref: null, basis: '창 18:6 고운 가루 세 스아' },
   ],
 };
 

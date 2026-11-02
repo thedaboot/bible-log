@@ -46,8 +46,8 @@ export const EDEN = {
     { who: 'narr', text: '여호와 하나님께서 땅의 흙으로 사람을 지으셨다.', ref: '창 2:7' },
   ],
   adamAfter: [
-    { who: 'narr', text: '생명의 숨을 그 코에 불어넣으시니, 사람이 살아 있는 존재가 되었다.', ref: '창 2:7' },
-    { who: 'narr', text: '여호와 하나님께서 동쪽의 에덴에 동산을 일구시고,\n지으신 사람을 그곳에 두셨다.', ref: '창 2:8' },
+    { who: 'narr', text: '생명의 숨을 그 코에 불어넣으시니, 사람이 살아 숨을 쉬었다.', ref: '창 2:7' },
+    { who: 'narr', text: '여호와 하나님께서 동쪽의 에덴에 동산을 만드시고,\n지으신 사람을 그곳에 두셨다.', ref: '창 2:8' },
     { who: 'narr', text: '보기에 아름답고 먹기에 좋은 나무들이 자라났다.', ref: '창 2:9' },
     // 이 대사가 나오면 카메라가 동산 가운데로 가고 선악을 알게 하는 나무에 빛이 내린다(main.js, focus: 'center').
     { who: 'narr', text: '동산 가운데에는 생명나무와 선악을 알게 하는 나무가 있었다.', ref: '창 2:9', focus: 'center' },
@@ -157,7 +157,7 @@ export const INTERLUDE = {
         { who: 'narr', text: '아담도 더 말하지 않고 강물에 발을 담갔다.\n멀리서 양이 한 번 울었다.', ref: null, basis: '창 2:10 동산을 적시는 강' },
       ] },
       { text: '오래 바라보고 지어 주셨죠.', fruit: 'patience', reply: [
-        { who: 'adam', text: '코끼리 앞에서는 한참 서 있었소.\n코가 그렇게 긴 짐승은 처음 봤으니까.', ref: null, basis: '창 2:19 "무엇이라 부르는지 보시려고"' },
+        { who: 'adam', text: '코끼리 앞에서는 한참 서 있었소. 코가 그렇게 긴 짐승은 또 없었소.', ref: null, basis: '창 2:19 "무엇이라 부르는지 보시려고"' },
       ] },
       { text: '이름들을 함께 불러 봐요!', fruit: 'love', need: { joy: 1 }, reply: [
         { who: 'adam', text: '좋소. 사자야! 양아! 코끼리야!', ref: null, basis: '창 2:19~20' },
@@ -176,7 +176,7 @@ export const INTERLUDE = {
         { who: 'adam', text: '고맙소. 오늘 저녁은 혼자 앉아 있지 않아도 되겠구려.', ref: null, basis: '창 2:18' },
       ] },
       { text: '하나님께서 하실 일을 기다려 봐요.', fruit: 'patience', reply: [
-        { who: 'adam', text: '기다려 보지.\n짐승들도 하나님께서 데려오셨으니 내게 맞는 이도 데려오실지 모르지.', ref: null, basis: '창 2:19, 창 2:22 "그를 아담에게로 이끌어 오시니"' },
+        { who: 'adam', text: '기다려 보겠소.\n짐승들도 하나님께서 데려오셨으니 내게 맞는 이도 데려오실 것이오.', ref: null, basis: '창 2:19, 창 2:22 "그를 아담에게로 이끌어 오시니"' },
       ] },
       { text: '하나님은 말씀하신 대로 하세요.', fruit: 'faith', need: { patience: 1 }, reply: [
         { who: 'adam', text: '그렇지. 먹어도 된다고 하신 열매는 다 달았소.\n하신 말씀이 틀린 적이 없었지.', ref: null, basis: '창 2:16' },

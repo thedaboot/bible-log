@@ -14,7 +14,7 @@ const lines = {
   crossed: [
     { who: 'narr', text: '야곱이 밤에 두 아내와 아들들을 인도하여 얍복 나루를 건너게 하고,\n자기 소유도 건너게 하였다.', ref: '창 32:22~23' },
     { who: 'narr', text: '야곱은 홀로 남았다.\n어떤 사람이 와서 날이 새도록 야곱과 씨름하였다.', ref: '창 32:24' },
-    { who: 'angel', text: '야곱이 밤새 버티고 있어요.\n금빛 구간에 맞춰 야곱과 함께 버텨 보아요.', ref: null },
+    { who: 'angel', text: '야곱이 밤새 씨름하고 있어요.\n금빛 구간에 맞춰 야곱과 함께 버텨 보아요.', ref: null },
   ],
   dawn: [
     { who: 'narr', text: '그 사람이 야곱을 이기지 못하자,\n야곱의 허벅지 관절을 쳐서 어긋나게 하였다.', ref: '창 32:25' },
@@ -66,10 +66,10 @@ const interlude = {
     ] },
     { choose: [
       { text: '화해가 제일 큰 예물이에요.', fruit: 'peace', reply: [
-        { who: 'esau', text: '맞는 말이오. 이제 세일로 가서 아버지께 같이 가자고 해야겠소.', ref: null, basis: '창 33:14~16, 35:29 함께 이삭을 장사함' },
+        { who: 'esau', text: '맞는 말이오. 나는 먼저 세일로 가 있겠소.\n언젠가 둘이 함께 아버지를 뵈러 가야지.', ref: null, basis: '창 33:14~16, 35:29 함께 이삭을 장사함' },
       ] },
       { text: '받아 주셔서 고마워요.', fruit: 'joy', reply: [
-        { who: 'esau', text: '고마운 건 나요. 동생을 다시 형이라 부를 수 있게 됐으니.', ref: null, basis: '창 33:9 내 동생아' },
+        { who: 'esau', text: '고마운 건 나요. 동생을 다시 동생이라 부를 수 있게 됐으니.', ref: null, basis: '창 33:9 내 동생아' },
       ] },
       { text: '팥죽 이야기는 이제 안 하세요?', fruit: 'goodness', reply: [
         { who: 'esau', text: '하하, 오늘은 안 하겠소. 오늘만은.', ref: null, basis: '창 25:29~34' },
@@ -85,7 +85,7 @@ const interlude = {
 const deep = {
   who: 'jacob',
   locked: [
-    { who: 'jacob', text: '오늘 밤은 혼자 있고 싶소. 강 건너를 부탁하오.', ref: null, basis: '창 32:24 홀로 남음, 깊은 대화가 닫혀 있을 때' },
+    { who: 'jacob', text: '오늘 밤은 혼자 있고 싶소. 식구들을 부탁하오.', ref: null, basis: '창 32:24 홀로 남음, 깊은 대화가 닫혀 있을 때' },
   ],
   steps: [
     { say: [
@@ -108,7 +108,7 @@ const deep = {
     ] },
     { choose: [
       { text: '먼저 엎드려 보세요.', fruit: 'gentle', reply: [
-        { who: 'jacob', text: '벧엘의 밤에 그렇게 하겠다고 했었지. 이번엔 정말 그리하겠소.', ref: null, basis: '창 33:3' },
+        { who: 'jacob', text: '형님 앞에 내가 먼저 엎드려야지. 이번엔 정말 그리하겠소.', ref: null, basis: '창 33:3' },
       ] },
       { text: '기도하신 대로 될 거예요.', fruit: 'faith', reply: [
         { who: 'jacob', text: '건져 달라고 기도했소. 이제는 그분 손에 맡기겠소.', ref: null, basis: '창 32:11' },

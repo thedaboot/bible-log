@@ -14,7 +14,7 @@ const lines = {
   stones: [
     { who: 'narr', text: '모서리가 날카로웠다. 베고 자기에는 아플 것 같았다.', ref: null, basis: '창 28:11 돌을 가져다 베개로 삼음' },
     { who: 'narr', text: '너무 커서 들 수가 없었다.', ref: null, basis: '창 28:11' },
-    { who: 'narr', text: '매끈하고 손바닥 두 개만 한 돌이었다. 이것이면 되겠다.', ref: null, basis: '창 28:11' },
+    { who: 'narr', text: '매끈하고 손바닥 두 개만 한 돌이었다. 베고 자기에 알맞았다.', ref: null, basis: '창 28:11' },
   ],
   sleep: [
     { who: 'narr', text: '야곱이 그곳의 돌 하나를 가져다 베개로 삼고 누워 잤다.', ref: '창 28:11' },
@@ -36,7 +36,7 @@ const lines = {
     { who: 'narr', text: '야곱이 아침 일찍 베었던 돌을 기둥으로 세우고\n그 위에 기름을 부었다.', ref: '창 28:18' },
     { who: 'narr', text: '그곳 이름을 벧엘이라 하였다.', ref: '창 28:19' },
     { who: 'jacob', text: '하나님께서 나와 함께 계셔서 이 길에서 나를 지키시면,\n여호와께서 나의 하나님이 되실 것입니다.', ref: '창 28:20~21' },
-    { who: 'angel', text: '도망치던 밤에도 하나님은 야곱과 함께 계셨어요.\n오늘 들은 말씀을 함께 돌아볼까요?', ref: null },
+    { who: 'angel', text: '도망치던 밤에도 하나님께서 야곱과 함께 계셨어요.\n오늘 들은 말씀을 함께 돌아볼까요?', ref: null },
   ],
 };
 
@@ -59,7 +59,7 @@ const interlude = {
         { who: 'jacob', text: '걸어서 한 달은 가야 하오. 외삼촌 라반이 반겨 주면 좋겠소.', ref: null, basis: '창 28:2, 창 29:1' },
       ] },
       { text: '혼자가 아니에요.', fruit: 'faith', need: { kindness: 1 }, reply: [
-        { who: 'jacob', text: '그 말이 맞기를 바라오. 아버지의 하나님이 여기까지도 오실까.', ref: null, basis: '창 28:13 아브라함과 이삭의 하나님, 28:16' },
+        { who: 'jacob', text: '그 말이 맞기를 바라오. 아버지의 하나님께서 여기까지도 오실까.', ref: null, basis: '창 28:13 아브라함과 이삭의 하나님, 28:16' },
       ] },
     ] },
     { say: [

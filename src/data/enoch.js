@@ -15,7 +15,7 @@ const lines = {
     { who: 'narr', text: '에녹이 하나님과 동행하더니,\n하나님께서 그를 데려가시므로 세상에 있지 않았다.', ref: '창 5:24' },
     { who: 'narr', text: '그는 죽음을 보지 않고 옮겨졌으니,\n하나님을 기쁘시게 한다는 증거를 받았다.', ref: '히 11:5' },
     { who: 'narr', text: '므두셀라는 라멕을 낳고, 라멕은 노아를 낳았다.', ref: '창 5:25~29' },
-    { who: 'angel', text: '함께 걷는다는 말이 이렇게 길고 조용한 일이었네요.\n오늘 들은 말씀을 함께 돌아볼까요?', ref: null },
+    { who: 'angel', text: '함께 걷는다는 건 이렇게 길고 조용한 일이었네요.\n오늘 들은 말씀을 함께 돌아볼까요?', ref: null },
   ],
 };
 
@@ -29,7 +29,7 @@ const interlude = {
     ] },
     { choose: [
       { text: '날마다 이 길을 걸으세요?', fruit: 'faith', reply: [
-        { who: 'enoch', text: '므두셀라가 태어난 해부터요. 그 뒤로 하루도 빠뜨린 날이 없소.', ref: null, basis: '창 5:21~22 므두셀라를 낳은 후 동행' },
+        { who: 'enoch', text: '므두셀라가 태어난 해부터 걸었소. 그 뒤로 하루도 빠뜨린 날이 없소.', ref: null, basis: '창 5:21~22 므두셀라를 낳은 후 동행' },
       ] },
       { text: '(곁에 말없이 앉는다)', fruit: 'peace', reply: [
         { who: 'narr', text: '바람이 풀을 쓸고 지나갔다.\n에녹이 눈을 감고 그 소리를 오래 들었다.', ref: null, basis: '창 5:24 동행' },

@@ -129,7 +129,7 @@ export default {
     rowSacks.forEach((s) => (s.visible = true));
     await g.talk(data.lines.cup);
     for (const [i, p] of ROW.entries()) {
-      await g.quest({ title: '은잔', targets: [{ pos: p.clone().add(V(0.9, 0.9)) }], text: () => `${['맏형', '둘째 형', '유다', '넷째 형', '막내 베냐민'][i]}의 자루 살피기`, radius: 1.4, hold: 0.8, holdLabel: () => '자루를 푸는 중' });
+      await g.quest({ title: '은잔', targets: [{ pos: p.clone().add(V(0.9, 0.9)) }], text: () => `${['맏형 르우벤', '둘째 형 시므온', '셋째 형 레위', '넷째 형 유다', '막내 베냐민'][i]}의 자루 살피기`, radius: 1.4, hold: 0.8, holdLabel: () => '자루를 푸는 중' });
       g.reward(`cup/${i}`, 'step');
     }
     cup.visible = true;

@@ -172,7 +172,7 @@ export default {
     // 도전 1: 방주 짓기. 노아가 관찰자가 일하는 자리로 와서 함께 일한다(동행). 오래 걸리는 일이라 인내와 신실이 돕는다.
     const removeGreet = g.greet(shem, data.greetings.shem, 'shem');
     let hits = 0;
-    const spots = [['뼈대 세우기', 0], ['판자 대기', 1], ['역청 칠하기', 2]].map(([text, i]) => ({ pos: F.spots[`work${i}`], text: `${text} 함께 하기`, hits: 2 }));
+    const spots = [['뼈대 세우기', 0], ['판자 대기', 1], ['역청 칠하기', 2]].map(([text, i]) => ({ pos: F.spots[`work${i}`], text: `함께 ${text}`, hits: 2 }));
     await g.challenge({
       title: '방주 짓기', spots, verb: '힘 모으기', fruits: ['patience', 'faith'],
       onHit: async (sp) => {

@@ -18,7 +18,7 @@ const lines = {
   ],
   animalsIn: [
     { who: 'narr', text: '짐승들이 둘씩 노아에게 나아와 방주로 들어갔다.', ref: '창 7:9' },
-    { who: 'voice', text: '이레 뒤에 내가 사십 일 밤낮으로 땅에 비를 내리겠다.', ref: '창 7:4' },
+    { who: 'narr', text: '이레가 지나자 홍수가 땅에 덮였다.', ref: '창 7:10' },
   ],
   flood: [
     { who: 'narr', text: '노아와 그 아내, 세 아들과 며느리들이 방주에 들어가자\n여호와께서 문을 닫으셨다.', ref: '창 7:13~16' },
@@ -77,7 +77,7 @@ const interlude = {
     ] },
     { choose: [
       { text: '가족이 다 함께라 다행이에요.', fruit: 'peace', reply: [
-        { who: 'noah', text: '여덟 식구요. 그 넷이 함께 문을 닫고 들어갈 것이오.', ref: null, basis: '벧전 3:20 여덟 명, 창 7:13' },
+        { who: 'noah', text: '여덟 식구요. 모두 함께 방주에 들어갈 것이오.', ref: null, basis: '벧전 3:20 여덟 명, 창 7:13' },
       ] },
       { text: '무섭지 않으세요?', fruit: 'gentle', reply: [
         { who: 'noah', text: '무섭소. 그래서 저녁마다 문 앞에 앉아 기도하오.', ref: null, basis: '창 6:9 하나님과 동행함' },

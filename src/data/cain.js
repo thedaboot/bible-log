@@ -18,7 +18,7 @@ export const CAIN = {
     { who: 'narr', text: '하와가 또 가인의 아우 아벨을 낳았다.', ref: '창 4:2' },
     { who: 'narr', text: '아벨은 양을 치는 사람이 되었고, 가인은 땅을 일구는 사람이 되었다.', ref: '창 4:2' },
     { who: 'angel', text: '여기는 에덴 동쪽 들판이에요.\n해가 지기 전에 아벨이 양을 모으고 있어요.', ref: null },
-    { who: 'angel', text: '흩어진 양 곁에 머물러서 우리로 데려가 보아요.', ref: null },
+    { who: 'angel', text: '흩어진 양 곁에 머물러서 양 우리로 데려가 보아요.', ref: null },
   ],
   sheepDone: [
     { who: 'angel', text: '양이 모두 우리에 들어갔어요.\n아벨이 우리 문 앞에서 양을 세고 있어요.', ref: null },
@@ -83,7 +83,7 @@ export const CAIN_INTERLUDE = {
     ] },
     { choose: [
       { text: '한 마리도 안 빠졌어요!', fruit: 'joy', reply: [
-        { who: 'abel', text: '그렇소. 어미 다섯에 어린양 하나, 다 있소.\n이런 날은 나도 잠이 잘 오지.', ref: null, basis: '창 4:2 양 치는 자' },
+        { who: 'abel', text: '그렇소. 다섯 마리에 어린양 하나, 다 있소.\n이런 날은 나도 잠이 잘 오지.', ref: null, basis: '창 4:2 양 치는 자' },
       ] },
       { text: '(어린양을 쓰다듬는다)', fruit: 'gentle', reply: [
         { who: 'narr', text: '어린양이 손바닥에 머리를 비볐다.\n아벨이 웃으며 털에 붙은 풀씨를 떼어 주었다.', ref: null, basis: '창 4:2, 사 40:11 어린 양을 품에 안는 목자' },

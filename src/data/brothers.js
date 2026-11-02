@@ -11,7 +11,7 @@ const lines = {
     { who: 'angel', text: '곡식 창고 앞에 빈 자루가 줄지어 있어요.\n자루 곁에 머물러 곡식을 채워 나귀에 실어 보아요.', ref: null },
   ],
   loaded: [
-    { who: 'narr', text: '형들이 나귀에 곡식을 싣고 떠났다.\n요셉은 시므온을 남겨 두고 막내를 데려오라 하였다.', ref: '창 42:24~26' },
+    { who: 'narr', text: '요셉은 시므온을 남겨 두고 막내를 데려오라 하였다.\n형들은 나귀에 곡식을 싣고 떠났다.', ref: '창 42:24~26' },
     { who: 'narr', text: '양식이 떨어지자, 형들이 베냐민을 데리고 다시 애굽으로 내려왔다.', ref: '창 43:1~15' },
     { who: 'narr', text: '요셉이 동생 베냐민을 보고 마음이 타는 듯하여,\n안방으로 들어가 울고 나왔다.', ref: '창 43:29~31' },
     { who: 'joseph', text: '내 은잔을 막내의 자루 아귀에 넣어라.', ref: '창 44:2' },
@@ -63,7 +63,7 @@ const interlude = {
       ] },
     ] },
     { say: [
-      { who: 'judah', text: '오래전에 동생 하나를 판 적이 있소. 그 일을 제안한 게 나였소.', ref: null, basis: '창 37:26~27 유다가 팔자고 함' },
+      { who: 'judah', text: '오래전에 동생 하나를 판 적이 있소. 팔자고 한 게 나였소.', ref: null, basis: '창 37:26~27 유다가 팔자고 함' },
       { who: 'judah', text: '이번에는 동생을 잃지 않겠소.', ref: null, basis: '창 44:33 대신 종이 되겠다' },
     ] },
     { choose: [
@@ -92,7 +92,7 @@ const deep = {
   steps: [
     { say: [
       { who: 'narr', text: '요셉이 형들이 떠난 길을 오래 바라보았다.', ref: null, basis: '창 42:24~26' },
-      { who: 'joseph', text: '옥에서 빵을 반으로 나눠 준 분이군요. 형님들을 보셨지요?', ref: null, basis: '1-12 막간, 깊은 대화' },
+      { who: 'joseph', text: '옥에서 내 곁에 있어 준 분이군요. 형님들을 보셨지요?', ref: null, basis: '1-12 막간, 깊은 대화' },
     ] },
     { choose: [
       { text: '많이 우셨죠?', fruit: 'kindness', reply: [

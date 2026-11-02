@@ -22,7 +22,7 @@ const lines = {
     { who: 'voice', text: '아브람아, 두려워하지 마라. 나는 너의 방패요, 너의 큰 상급이다.', ref: '창 15:1' },
     { who: 'abram', text: '주 여호와여, 저에게 무엇을 주시렵니까? 저는 아직 자식이 없습니다.', ref: '창 15:2' },
     { who: 'voice', text: '하늘을 우러러 별을 세어 보아라. 셀 수 있겠느냐?', ref: '창 15:5' },
-    { who: 'angel', text: '언덕마다 올라 하늘을 보아요. 별 곁에 머물러 하나씩 세어 보아요.', ref: null },
+    { who: 'angel', text: '언덕마다 올라 하늘을 보아요. 별 아래 머물러 하나씩 세어 보아요.', ref: null },
   ],
   stars: [
     { who: 'angel', text: '세면 셀수록 더 많은 별이 보여요. 도저히 다 셀 수가 없어요.', ref: null },
@@ -43,7 +43,7 @@ const interlude = {
     ] },
     { choose: [
       { text: '사래님도 먼 길 오셨잖아요.', fruit: 'kindness', reply: [
-        { who: 'sarai', text: '하란에서 세겜까지, 또 여기까지 왔지요.\n장막을 접었다 펴는 데는 이제 선수가 되었어요.', ref: null, basis: '창 12:5~8 옮겨 다님' },
+        { who: 'sarai', text: '하란에서 세겜까지, 또 여기까지 왔지요.\n장막을 접었다 펴는 일은 이제 눈 감고도 해요.', ref: null, basis: '창 12:5~8 옮겨 다님' },
       ] },
       { text: '(맷돌을 대신 돌린다)', fruit: 'goodness', reply: [
         { who: 'narr', text: '맷돌이 생각보다 무거웠다. 사래가 웃으며 손잡이를 같이 잡아 주었다.', ref: null, basis: '창 12:8 장막 살림' },

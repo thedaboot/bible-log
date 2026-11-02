@@ -10,7 +10,7 @@ const lines = {
     { who: 'abraham', text: '너희는 나귀와 함께 여기 있어라.\n나와 아이는 저기 가서 경배하고 너희에게 돌아오겠다.', ref: '창 22:5' },
   ],
   climb: [
-    { who: 'narr', text: '아브라함이 번제 나무를 이삭에게 지우고,\n자기는 불과 칼을 손에 들었다.', ref: '창 22:6' },
+    { who: 'narr', text: '이삭은 번제 나무를 지고, 아브라함은 불과 칼을 손에 들었다.', ref: '창 22:6' },
     { who: 'angel', text: '두 사람이 산길을 올라요. 앞서 걸으며 길목마다 기다려 주어요.', ref: null },
   ],
   ask: [
@@ -60,7 +60,7 @@ const interlude = {
       ] },
     ] },
     { say: [
-      { who: 'isaac', text: '어머니는 제 이름이 웃음이라는 뜻이래요. 저를 낳고 다들 웃었대요.', ref: null, basis: '창 21:3~6 이삭, 하나님이 나를 웃게 하심' },
+      { who: 'isaac', text: '어머니 말로는 제 이름이 웃음이라는 뜻이에요.\n제가 태어나자 다들 웃었대요.', ref: null, basis: '창 21:3~6 이삭, 하나님이 나를 웃게 하심' },
       { who: 'isaac', text: '아버지는 그때 백 살이셨어요.', ref: null, basis: '창 21:5' },
     ] },
     { choose: [
@@ -68,7 +68,7 @@ const interlude = {
         { who: 'isaac', text: '어머니가 지금도 제 이름을 부를 때마다 웃으세요.', ref: null, basis: '창 21:6' },
       ] },
       { text: '약속대로 태어났네요.', fruit: 'faith', reply: [
-        { who: 'isaac', text: '맞아요. 아버지는 그 이야기를 별 보듯 자주 하세요.', ref: null, basis: '창 18:10, 21:1~2' },
+        { who: 'isaac', text: '맞아요. 아버지는 별을 볼 때마다 그 이야기를 하세요.', ref: null, basis: '창 18:10, 21:1~2' },
       ] },
       { text: '천천히 올라가요.', fruit: 'patience', reply: [
         { who: 'isaac', text: '그래요. 길이 가팔라서 아버지 걸음에 맞춰야 해요.', ref: null, basis: '창 22:8 두 사람이 함께 나아감' },
@@ -110,7 +110,7 @@ const deep = {
         { who: 'abraham', text: '그래 주시오. 산을 내려올 때 둘이 함께이길 바라오.', ref: null, basis: '창 22:5 너희에게 돌아오리라' },
       ] },
       { text: '함께 기도해요.', fruit: 'peace', reply: [
-        { who: 'abraham', text: '그럽시다. 별을 세던 밤처럼 짧게, 오래 하겠소.', ref: null, basis: '창 15:5~6' },
+        { who: 'abraham', text: '그럽시다. 별을 세던 밤처럼 말은 적게, 마음은 오래 두겠소.', ref: null, basis: '창 15:5~6' },
       ] },
       { text: '이삭이 아버지를 믿어요.', fruit: 'kindness', reply: [
         { who: 'abraham', text: '알고 있소. 그 믿음이 오늘 나를 더 아프게도, 더 굳세게도 하오.', ref: null, basis: '창 22:7~8' },

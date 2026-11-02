@@ -144,7 +144,7 @@ export default {
     await F.acts.bow(hagar, 0);
     await g.quest({ title: '샘물', targets: [{ pos: hagar.position }], text: () => '하갈에게서 가죽 부대 받기', radius: 1.8 });
     F.acts.carry(skin, g.player);
-    await g.quest({ title: '샘물', targets: [{ pos: WELL }], text: () => '우물에 머물러 부대에 물 채우기', radius: 1.9, hold: 1.4, holdLabel: () => '물을 긷는 중' });
+    await g.quest({ title: '샘물', targets: [{ pos: WELL }], text: () => '샘물 곁에 머물러 부대에 물 채우기', radius: 1.9, hold: 1.4, holdLabel: () => '물을 긷는 중' });
     g.reward('water/fill', 'step');
     await g.quest({ title: '샘물', targets: [{ pos: ishmael.position }], text: () => '이스마엘에게 물 가져가기', radius: 1.8 });
     F.acts.carry(skin, null);

@@ -27,7 +27,7 @@ export const CODEX = [
   { id: 'creature/date', name: '대추야자나무', stage: 'eden', fact: '종려나무 성읍 여리고', ref: '신 34:3', memo: '높은 꼭대기에 열매가 주렁주렁 달렸다.' },
   { id: 'creature/serpent', name: '뱀', stage: 'eden', fact: '들짐승 가운데 가장 간교했다', ref: '창 3:1', memo: '말은 부드러웠지만 하나님의 말씀을 비틀었다.' },
 
-  { id: 'place/eden', name: '에덴 동산', stage: 'eden', fact: '하나님께서 동쪽에 일구신 동산', ref: '창 2:8', memo: '보기에 아름답고 먹기에 좋은 나무가 가득했다.' },
+  { id: 'place/eden', name: '에덴 동산', stage: 'eden', fact: '하나님께서 동쪽에 만드신 동산', ref: '창 2:8', memo: '보기에 아름답고 먹기에 좋은 나무가 가득했다.' },
   { id: 'place/pishon', name: '비손 강', stage: 'eden', fact: '금이 나는 하윌라 땅을 두른 강', ref: '창 2:11', memo: '물빛 아래로 모래가 반짝였다.' },
   { id: 'place/gihon', name: '기혼 강', stage: 'eden', fact: '구스 온 땅을 두른 강', ref: '창 2:13', memo: '굽이굽이 동산 가장자리를 돌아 흘렀다.' },
   { id: 'place/tigris', name: '힛데겔 강', stage: 'eden', fact: '앗수르 동쪽으로 흐른 강', ref: '창 2:14', memo: '물살이 빨라 다리 위에서도 소리가 들렸다.' },
@@ -35,7 +35,7 @@ export const CODEX = [
 
   { id: 'item/fig-leaf', name: '무화과 잎', stage: 'eden', fact: '두 사람이 엮어 몸을 가린 잎', ref: '창 3:7', memo: '에덴을 떠나며 받은 기념물. 가죽옷을 지어 입히신 일도 함께 기억한다.' },
 
-  { id: 'word/gen-2-7', name: '흙과 생명의 숨', stage: 'eden', fact: '흙으로 사람을 지으시고 생명의 숨을 불어넣으셨다', ref: '창 2:7', memo: '사람이 살아 있는 존재가 된 처음 순간이다.' },
+  { id: 'word/gen-2-7', name: '흙과 생명의 숨', stage: 'eden', fact: '흙으로 사람을 지으시고 생명의 숨을 불어넣으셨다', ref: '창 2:7', memo: '사람이 처음 숨을 쉰 순간이다.' },
   { id: 'word/gen-3-15', name: '여자의 후손', stage: 'eden', fact: '여자의 후손이 뱀의 머리를 상하게 한다', ref: '창 3:15', memo: '대천사가 꼭 기억해 두라고 한 약속이다.' },
 
   { id: 'person/cain', name: '가인', stage: 'cain', fact: '아담의 맏아들, 땅을 일구는 사람', ref: '창 4:1~2', memo: '밭고랑은 곧게 갈았지만 웃는 얼굴은 보지 못했다.' },
@@ -61,7 +61,7 @@ export const CODEX = [
   { id: 'word/gen-5-24', name: '하나님과 동행', stage: 'enoch', fact: '에녹이 하나님과 동행하더니 하나님이 그를 데려가셨다', ref: '창 5:24', memo: '죽음을 보지 않고 옮겨진 사람이다(히 11:5).' },
 
   { id: 'person/builder', name: '벽돌 굽는 이', stage: 'babel', fact: '시날 들판에서 벽돌을 구워 탑을 쌓던 사람들', ref: '창 11:3', memo: '본문에 이름이 없는 일꾼이다. 가마 불을 밤새 지켰다(각색 인물).' },
-  { id: 'place/shinar', name: '시날 땅', stage: 'babel', fact: '사람들이 동쪽에서 옮겨 와 머문 들판', ref: '창 11:2', memo: '돌이 귀해 진흙을 구워 벽돌을 만들었다.' },
+  { id: 'place/shinar', name: '시날 땅', stage: 'babel', fact: '사람들이 동방으로 옮기다가 머문 들판', ref: '창 11:2', memo: '돌이 귀해 진흙을 구워 벽돌을 만들었다.' },
   { id: 'place/babel', name: '바벨', stage: 'babel', fact: '여호와께서 온 땅의 언어를 뒤섞으신 곳', ref: '창 11:9', memo: '꼭대기를 하늘에 닿게 하려던 탑이 거기서 멈추었다.' },
   { id: 'item/brick', name: '구운 벽돌', stage: 'babel', fact: '사람들이 돌 대신 쓴 벽돌', ref: '창 11:3', memo: '모서리가 반듯한 벽돌 한 장. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-11-9', name: '흩으심', stage: 'babel', fact: '여호와께서 거기서 언어를 뒤섞고 사람들을 온 땅에 흩으셨다', ref: '창 11:9', memo: '자기 이름을 내려던 일이 흩어짐으로 끝났다.' },
@@ -115,7 +115,7 @@ export const CODEX = [
   { id: 'person/the-man', name: '그 사람', stage: 'jabbok', fact: '날이 새도록 야곱과 씨름한 이', ref: '창 32:24', memo: '이름을 묻자 대답 대신 축복하였다(창 32:29).' },
   { id: 'creature/goat', name: '염소', stage: 'jabbok', fact: '야곱이 에서에게 예물로 보낸 암염소 이백', ref: '창 32:14', memo: '떼마다 사이를 두고 앞서 보냈다.' },
   { id: 'item/jacob-staff', name: '야곱의 지팡이', stage: 'jabbok', fact: '지팡이만 가지고 요단을 건넜던 야곱', ref: '창 32:10', memo: '절뚝이는 걸음을 받쳐 준 지팡이. 이 스테이지의 기념물이다.' },
-  { id: 'word/gen-32-28', name: '이스라엘', stage: 'jabbok', fact: '네 이름을 이스라엘이라 하리니 하나님과 겨루어 이겼다', ref: '창 32:28', memo: '발꿈치를 잡던 이가 새 이름을 받았다.' },
+  { id: 'word/gen-32-28', name: '이스라엘', stage: 'jabbok', fact: '이스라엘이라 부르리니, 하나님과 사람들과 겨루어 이겼다', ref: '창 32:28', memo: '발꿈치를 잡던 이가 새 이름을 받았다.' },
 
   { id: 'person/joseph', name: '요셉', stage: 'joseph', fact: '야곱이 사랑한 아들, 애굽을 다스린 이', ref: '창 41:41', memo: '옥에서도 죄수들의 빵을 나누고 맨 마지막에 앉았다.' },
   { id: 'person/pharaoh', name: '바로', stage: 'joseph', fact: '꿈을 꾸고 요셉에게 풀이를 들은 애굽 왕', ref: '창 41:15', memo: '요셉을 하나님의 영에 감동된 사람이라 불렀다.' },
