@@ -5,7 +5,7 @@
 const lines = {
   arrive: [
     { who: 'narr', text: '아담은 셋을 낳았고, 셋은 에노스를, 에노스는 게난을 낳았다.', ref: '창 5:3~12' },
-    { who: 'narr', text: '마할랄렐과 야렛을 지나, 야렛이 에녹을 낳았다.', ref: '창 5:15~18' },
+    { who: 'narr', text: '마할랄렐은 야렛을 낳고, 야렛은 에녹을 낳았다.', ref: '창 5:15~18' },
     { who: 'narr', text: '에녹은 므두셀라를 낳은 뒤 삼백 년 동안 하나님과 동행하였다.', ref: '창 5:21~22' },
     { who: 'angel', text: '에녹이 언덕길로 나서요.\n오늘은 그가 길에서 하는 일을 곁에서 함께 해 보아요.', ref: null, basis: '안내: 함께 하는 일 넷' },
   ],
@@ -25,20 +25,20 @@ const lines = {
     { who: 'narr', text: '언덕 끝에서 에녹이 아래 마을들을 오래 내려다보았다.', ref: null, basis: '각색: 유 1:14~15 예언의 자리' },
     { who: 'narr', text: '아담의 칠대 손 에녹이 이 사람들을 두고 예언하였다.', ref: '유 1:14' },
     { who: 'enoch', text: '보라, 주께서 수만의 거룩한 이들과 함께 오신다.', ref: '유 1:14' },
-    { who: 'enoch', text: '모든 사람을 심판하시고, 경건하지 않은 일과\n그분을 거슬러 한 거친 말의 죄를 다 물으실 것이다.', ref: '유 1:15' },
+    { who: 'enoch', text: '모든 사람을 심판하시고, 하나님을 두려워하지 않고 저지른 일과\n그분을 거슬러 내뱉은 거친 말의 죄를 다 밝히실 것이다.', ref: '유 1:15' },
     { who: 'enoch', text: '그래서 나는 날마다 이 길을 걷소.\n그날이 오면 그분 곁에 서 있고 싶어서.', ref: null, basis: '유 1:14~15, 창 5:22 동행' },
   ],
   walked: [
     { who: 'narr', text: '에녹은 모두 삼백육십오 년을 살았다.', ref: '창 5:23' },
-    { who: 'enoch', text: '그분이 저기 계시오. 함께 갑시다.', ref: null, basis: '창 5:24 동행' },
+    { who: 'enoch', text: '그분께서 저기 계시오. 함께 갑시다.', ref: null, basis: '창 5:24 동행' },
   ],
   taken: [
-    { who: 'narr', text: '에녹이 하나님과 동행하더니,\n하나님께서 그를 데려가시므로 세상에 있지 않았다.', ref: '창 5:24' },
+    { who: 'narr', text: '에녹이 하나님과 동행하더니,\n하나님께서 그를 데려가셔서 세상에서 다시 보이지 않았다.', ref: '창 5:24' },
     { who: 'narr', text: '언덕 끝에는 어린양만 남아, 빛이 걷힌 하늘을 올려다보았다.', ref: null, basis: '각색: 창 5:24 세상에 있지 않았다' },
-    { who: 'narr', text: '그는 죽음을 보지 않고 옮겨졌으니,\n하나님을 기쁘시게 한다는 증거를 받았다.', ref: '히 11:5' },
+    { who: 'narr', text: '믿음으로 에녹은 죽음을 보지 않고 옮겨졌다.\n그는 옮겨지기 전에 하나님을 기쁘시게 한 사람으로 인정받았다.', ref: '히 11:5' },
     { who: 'narr', text: '므두셀라는 라멕을 낳고, 라멕은 노아를 낳았다.', ref: '창 5:25~29' },
-    { who: 'angel', text: '함께 걷는다는 건 같이 기도하고, 잃은 것을 같이 찾고,\n같은 쪽을 바라보는 일이었네요.', ref: null, basis: '정리: 함께 한 일 넷' },
-    { who: 'angel', text: '오늘 들은 말씀을 함께 돌아볼까요?', ref: null, basis: '안내: 퀴즈' },
+    { who: 'angel', text: '함께 걷는다는 건 같이 기도하고, 잃은 양을 같이 찾고,\n같은 마을을 내려다보며 같은 쪽으로 걸어가는 일이었네요.', ref: null, basis: '정리: 함께 한 일 넷' },
+    { who: 'angel', text: '언덕길에서 들은 말씀을 함께 돌아볼까요?', ref: null, basis: '안내: 퀴즈' },
   ],
 };
 
@@ -51,14 +51,14 @@ const interlude = {
       { who: 'enoch', text: '가시도 잘 떼고 발도 빠르구려.\n나는 이 길을 날마다 걷는데도 늘 여기서 쉬오.', ref: null, basis: '막간: 인물이 관찰자를 알아본다' },
     ] },
     { choose: [
-      { text: '날마다 이 길을 걸으세요?', fruit: 'faith', reply: [
+      { text: '몇 해째 걸으신 거예요?', fruit: 'faith', reply: [
         { who: 'enoch', text: '므두셀라가 태어난 해부터니, 올해로 삼백 해가 되오.\n비 오는 날엔 미끄러워서 두 번 쉬었소.', ref: null, basis: '창 5:21~22 므두셀라를 낳은 후 삼백 년 동행' },
       ] },
       { text: '(곁에 말없이 앉는다)', fruit: 'peace', reply: [
         { who: 'narr', text: '어린양이 에녹의 무릎에 턱을 올렸다.\n에녹은 그 머리를 쓰다듬으며 한참 말이 없었다.', ref: null, basis: '창 5:24 동행의 고요함' },
       ] },
-      { text: '쉬어 가도 괜찮아요.', fruit: 'gentle', reply: [
-        { who: 'enoch', text: '괜찮고말고. 내가 앉으면 그분도 기다려 주시오.\n삼백 년 동안 나를 두고 먼저 가신 적이 없소.', ref: null, basis: '창 5:22, 히 13:5' },
+      { text: '이 바위, 에녹님 자리네요.', fruit: 'gentle', reply: [
+        { who: 'enoch', text: '알아보는구려. 삼백 년 앉았더니 가운데가 반들반들하오.\n내가 앉으면 그분께서도 기다려 주시오. 먼저 가신 적이 없소.', ref: null, basis: '창 5:22, 히 13:5' },
       ] },
       { text: '저도 매일 걸어 볼게요.', fruit: 'control', need: { faith: 1 }, reply: [
         { who: 'enoch', text: '첫날부터 정상까지 갈 것 없소.\n나도 처음엔 아까 그 갈림길까지만 걸었소.', ref: null, basis: '창 5:22 삼백 년 동안 동행' },
@@ -69,8 +69,8 @@ const interlude = {
       { who: 'enoch', text: '그래도 나는 이 길을 걸으며 그분께 다 말씀드리오.', ref: null, basis: '창 5:24' },
     ] },
     { choose: [
-      { text: '무슨 이야기를 하세요?', fruit: 'joy', reply: [
-        { who: 'enoch', text: '아까 그 어린양 이야기는 벌써 했소.\n가시를 떼 준 손이 누구 손이었는지도.', ref: null, basis: '창 5:22 동행' },
+      { text: '제 이야기도 하셨어요?', fruit: 'joy', reply: [
+        { who: 'enoch', text: '하고말고. 어린양 이야기는 벌써 했소.\n가시를 떼 준 손이 누구 손이었는지도.', ref: null, basis: '창 5:22 동행' },
       ] },
       { text: '거친 사람들이 밉지 않으세요?', fruit: 'love', reply: [
         { who: 'enoch', text: '미운 날도 있소. 그런 날은 이 바위에 다 내려놓고 가오.\n집까지 들고 가면 므두셀라가 먼저 알아채거든.', ref: null, basis: '유 1:14~15, 창 5:22' },
