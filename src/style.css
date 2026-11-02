@@ -1048,6 +1048,11 @@ body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
   .keys { grid-template-columns: repeat(3, 22px); }
   .keys--row { grid-template-columns: repeat(2, 22px); }
   .key { width: 22px; height: 22px; }
+  .key--inline { width: auto; height: auto; } /* 글자 키캡(WASD, Space)은 글자 폭만큼 */
+  .choice__text { white-space: normal; text-wrap: balance; } /* 선택지는 문장이라 말줄임으로 자르지 않는다 */
+  /* 탭 셋과 닫기 버튼이 320px 패널(세로 스크롤바 12px 포함) 한 줄에 들어가게 */
+  .menu-panel { padding-inline: var(--space-sm); }
+  .menu-panel .tab { padding-inline: var(--space-3xs); }
 }
 
 /* ---------- 스크롤바: 픽셀 패널과 같은 모양(네모난 손잡이, 테두리 색, 화살표 없음) ---------- */
