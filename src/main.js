@@ -1113,6 +1113,9 @@ function stageApi(id, mod) {
     // 막간: 인물과 끝까지 대화한다. 마치면 관계 "대화"와 보상.
     interlude: async (fig, data = mod.data.interlude) => {
       g.lookAt(fig);
+      // 선택지 패널(화면 아래 오른쪽)이 두 사람을 가리지 않게, 둘 사이에서 카메라 쪽으로 옮긴 점을 비춘다(인물이 화면 위로 오른다)
+      camFocus = fig.position.clone().lerp(player.position, 0.5).add(new THREE.Vector3(1.4, 0, 1.4));
+      setView(11);
       await runInterlude(data, `${id}/interlude`);
       reward(`${id}/interlude`, 'interlude');
       meet(data.bond ?? data.who, 'talked', id);
@@ -1135,7 +1138,10 @@ function stageApi(id, mod) {
         mode = 'none';
         g.lookAt(fig);
         if (deepOpen(state, data.who)) {
+          const back = camFocus;
+          camFocus = fig.position.clone().lerp(player.position, 0.5).add(new THREE.Vector3(1.4, 0, 1.4));
           await runInterlude(data, `${id}/deep`);
+          camFocus = back;
           reward(`${id}/deep`, 'deep');
         } else await talk(data.locked, state);
         meet(data.who, 'met', id);
@@ -1187,6 +1193,9 @@ function autoTick(dt) {
   if (autoT < 0.15) return;
   autoT = 0;
   const vis = (id) => !$(id).hidden;
+  // __dev.pauseAt: 이 글이 대사 창에 나오면 자동 플레이를 멈춘다(화면을 캡처해 볼 때)
+  const stop = globalThis.__dev.pauseAt;
+  if (stop && vis('dialog') && $('line').textContent.includes(stop)) { globalThis.__dev.auto = false; globalThis.__dev.pauseAt = null; return; }
   if (vis('choices')) { $('choices').querySelector('button')?.click(); return; }
   if (vis('dialog')) { $('dialog').click(); return; }
   if (vis('dexCard')) { $('dexCard').click(); return; }
