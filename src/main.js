@@ -137,19 +137,45 @@ addEventListener('blur', () => keys.clear());
 const raycaster = new THREE.Raycaster();
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const canvas = renderer.domElement;
+// 걷기 입력(2026-11-02 사용자 캡처 S04): 짧게 누르면 그 자리로 걸어가고, 누른 채 끌면 그 자리에 떠 있는 조이스틱이 생겨
+// 끄는 방향으로 걷는다(화면 어디서 눌러도 된다. 모바일 액션 RPG의 흔한 방식). 키보드 걷기와 같은 방향 계산을 쓴다.
+const STICK_DEAD = 12; // 이만큼(px) 끌어야 조이스틱이 된다(그 전에 떼면 탭)
+const STICK_MAX = 48; // 손잡이가 움직이는 반지름(px)
+const stick = { id: null, x: 0, y: 0, dx: 0, dy: 0, on: false };
+const stickEl = $('stick');
+function stickDraw() {
+  stickEl.hidden = !stick.on;
+  if (!stick.on) return;
+  stickEl.style.transform = `translate(${stick.x}px, ${stick.y}px)`;
+  const k = Math.min(1, STICK_MAX / (Math.hypot(stick.dx, stick.dy) || 1));
+  stickEl.firstElementChild.style.transform = `translate(${stick.dx * k}px, ${stick.dy * k}px)`;
+}
+function stickEnd() { stick.id = null; stick.on = false; stick.dx = stick.dy = 0; stickDraw(); }
 canvas.addEventListener('pointerdown', (e) => {
   if (mode === 'orbit') { dragX = e.clientX; canvas.setPointerCapture(e.pointerId); return; }
-  if (mode !== 'walk') return;
-  const ndc = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-  raycaster.setFromCamera(ndc, camera);
-  target = raycaster.ray.intersectPlane(groundPlane, new THREE.Vector3());
+  if (mode !== 'walk' || stick.id !== null) return;
+  Object.assign(stick, { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0, on: false });
+  canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (dragX === null) return;
-  camAngle -= (e.clientX - dragX) * 0.008;
-  dragX = e.clientX;
+  if (dragX !== null) { camAngle -= (e.clientX - dragX) * 0.008; dragX = e.clientX; return; }
+  if (e.pointerId !== stick.id) return;
+  stick.dx = e.clientX - stick.x;
+  stick.dy = e.clientY - stick.y;
+  if (!stick.on && Math.hypot(stick.dx, stick.dy) > STICK_DEAD && mode === 'walk') { stick.on = true; target = null; }
+  stickDraw();
 });
-for (const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, () => (dragX = null));
+for (const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, (e) => {
+  dragX = null;
+  if (e.pointerId !== stick.id) return;
+  // 끌지 않고 뗐으면 탭: 누른 자리로 걸어간다
+  if (!stick.on && ev === 'pointerup' && mode === 'walk') {
+    const ndc = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    target = raycaster.ray.intersectPlane(groundPlane, new THREE.Vector3());
+  }
+  stickEnd();
+});
 
 const held = (...codes) => (codes.some((c) => keys.has(c) || tapped.has(c)) ? 1 : 0);
 
@@ -162,8 +188,14 @@ function movePlayer(dt, t) {
   if (mode === 'auto') autoLeft -= dt;
   if (mode === 'auto' && (!target || autoLeft <= 0)) { target = null; mode = 'none'; }
   if (mode === 'walk' || mode === 'auto') {
-    const f = mode === 'walk' ? held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown') : 0;
-    const r = mode === 'walk' ? held('KeyD', 'ArrowRight') - held('KeyA', 'ArrowLeft') : 0;
+    let f = mode === 'walk' ? held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown') : 0;
+    let r = mode === 'walk' ? held('KeyD', 'ArrowRight') - held('KeyA', 'ArrowLeft') : 0;
+    // 조이스틱: 화면에서 끈 방향(위쪽이 앞)을 키보드와 같은 앞·옆 값으로 바꾼다. 조금 끌면 천천히 걷는다
+    if (stick.on && mode === 'walk') {
+      const len = Math.hypot(stick.dx, stick.dy), k = Math.min(1, len / STICK_MAX) / (len || 1);
+      f = -stick.dy * k;
+      r = stick.dx * k;
+    }
     // 카메라가 (+x, +z)에서 내려다보므로 화면 위쪽은 월드의 (-1, 0, -1) 방향이다. 걷기 중에는 camAngle이 0이다.
     want.set(r - f, 0, -r - f);
     if (want.lengthSq() > 0) target = null;
@@ -177,7 +209,7 @@ function movePlayer(dt, t) {
         if (autoStuck > 0.5) { nextAside(); if (!target) want.set(0, 0, 0); }
       }
     }
-    if (want.lengthSq() > 0) want.setLength(SPEED);
+    if (want.lengthSq() > 0) want.setLength(SPEED * (stick.on ? Math.max(0.45, Math.min(1, Math.hypot(stick.dx, stick.dy) / STICK_MAX)) : 1));
     if (mode === 'walk' && want.lengthSq() > 0) practiced('walk', dt);
   }
   vel.lerp(want, Math.min(1, dt * 10));
@@ -248,6 +280,7 @@ function practiced(kind, dt) {
 function stopWalk() {
   mode = 'none';
   target = null;
+  stickEnd();
   triggers = [];
   aimNearest = null;
   aimPos = null;

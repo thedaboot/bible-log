@@ -1,7 +1,7 @@
 // 성장 계산: 경험치·레벨, 열매 단계, 관계, 도감 기록. 수치는 data/growth.js에 있다.
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, xpToNext, TITLES, BONDS, BOND_NAMES, slotsAt, CHALLENGE, DEEP_LEVEL } from './data/growth.js';
 import { ITEMS } from './data/items.js';
-import { josa } from './text.js';
+import { josa, SPEAKERS } from './text.js';
 import { LIKENESS, CODEX } from './data/codex.js';
 
 export function levelOf(xp) {
@@ -33,11 +33,14 @@ export function grant(state, key, reward) {
   return reward.spirit ? grow(state, reward.spirit, SPIRIT_GAIN.quest) : [];
 }
 
+// 관계 배너 문장(2026-11-02 사용자 캡처 S16: '관계: 대화'처럼 꼬리표만 뜨면 엉성하다). ui.js toast가 끝말로 단계를 알아본다.
+export const BOND_LINES = { met: '처음 만났어요', talked: '마음을 나눴어요', walked: '함께 걷는 사이가 됐어요' };
+export const bondLine = (who, step) => `${josa(SPEAKERS[who] ?? who, '과', '와')} ${BOND_LINES[step]}`;
 // 관계는 오르기만 한다. 동행에 처음 이르면 그 인물과 관련된 열매가 자란다(spirit).
 export function bond(state, who, step, spirit) {
   if (BONDS.indexOf(step) <= BONDS.indexOf(state.bonds[who])) return [];
   state.bonds[who] = step;
-  const msgs = [`관계: ${BOND_NAMES[step]}`];
+  const msgs = [bondLine(who, step)];
   if (step === 'walked' && spirit) msgs.push(...grow(state, spirit, SPIRIT_GAIN.walk));
   return msgs;
 }

@@ -1233,6 +1233,13 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
 .toast[data-kind="check"]::before { background: var(--color-accent); clip-path: polygon(14% 52%, 38% 76%, 86% 22%, 98% 34%, 38% 96%, 2% 64%); }
 .toast[data-kind="fruit"]::before { background: var(--color-leaf); clip-path: polygon(46% 100%, 46% 52%, 10% 46%, 0 14%, 30% 12%, 50% 42%, 64% 6%, 100% 0, 92% 34%, 56% 50%, 56% 100%); }
 .toast[data-kind="level"] { background: var(--color-gold); }
+/* 관계: 하트 아이콘과 단계 칸 세 개(만남·대화·동행). 이번에 찬 칸은 커졌다 돌아오며 채워진다 */
+.toast[data-kind="bond"]::before { background: var(--color-focus); clip-path: polygon(50% 100%, 6% 54%, 0 30%, 8% 10%, 28% 2%, 50% 18%, 72% 2%, 92% 10%, 100% 30%, 94% 54%); }
+.toast__pips { display: inline-flex; gap: 4px; margin-left: var(--space-2xs); }
+.toast__pip { width: 10px; height: 10px; box-shadow: inset 0 0 0 2px var(--color-frame); }
+.toast__pip.is-on { background: var(--color-focus); box-shadow: inset 0 0 0 2px var(--color-frame); }
+.toast__pip.is-new { animation: pip-in var(--dur-long) var(--ease-out) 200ms backwards; }
+@keyframes pip-in { from { background: transparent; transform: scale(0.4); } 60% { transform: scale(1.5); } }
 .toast[data-kind="level"]::before { background: var(--color-frame); clip-path: polygon(50% 0, 62% 36%, 100% 38%, 70% 60%, 80% 100%, 50% 76%, 20% 100%, 30% 60%, 0 38%, 38% 36%); }
 body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
 @media (max-width: 44.99rem) {
@@ -1270,3 +1277,29 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
   .toast { top: auto; bottom: calc(max(var(--space-xs), env(safe-area-inset-bottom)) + 6rem); }
   body:has(#dialog:not([hidden])) .toast { bottom: calc(var(--dialog-h, 9rem) + var(--space-lg)); }
 }
+
+/* ---------- 떠 있는 조이스틱(2026-11-02 S04): 누른 자리에 생기고, 손잡이가 끄는 방향으로 따라간다 ---------- */
+.stick { position: fixed; z-index: 4; left: 0; top: 0; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; pointer-events: none;
+  background: color-mix(in oklch, var(--color-paper) 35%, transparent); box-shadow: inset 0 0 0 var(--px) color-mix(in oklch, var(--color-frame) 55%, transparent); }
+.stick__knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+  background: var(--color-gold); box-shadow: 0 0 0 var(--px) var(--color-frame), 0 var(--px) 0 var(--px) var(--color-shadow); }
+
+/* 화면 밖 목표 화살표(S04 다시 그림): 금빛 원 대신 테두리 있는 금빛 화살촉이 목표 쪽으로 살짝 밀려 나간다 */
+.edge-arrow { width: 40px; height: 40px; border-radius: 0; background: none; box-shadow: none; filter: drop-shadow(0 var(--px) 0 var(--color-shadow)); }
+.edge-arrow::after { content: ''; position: absolute; inset: 4px 2px 4px 6px; background: var(--color-frame); clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%); animation: edge-nudge 900ms var(--ease-in-out) infinite alternate; }
+.edge-arrow::before { content: ''; position: absolute; z-index: 1; inset: 10px 7px 10px 11px; background: var(--color-gold); clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%); animation: edge-nudge 900ms var(--ease-in-out) infinite alternate; }
+@keyframes edge-nudge { from { transform: translateX(-2px); } to { transform: translateX(4px); } }
+
+/* 휴대폰 걷기 화면(S04·S12): 조작 안내는 아래 가운데, HUD는 글자 폭만큼 작게, 퀘스트 창은 다음 목표 하나만(누르면 펼침) */
+@media (max-width: 44.99rem) {
+  :root { --hud-h: 2.5rem; }
+  .controls { left: 0; right: 0; margin-inline: auto; justify-content: center; }
+  .hud { right: auto; grid-template-columns: auto 6.5rem auto; gap: var(--space-xs); min-height: var(--hud-h); padding: var(--space-3xs) var(--space-xs); }
+  .hud__lv { padding: 3px 6px; }
+  #hudLv, .hud__num { font-size: var(--text-small); }
+  .hud__icon { width: 16px; height: 16px; }
+  .quest { right: auto; width: max-content; max-width: min(20rem, calc(100% - var(--space-md) * 2)); cursor: pointer; }
+  .quest:not(.is-open) .quest__items li:not(.is-done) ~ li:not(.is-done) { display: none; }
+  .quest.is-open .quest__items li.is-later { display: list-item; }
+}
+@media (prefers-reduced-motion: reduce) { .edge-arrow::before, .edge-arrow::after { animation: none; } }

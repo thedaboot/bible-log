@@ -1,6 +1,7 @@
 import { TALENT, SPROUT } from './icons.js';
 import { SPEAKERS, fill } from './text.js';
 import { LOOK_LABELS } from './props.js';
+import { BOND_LINES } from './growth.js';
 
 export const $ = (id) => document.getElementById(id);
 // ↑·↓로 묶음 안의 버튼 포커스를 옮긴다(막간 선택지, 퀴즈 보기, 지도 지점)
@@ -415,6 +416,7 @@ export function askLook(current, onChange, { title, text, options, tabs = null, 
 let questDone = new Set();
 export function setQuest(quest) {
   const box = $('quest');
+  box.onclick ??= () => box.classList.toggle('is-open'); // 휴대폰: 다음 목표 하나만 보이고, 누르면 남은 목표를 모두 펼친다
   box.hidden = !quest;
   if (!quest) { questDone = new Set(); return; }
   $('questTitle').textContent = quest.title;
@@ -442,7 +444,7 @@ export function setQuest(quest) {
 const CONTROLS = {
   walk: {
     pc: '<div class="keys"><kbd class="key key--w">W</kbd><kbd class="key key--a">A</kbd><kbd class="key key--s">S</kbd><kbd class="key key--d">D</kbd></div><p>키보드로 걷거나,<br>가고 싶은 곳을 클릭하세요</p>',
-    touch: '<span class="gesture gesture--tap" aria-hidden="true"></span><p>가고 싶은 곳을 탭하세요</p>',
+    touch: '<span class="gesture gesture--tap" aria-hidden="true"></span><p>탭하면 그곳으로, 끌면 그 방향으로 걸어요</p>',
   },
   look: {
     pc: '<div class="keys keys--row"><kbd class="key key--q">Q</kbd><kbd class="key key--e">E</kbd></div><p>화면을 드래그하거나, Q·E 키를 눌러<br>세상을 둘러보세요</p>',
@@ -489,8 +491,21 @@ function nextToast() {
   const [text, { gain = false, kind } = {}] = toasts[0];
   el.textContent = text;
   el.classList.toggle('toast--gain', gain);
-  // 배너 아이콘: 열매가 자람(새싹), 레벨·칭호(별, 금빛 배너), 그 밖의 획득(체크)
-  el.dataset.kind = kind ?? (/자랐어요$/.test(text) ? 'fruit' : /^(레벨|칭호)/.test(text) ? 'level' : 'check');
+  // 배너 아이콘: 열매가 자람(새싹), 레벨·칭호(별, 금빛 배너), 관계(하트 세 칸), 그 밖의 획득(체크)
+  const bondStep = Object.values(BOND_LINES).findIndex((end) => text.endsWith(end));
+  el.dataset.kind = kind ?? (bondStep >= 0 ? 'bond' : /자랐어요$/.test(text) ? 'fruit' : /^(레벨|칭호)/.test(text) ? 'level' : 'check');
+  if (bondStep >= 0) {
+    // 관계 단계: 만남·대화·동행 세 칸 가운데 이번에 찬 칸이 커지며 채워진다
+    const pips = document.createElement('span');
+    pips.className = 'toast__pips';
+    pips.setAttribute('aria-label', `관계 ${bondStep + 1} / 3`);
+    for (let k = 0; k < 3; k++) {
+      const pip = document.createElement('span');
+      pip.className = `toast__pip${k <= bondStep ? ' is-on' : ''}${k === bondStep ? ' is-new' : ''}`;
+      pips.append(pip);
+    }
+    el.append(pips);
+  }
   el.hidden = true;
   void el.offsetWidth; // 연속으로 띄워도 등장 효과가 다시 돌게 한다
   el.hidden = false;

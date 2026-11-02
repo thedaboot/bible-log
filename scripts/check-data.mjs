@@ -365,7 +365,7 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
   s.spirit.patience = 3;
   assert.deepEqual(grow(s, 'patience', 2), ['인내가 새싹으로 자랐어요']);
   // 관계는 오르기만 하고, 동행에 이르면 열매가 자란다
-  assert.deepEqual(bond(s, 'adam', 'talked'), ['관계: 대화']);
+  assert.deepEqual(bond(s, 'adam', 'talked'), ['아담과 마음을 나눴어요']);
   assert.deepEqual(bond(s, 'adam', 'met'), [], '관계가 내려감');
   assert.equal(bond(s, 'adam', 'walked', 'love').length, 2);
   assert.equal(s.spirit.love, SPIRIT_GAIN.walk);
