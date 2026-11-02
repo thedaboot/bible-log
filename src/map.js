@@ -1,6 +1,6 @@
 // 월드 지도: 쉼터의 빛의 문으로 들어가 스테이지를 고른다(양피지 픽셀 지도). 규칙은 docs/standards/ui.md "월드 지도".
 // 고른 지점 id로 끝나고, 닫으면 null로 끝난다.
-import { $ } from './ui.js';
+import { $, hideModal } from './ui.js';
 import { CHAPTERS, WORLDS } from './data/chapters.js';
 import { CODEX } from './data/codex.js';
 
@@ -91,7 +91,7 @@ export function openMap(state) {
     const nodes = $('mapNodes');
     const detail = $('mapDetail');
     const close = (value) => {
-      box.hidden = true;
+      hideModal(box);
       ro.disconnect();
       removeEventListener('keydown', onKey, true);
       resolve(value);
@@ -177,6 +177,7 @@ export function openMap(state) {
     addEventListener('keydown', onKey, true);
     $('mapClose').onclick = () => close(null);
     box.onclick = (e) => { if (e.target === box) close(null); }; // 다른 창처럼 바깥을 누르면 닫는다
+    box.classList.remove('is-closing');
     box.hidden = false;
     paint();
     marks[sel].focus({ preventScroll: true });

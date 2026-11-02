@@ -488,6 +488,14 @@ export function askQuiz(questions) {
 }
 
 // 화면을 빛으로 덮거나(1) 걷어 낸다(0). 시간은 tokens.css의 --dur-fade와 맞춘다.
+// 창(.modal)을 닫을 때 짧게 흐려지며 작아진 뒤 숨긴다(열 때의 fade-in·pop과 짝)
+export function hideModal(box) {
+  if (box.hidden) return;
+  box.classList.add('is-closing');
+  // 닫히는 사이 다시 열렸으면(is-closing이 지워졌으면) 숨기지 않는다
+  setTimeout(() => { if (box.classList.contains('is-closing')) { box.hidden = true; box.classList.remove('is-closing'); } }, reducedMotion() ? 0 : 200);
+}
+
 export function fade(to) {
   $('fade').style.opacity = String(to);
   return new Promise((r) => setTimeout(r, reducedMotion() ? 160 : 1250));

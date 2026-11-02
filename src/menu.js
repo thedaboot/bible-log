@@ -1,6 +1,6 @@
 // 메뉴: 상태 창(레벨, 성령의 열매 레이더 차트, 닮은 인물)과 도감(장별 페이지, 다섯 분류, 칸마다 세 상태).
 // 게임 중에는 걷는 중에만 열고, 첫 화면에서는 도감만 연다. 규칙은 docs/standards/ui.md "메뉴".
-import { $, isTouch } from './ui.js';
+import { $, isTouch, hideModal } from './ui.js';
 import { SPIRIT, SPIRIT_STAGES, slotsAt, CODEX_TITLES } from './data/growth.js';
 import { CODEX, CODEX_TABS } from './data/codex.js';
 import { CHAPTERS } from './data/chapters.js';
@@ -411,13 +411,14 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
     render(dir);
   };
 
+  box.classList.remove('is-closing');
   box.hidden = false;
   render();
   (tabsEl.querySelector('[aria-selected="true"]') ?? body.querySelector('.slot, .chip') ?? $('menuClose')).focus({ preventScroll: true });
   let resolve;
   const promise = new Promise((r) => (resolve = r));
   const close = () => {
-    box.hidden = true;
+    hideModal(box);
     removeEventListener('keydown', onKey, true);
     open = null;
     resolve();

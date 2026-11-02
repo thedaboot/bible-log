@@ -62,6 +62,8 @@ function setEdges(on) {
   pixelPass.depthEdgeStrength = on ? 0.4 : 0;
 }
 
+// 천국 모습 고르기 창(옆 창, 휴대폰은 아래 시트)이 떠 있는 동안 내 캐릭터가 창에 가리지 않게 장면을 민다
+function sideView(on) { viewShift = on ? { x: 0.2, y: 0.2 } : null; resize(); }
 function resize() {
   const w = innerWidth, h = innerHeight, aspect = w / h;
   const view = aspect < 1 ? viewSize * 1.35 : viewSize; // 세로 화면(휴대폰)에서는 더 넓게 본다
@@ -335,12 +337,14 @@ async function runPrologue() {
     setView(7);
     player.rotation.y = Math.PI / 4;
     turntable = true;
+    sideView(true);
     state.look = await askLook(state.look, dressWith(lookSpec), {
       title: '천국에서의 내 모습',
       text: '고르는 대로 바로 바뀌어요.',
       options: LOOK.heaven,
     });
     turntable = false;
+    sideView(false);
     setView(12);
     save(state);
   }
@@ -1320,7 +1324,10 @@ function showTitle() {
     b.onclick = fn;
     return b;
   };
-  const begin = (fn) => () => {
+  // 첫 화면에서 고르면 빛으로 화면을 덮은 뒤 첫 화면을 치우고, 고른 장면이 빛 속에서 드러난다(각 장면이 fade(0)을 부른다)
+  const begin = (fn) => async () => {
+    menu.inert = true;
+    if ($('fade').style.opacity !== '1') await fade(1);
     $('title').hidden = true;
     refreshHud();
     showHud(true);
@@ -1328,6 +1335,7 @@ function showTitle() {
     viewShift = null;
     resize();
     fn();
+    refreshHud(); // '처음부터'는 fn 안에서 새 상태를 만든다
   };
   const head = (text) => {
     const p = document.createElement('p');
@@ -1350,7 +1358,7 @@ function showTitle() {
     menu.classList.add('menu--list');
     const items = [button('천국 모습 바꾸기', begin(() => editLook('heaven')))];
     // 첫 화면(메뉴)이 떠 있는 채로 먼저 빛으로 다 덮은 뒤에 첫 화면을 치운다. 순서가 바뀌면 덮이는 동안 천국 장면이 드러난다.
-    if (saved.earthLook) items.push(button('지상 모습 바꾸기', async () => { menu.inert = true; await fade(1); begin(() => editLook('earth'))(); }));
+    if (saved.earthLook) items.push(button('지상 모습 바꾸기', begin(() => editLook('earth')))); // begin이 먼저 빛으로 덮는다
     menu.replaceChildren(head('어느 모습을 바꿀까요?'), ...items, backButton(showMain));
     menu.querySelector('button').focus({ preventScroll: true });
   };
@@ -1366,12 +1374,15 @@ function showTitle() {
       camFollow = player.position;
       setView(7);
       turntable = true;
+      sideView(true);
+      await fade(0); // 첫 화면에서 덮은 빛을 걷는다
       state.look = await askLook(state.look, dressWith(lookSpec), {
         title: '천국에서의 내 모습',
         text: '고르는 대로 바로 바뀌어요.',
         options: LOOK.heaven,
       });
       turntable = false;
+      sideView(false);
       save(state);
       await fade(1);
     }

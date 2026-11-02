@@ -1109,7 +1109,8 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
 .choice::before { content: ''; width: 0.5em; height: 0.75em; background: var(--color-frame); clip-path: polygon(0 0, 100% 50%, 0 100%); visibility: hidden; }
 .choice:focus-visible::before, .choice:hover::before { visibility: visible; animation: cursor-nudge 700ms steps(2) infinite; }
 @keyframes cursor-nudge { 50% { transform: translateX(3px); } }
-.dialog__back { min-height: var(--hit); }
+/* 휴대폰: '이전'은 손가락 크기로 누르되 바탕 없이 가볍게, 대사 창 아랫줄 높이는 그대로 */
+@media (max-width: 39.99rem) { .dialog__back { min-height: var(--hit); margin-block: calc((32px - var(--hit)) / 2); background: none; box-shadow: none; } }
 .menu-btn { min-height: var(--hit); }
 /* 메뉴 버튼의 M 키캡은 공용 글자 키캡과 같은 모양 */
 .menu-btn__key { padding: 4px 6px; box-shadow: inset 0 -3px 0 var(--color-paper-3); }
@@ -1176,3 +1177,19 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
 .fruits__summary { margin: 0; text-align: center; font-size: var(--text-small); font-weight: 700; color: var(--color-frame); }
 .stats { grid-template-columns: minmax(0, 1fr); }
 .stat:not(:has(.stat__name)) { grid-template-areas: "icon value"; }
+/* 휴대폰: 천국 모습 고르기(옆 창)는 아래 절반 시트로. 위쪽에 내 캐릭터가 보이고, 그동안 HUD는 숨긴다 */
+@media (max-width: 39.99rem) {
+  #lookForm.modal--side:not(.modal--page) { padding: 0; place-items: end stretch; }
+  #lookForm.modal--side:not(.modal--page) > .modal__panel { width: 100%; max-height: 52dvh; overflow-y: auto; padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); animation-name: sheet-up; }
+  body:has(#lookForm:not([hidden])) .hud { display: none; }
+}
+@media (max-width: 39.99rem) {
+  /* 시트를 내리지 않아도 '이 모습으로'가 보이게 버튼 줄을 아래에 붙인다 */
+  #lookForm.modal--side:not(.modal--page) .look__actions { position: sticky; bottom: calc(-1 * max(var(--space-md), env(safe-area-inset-bottom))); padding-block: var(--space-sm); background: var(--color-paper); box-shadow: 0 -2px 0 var(--color-paper-3); }
+}
+.hud:not([hidden]) { animation: fade-in var(--dur-long) var(--ease-out); }
+/* 창을 닫을 때(ui.js hideModal): 바탕은 흐려지고 창은 살짝 작아진다 */
+.modal.is-closing { animation: fade-out 200ms var(--ease-in) forwards; pointer-events: none; }
+.modal.is-closing > .modal__panel { animation: pop-out 200ms var(--ease-in) forwards; }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes pop-out { to { opacity: 0; transform: scale(0.97); } }
