@@ -3,7 +3,7 @@
 // → 막간(에서) → 창 33:10 → 퀴즈(창 32:28)
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
-import { PAL, mat } from '../props.js';
+import { PAL, mat, setArms } from '../props.js';
 import { tween, easeOut } from '../anim.js';
 import data from '../data/jabbok.js';
 
@@ -126,6 +126,7 @@ export default {
       for (const [f, s] of [[jacob, 1], [man, -1]]) {
         const { rig } = f.userData;
         rig.rotation.set(0.3 + s * shove * 0.15, 0, s * Math.sin(t0 * 2.6) * 0.14);
+        setArms(f, 'grip', 0.3);
         rig.position.y = -0.04 - Math.abs(Math.sin(t0 * 1.3)) * 0.04;
       }
     };
@@ -146,7 +147,7 @@ export default {
     wrestling = false;
     jacob.position.copy(jb);
     man.position.copy(mb);
-    for (const f of [jacob, man]) { f.userData.pose = null; f.userData.rig.rotation.set(0, 0, 0); f.userData.rig.position.y = 0; }
+    for (const f of [jacob, man]) { f.userData.pose = null; f.userData.rig.rotation.set(0, 0, 0); f.userData.rig.position.y = 0; setArms(f, 'down'); }
 
     // 새벽: 허벅지 관절, 이스라엘, 브니엘
     await F.acts.sky(0xe8b890, 0.3, 0.6, 900);

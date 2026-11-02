@@ -2,7 +2,7 @@
 // 형상 없는 빛, 하늘빛 바꾸기, 동물 돌아다니기)을 모았다. 스테이지 파일(src/stages/*.js)은 이 틀 위에 소품과 연출만 더한다.
 // 규칙은 docs/standards/art-3d.md(충돌, 겹침), quests-and-staging.md(무대, 비켜 서기, 연출)를 따른다.
 import * as THREE from 'three';
-import { PAL, mat, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, turnFigure, makeLightPillar, makeSpiritLight } from './props.js';
+import { PAL, mat, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, turnFigure, makeLightPillar, makeSpiritLight, setArms } from './props.js';
 import { tween, easeOut, stagger } from './anim.js';
 
 export const V = (x, z) => new THREE.Vector3(x, 0, z);
@@ -126,7 +126,11 @@ export function makeField(cfg) {
     walkTo,
     face,
     // 인물이 물체를 손에 든다(fig가 null이면 내려놓는다)
-    carry: (obj, fig) => { if (fig) carried.set(obj, fig); else carried.delete(obj); },
+    carry: (obj, fig) => {
+      const was = carried.get(obj);
+      if (was) was.userData.armPose = null;
+      if (fig) { carried.set(obj, fig); fig.userData.armPose = 'carry'; } else carried.delete(obj);
+    },
     // 형상 없는 빛이 인물(또는 점) 곁 화면 오른쪽 위에 머문다. 처음에는 위에서 내려온다.
     presence: async (near, ms = 1600) => {
       if (!near) { presenceLight.visible = false; return; }
@@ -179,9 +183,9 @@ export function makeField(cfg) {
       for (const f of [a, b]) f.userData.pose = 'hug';
       await tween(ms, (p) => {
         const lean = Math.sin(Math.min(1, p * 4) * Math.PI / 2) * (1 - stagger(p, 0.8, 0.2));
-        for (const [f, s] of [[a, 1], [b, -1]]) { f.userData.rig.rotation.set(0.28 * lean, 0, s * Math.sin(p * Math.PI * 4) * 0.08 * lean); f.userData.rig.position.y = 0; }
+        for (const [f, s] of [[a, 1], [b, -1]]) { f.userData.rig.rotation.set(0.28 * lean, 0, s * Math.sin(p * Math.PI * 4) * 0.08 * lean); f.userData.rig.position.y = 0; setArms(f, lean > 0.05 ? 'hug' : 'down', 0.25); }
       });
-      for (const f of [a, b]) { f.userData.pose = null; f.userData.rig.rotation.set(0, 0, 0); }
+      for (const f of [a, b]) { f.userData.pose = null; f.userData.rig.rotation.set(0, 0, 0); setArms(f, 'down'); }
       await Promise.all([walkTo(a, mid.clone().addScaledVector(gap, -2.2), 1.2), walkTo(b, mid.clone().addScaledVector(gap, 2.2), 1.2)]);
       face(a, b.position);
       face(b, a.position);

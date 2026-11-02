@@ -347,6 +347,21 @@ export function dressFigure(fig, spec) {
     default: break;
   }
 
+  // 팔: 어깨에 축을 둔 무리(걷기·안기·들기에 따라 돌린다). 옷이 있으면 소매는 옷 색, 끝은 손.
+  const sleeve = spec.outfit && !['figleaves'].includes(spec.outfit) ? (spec.outfit === 'skins' ? m(PAL.skins) : cloth) : skin;
+  fig.userData.arms = [-1, 1].map((side) => {
+    const arm = new THREE.Group();
+    arm.position.set(side * 0.33, 0.96, 0);
+    arm.rotation.z = side * 0.12;
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.34, 2, 6), sleeve);
+    upper.position.y = -0.22;
+    const hand = new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 0), skin);
+    hand.position.y = -0.47;
+    arm.add(upper, hand);
+    rig.add(arm);
+    return arm;
+  });
+
   // 지상 모습: 발밑의 빛 고리
   if (spec.aura !== undefined) {
     const ring = new THREE.Mesh(
@@ -388,6 +403,8 @@ export function animateFigure(fig, speed, dt, t, ref = 4) {
   rig.position.y = Math.abs(Math.sin(p)) * 0.13 * s + Math.abs(Math.sin(t * 9)) * 0.05 * talk;
   rig.rotation.x = 0.14 * s + Math.sin(t * 7) * 0.06 * talk;
   rig.rotation.z = Math.sin(p) * 0.06 * s + Math.sin(t * 0.9 + (u.seed ??= Math.random() * 6)) * 0.025 * idle;
+  if (u.armPose) setArms(fig, u.armPose);
+  else u.arms?.forEach((arm, i) => { arm.rotation.x = Math.sin(p + (i ? Math.PI : 0)) * 0.55 * s + Math.sin(t * 1.2 + i) * 0.04 * idle - 0.3 * talk * (i ? 1 : 0); arm.rotation.z = (i ? 1 : -1) * 0.12; });
   if (u.limp && s > 0) { rig.rotation.z += Math.max(0, Math.sin(p)) * 0.16 * s; rig.position.y -= Math.max(0, Math.sin(p)) * 0.08 * s; }
   const h = u.height ?? 1;
   rig.scale.set(h, h * (1 + Math.sin(t * 2 + u.seed) * 0.015 * idle), h);
@@ -404,6 +421,14 @@ export async function collapseFigure(fig) {
   await tween(380, (p) => { const k = easeOut(p); rig.rotation.set(-0.3 + 0.75 * k, 0, 0.1 * k); rig.position.y = -0.22 * k; });
   await tween(420, (p) => { const k = p * p; rig.rotation.set(0.45 - 0.45 * k, 0, 0.1 + (Math.PI / 2 - 0.1) * k); rig.position.y = -0.22 + 0.5 * k; });
   await tween(260, (p) => { rig.rotation.z = Math.PI / 2 - 0.1 * Math.sin(p * Math.PI); rig.position.y = 0.28 + 0.05 * Math.sin(p * Math.PI); });
+}
+
+// 팔 자세. k(0~1)만큼 그 자세로 옮긴다.
+// hug: 앞으로 뻗어 상대를 감싼다 / carry: 두 손을 앞으로 모아 든다 / grip: 맞잡고 버틴다(씨름) / raise: 두 팔을 든다(찬송·축복)
+const ARM_POSES = { hug: [-1.35, 0.55], carry: [-0.9, 0.25], grip: [-1.15, 0.2], raise: [-2.6, -0.25], down: [0, -0.12] };
+export function setArms(fig, pose, k = 1) {
+  const [x, z] = ARM_POSES[pose] ?? ARM_POSES.down;
+  fig.userData.arms?.forEach((arm, i) => { const side = i ? 1 : -1; arm.rotation.x += (x - arm.rotation.x) * k; arm.rotation.z += (side * (pose === 'down' ? 0.12 : -z) - arm.rotation.z) * k; });
 }
 
 // 방향을 부드럽게 돌린다(가장 짧은 쪽으로).
@@ -630,6 +655,7 @@ export function makeAnimal(color, s, kind = 'generic') {
     for (const x of [-xs, xs]) for (const z of [-zs, zs]) {
       const hip = new THREE.Group();
       hip.position.set(x * s, h * s, z * s);
+      hip.userData.y = h * s;
       const leg = new THREE.Mesh(new THREE.BoxGeometry(w * s, h * s, w * s), material);
       leg.position.y = (-h / 2) * s;
       hip.add(leg);
@@ -764,6 +790,12 @@ export function makeAnimal(color, s, kind = 'generic') {
 export function animateAnimal(an, speed, dt, t, grazing = false) {
   const u = an.userData;
   if (!u.legs) return;
+  // 무릎 꿇음: 다리를 몸 아래로 접고 몸을 낮춘다(낙타, 창 24:11)
+  if (u.kneel) {
+    u.legs.forEach((hip, i) => { hip.rotation.z = (i < 2 ? 1 : -1) * Math.PI / 2; hip.position.y = 0.1 * u.size; });
+    u.body.position.y = -u.kneel * u.size + Math.sin(t * 1.6 + u.phase) * 0.006 * u.size;
+    return;
+  }
   const k = Math.min(1, speed / u.walk);
   u.phase += (speed / u.size) * dt * 7;
   u.legs.forEach((hip, i) => (hip.rotation.z = Math.sin(u.phase + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.5 * k));

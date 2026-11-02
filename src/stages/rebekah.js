@@ -50,7 +50,7 @@ export default {
       F.block(trough.position, 0.45);
       const camel = F.animal('camel', 0xc8a070, 1, t.clone().add(V(-1.6, -1.6)), { still: true });
       camel.userData.yaw = -Math.PI / 4; // 화면 가로로 서서 옆모습(혹과 긴 목)이 보인다
-      camel.position.y = -0.25; // 무릎 꿇은 듯 낮게(창 24:11)
+      camel.userData.kneel = 0.66; // 성 밖 우물 곁에 무릎을 꿇렸다(창 24:11): 다리를 접고 몸을 낮춘다
       camels.push({ camel, water });
     });
     const servant = F.person('servant', { hair: 'short', hairColor: 0xd8d4cc, beard: 'long', outfit: 'traveler', outfitColor: 0x5a4a3a }, SERVANT);
