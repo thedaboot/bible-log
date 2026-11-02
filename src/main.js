@@ -76,8 +76,8 @@ function resize() {
   camera.right = (view * aspect) / 2;
   camera.top = view / 2;
   camera.bottom = -view / 2;
-  // 메뉴·패널이 없을 때도 대사 창이 덮는 쪽을 피해 장면을 민다: 세로 화면은 위로, 높이가 낮은 가로 화면은 오른쪽으로
-  const shift = viewShift ?? (aspect < 1 ? { x: 0, y: 0.05 } : h < 480 ? { x: -0.16, y: 0 } : null);
+  // 메뉴·패널이 없을 때도 대사 창이 덮는 쪽을 피해 장면을 민다: 세로 화면은 위로(가로 화면은 데스크톱처럼 그대로)
+  const shift = viewShift ?? (aspect < 1 ? { x: 0, y: 0.05 } : null);
   if (shift) camera.setViewOffset(w, h, aspect >= 1 ? shift.x * w : 0, aspect >= 1 ? 0 : shift.y * h, w, h);
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
