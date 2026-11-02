@@ -1,7 +1,7 @@
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK } from './props.js';
 import { CHECKPOINTS, CHAPTERS, WORLDS } from './data/chapters.js';
 import { SPIRIT, BONDS } from './data/growth.js';
-import { ITEMS } from './data/items.js';
+import { ITEMS, SLOT_KEY, slotOf } from './data/items.js';
 import { ownsLook } from './growth.js';
 
 export { CHECKPOINTS };
@@ -18,7 +18,12 @@ const cleanLook = (look, options, defaults) => Object.fromEntries(
   Object.entries(defaults).map(([key, fallback]) => [key, pick(options[key], look?.[key], fallback)]),
 );
 // 예전 지상 모습(빛깔 하나로 칠한 형체)은 그 빛깔을 '나를 감싸는 빛'으로 옮긴다.
-const cleanEarth = (look) => cleanLook({ aura: look.color, ...look }, LOOK.earth, DEFAULT_EARTH);
+// 손에 들던 두건·가방·뿔병은 이제 머리·허리 자리다(소품 세 자리, 2026-11-02). 자리를 옮긴 뒤 값을 고른다.
+function cleanEarth(look) {
+  const it = ITEMS.find((i) => i.id === look.item);
+  const moved = it && slotOf(it) !== 'hand' ? { [SLOT_KEY[slotOf(it)]]: look.item, item: 'none' } : {};
+  return cleanLook({ aura: look.color, ...look, ...moved }, LOOK.earth, DEFAULT_EARTH);
+}
 
 // 성장 기록: 경험치, 달란트, 열매 점수, 관계 단계, 도감(항목 → 처음 만난 스테이지), 인벤토리, 받은 보상.
 // 예전 저장값이나 깨진 값은 여기서 기본값으로 채운다.
@@ -76,11 +81,15 @@ export function load(storage = store()) {
 // 손에 든 물건 옮기기(소품 → 인벤토리): 예전에 고른 꾸미기는 레벨과 상관없이 갖게 하고,
 // 도구는 도전 스테이지에서 얻어야 하므로 갖고 있지 않으면 맨손으로 바꾼다.
 function holdMigrate(st) {
-  const id = st.earthLook?.item;
-  if (!id || id === 'none') return;
-  const it = ITEMS.find((i) => i.id === id);
-  if (it?.kind === 'look' && !ownsLook(st, id)) st.items.looks.push(id);
-  else if (!it || (it.kind === 'tool' && !st.items.tools.includes(id))) st.earthLook.item = 'none';
+  const e = st.earthLook;
+  if (!e) return;
+  const id = e.item;
+  if (id && id !== 'none') {
+    const it = ITEMS.find((i) => i.id === id);
+    if (it?.kind === 'look' && !ownsLook(st, id)) st.items.looks.push(id);
+    else if (!it || (it.kind === 'tool' && !st.items.tools.includes(id))) e.item = 'none';
+  }
+  for (const key of ['waist', 'head']) if (e[key] && e[key] !== 'none' && !ownsLook(st, e[key])) st.items.looks.push(e[key]); // 예전에 고른 꾸미기는 잃지 않는다
 }
 
 export function save(data, storage = store()) {

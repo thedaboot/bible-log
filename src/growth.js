@@ -77,7 +77,7 @@ export function codexState(state, entry) {
 // 꾸미기는 레벨로 열린 것과 따로 얻은 것(state.items.looks, 상점·예전 저장값)을 합친다.
 export function ownsLook(state, id) {
   const it = ITEMS.find((i) => i.id === id && i.kind === 'look');
-  return !!it && (it.level <= levelOf(state.xp).level || state.items.looks.includes(id));
+  return !!it && (it.level <= levelOf(state.xp).level || state.items.looks.includes(id) || (!!it.stage && state.claimed.includes(`${it.stage}/clear`)));
 }
 // 레벨이 before에서 after로 오를 때 새로 열린 꾸미기
 export const looksOpened = (before, after) => ITEMS.filter((i) => i.kind === 'look' && i.level > before && i.level <= after);
@@ -98,6 +98,8 @@ export function useTool(state, id) {
 }
 // 손에 들 수 있는지: 맨손, 가진 꾸미기, 가진 도구
 export const canHold = (state, id) => id === 'none' || ownsLook(state, id) || state.items.tools.includes(id);
+// 스테이지를 마치면 받는 대표 소품
+export const stageLooks = (stage) => ITEMS.filter((i) => i.kind === 'look' && i.stage === stage);
 
 // ---------- 막간 선택 ----------
 // 열매 단계로 열리는 선택지: need { 열매 id: 단계 }를 모두 채워야 보인다.

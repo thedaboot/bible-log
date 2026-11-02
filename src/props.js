@@ -1,6 +1,7 @@
 // 3D 디자인 시스템: 모든 장면이 이 파일의 색표(PAL)와 부품만 써서 같은 모양을 유지한다.
 // 지금은 임시 도형이다. 직접 만든 .glb 모델이 나오면 같은 함수 안에서 모델을 불러오도록 바꾼다.
 import * as THREE from 'three';
+import { ITEMS as ALL_ITEMS, slotOf } from './data/items.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { tween, easeOut } from './anim.js';
 
@@ -111,16 +112,17 @@ const HAIRS = [
   { id: 'none', name: '없음' }, { id: 'short', name: '단발' }, { id: 'long', name: '장발' },
   { id: 'tied', name: '묶은 머리' }, { id: 'curly', name: '곱슬머리' },
 ];
+// 지상 꾸미기에서 더 고를 수 있는 머리(2026-11-02 사용자 요청 S11 "더 다양한 남자·여자 머리")
+const EARTH_HAIRS = [
+  ...HAIRS, { id: 'crop', name: '짧은 머리' }, { id: 'wavy', name: '물결 머리' }, { id: 'braid', name: '땋은 머리' },
+  { id: 'twin', name: '양갈래' }, { id: 'bun', name: '올림머리' }, { id: 'veil', name: '머릿수건' },
+];
 const OUTFITS = [
   { id: 'tunic', name: '겉옷' }, { id: 'cape', name: '망토' }, { id: 'robe', name: '두루마기' },
   { id: 'shepherd', name: '목자 옷' }, { id: 'traveler', name: '나그네 옷' },
 ];
-// 소품은 성경에 나오는 물건만 쓴다(docs/standards/art-3d.md). 머리띠·목도리는 근거가 약해 뺐다.
-const ITEMS = [
-  { id: 'none', name: '없음' }, { id: 'staff', name: '지팡이' }, { id: 'sling', name: '물매' },
-  { id: 'horn', name: '양각 나팔' }, { id: 'oil', name: '기름 뿔병' }, { id: 'jar', name: '물동이' },
-  { id: 'bag', name: '목자 가방' },
-];
+// 소품은 성경에 나오는 물건만 쓴다(docs/standards/art-3d.md). 머리띠·목도리는 근거가 약해 뺐다. 목록은 data/items.js.
+const NONE = { id: 'none', name: '없음' };
 const SKINS = [
   { id: 's1', name: '밝은 피부', hex: 0xf3d3b5 }, { id: 's2', name: '연한 피부', hex: 0xe8c29c },
   { id: 's3', name: '올리브 피부', hex: 0xc99a6e }, { id: 's4', name: '구릿빛 피부', hex: 0xa8754a },
@@ -145,9 +147,12 @@ export const LOOK = {
   heaven: { color: COLORS.slice(0, 6), hair: HAIRS.slice(0, 3), outfit: OUTFITS.slice(0, 3) },
   earth: {
     skin: SKINS, height: HEIGHTS, aura: COLORS,
-    hair: [...HAIRS, { id: 'braid', name: '땋은 머리' }, { id: 'bun', name: '올림머리' }], hairColor: HAIR_COLORS, beard: BEARDS,
+    hair: EARTH_HAIRS, hairColor: HAIR_COLORS, beard: BEARDS,
     outfit: OUTFITS, outfitColor: CLOTH,
-    item: [...ITEMS, { id: 'hood', name: '두건' }, { id: 'lamp', name: '등잔' }, { id: 'scroll', name: '두루마리' }, { id: 'timbrel', name: '소고' }, { id: 'palm', name: '종려 가지' }, { id: 'lyre', name: '수금' }],
+    // 소품 세 자리(손·허리·머리). 목록은 data/items.js의 slot을 따른다(npm run check가 맞춰 본다)
+    item: [NONE, ...ALL_ITEMS.filter((i) => slotOf(i) === 'hand').map(({ id, name }) => ({ id, name }))],
+    waist: [NONE, ...ALL_ITEMS.filter((i) => slotOf(i) === 'waist').map(({ id, name }) => ({ id, name }))],
+    head: [NONE, ...ALL_ITEMS.filter((i) => slotOf(i) === 'head').map(({ id, name }) => ({ id, name }))],
   },
 };
 // 지상 꾸미기는 항목이 많아 탭으로 나눈다.
@@ -156,16 +161,17 @@ export const LOOK_TABS = {
     { label: '몸', keys: ['skin', 'height', 'aura'] },
     { label: '머리', keys: ['hair', 'hairColor', 'beard'] },
     { label: '옷', keys: ['outfit', 'outfitColor'] },
-  ],  // 손에 드는 물건(item)은 꾸미기 화면이 아니라 인벤토리에서 고른다(data/items.js)
+    { label: '소품', keys: ['item', 'waist', 'head'] }, // 가진 소품만 보인다(main.js runDressingRoom). 인벤토리에서도 단다
+  ],
 };
 export const LOOK_LABELS = {
-  color: '빛깔', hair: '머리 모양', outfit: '옷 모양', item: '소품',
+  color: '빛깔', hair: '머리 모양', outfit: '옷 모양', item: '손', waist: '허리', head: '머리',
   skin: '피부', height: '키', aura: '나를 감싸는 빛', hairColor: '머리색', beard: '수염', outfitColor: '옷 색',
 };
 export const DEFAULT_LOOK = { color: 'sky', hair: 'short', outfit: 'tunic' };
 export const DEFAULT_EARTH = {
   skin: 's2', height: 'mid', aura: 'sky', hair: 'short', hairColor: 'darkbrown', beard: 'none',
-  outfit: 'tunic', outfitColor: 'linen', item: 'none',
+  outfit: 'tunic', outfitColor: 'linen', item: 'none', waist: 'none', head: 'none',
 };
 
 // spec: { ghost?: 0xRRGGBB (반투명 관찰자), skin, hair, hairColor, outfit, outfitColor }
@@ -204,8 +210,9 @@ export function dressFigure(fig, spec) {
   add(new THREE.SphereGeometry(0.26, 8, 6), skin, 0, 1.3, 0);
   for (const x of [-0.09, 0.09]) add(new THREE.BoxGeometry(0.05, 0.07, 0.03), m(PAL.eye), x, 1.33, 0.245);
 
-  if (spec.hair && spec.hair !== 'none') {
-    add(new THREE.SphereGeometry(0.28, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), hairM, 0, 1.33, -0.02);
+  if (spec.hair && spec.hair !== 'none' && spec.hair !== 'veil') {
+    // 짧은 머리(crop)는 정수리만 얇게 덮는다
+    add(new THREE.SphereGeometry(spec.hair === 'crop' ? 0.27 : 0.28, 8, 6, 0, Math.PI * 2, 0, Math.PI * (spec.hair === 'crop' ? 0.42 : 0.55)), hairM, 0, 1.33, -0.02);
   }
   if (spec.hair === 'long') {
     add(new THREE.BoxGeometry(0.46, 0.8, 0.12), hairM, 0, 1.02, -0.18);
@@ -219,6 +226,18 @@ export function dressFigure(fig, spec) {
     for (let i = 0; i < 4; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, 0, 1.24 - i * 0.13, -0.3 - i * 0.015);
   }
   if (spec.hair === 'bun') add(new THREE.SphereGeometry(0.14, 7, 5), hairM, 0, 1.58, -0.08);
+  if (spec.hair === 'wavy') { // 물결 머리: 어깨에 닿는 굽은 머리 다발
+    add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hairM, 0, 1.15, -0.19);
+    for (const x of [-0.24, 0.24]) for (let i = 0; i < 3; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, x + Math.sin(i * 2) * 0.03, 1.22 - i * 0.12, 0.05);
+  }
+  if (spec.hair === 'twin') for (const x of [-0.26, 0.26]) { // 양갈래: 귀 뒤로 묶어 내린 두 다발
+    add(new THREE.SphereGeometry(0.07, 6, 5), hairM, x, 1.3, -0.12);
+    for (let i = 0; i < 3; i++) add(new THREE.IcosahedronGeometry(0.06, 0), hairM, x * 1.08, 1.16 - i * 0.11, -0.12);
+  }
+  if (spec.hair === 'veil') { // 머릿수건: 머리를 덮고 등으로 늘어진 천(옷 색)
+    add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.58), m(spec.outfitColor ?? PAL.robe), 0, 1.32, -0.02);
+    add(new THREE.BoxGeometry(0.5, 0.55, 0.06), m(spec.outfitColor ?? PAL.robe), 0, 1.05, -0.26, 0.08);
+  }
   if (spec.beard === 'short') add(new THREE.BoxGeometry(0.3, 0.12, 0.12), hairM, 0, 1.17, 0.19);
   if (spec.beard === 'long') {
     add(new THREE.BoxGeometry(0.3, 0.1, 0.12), hairM, 0, 1.17, 0.19);
@@ -281,7 +300,7 @@ export function dressFigure(fig, spec) {
     default: break;
   }
 
-  switch (spec.item) {
+  for (const prop of [spec.item, spec.waist, spec.head]) switch (prop) {
     case 'staff': add(new THREE.CylinderGeometry(0.035, 0.035, 1.7, 5), m(PAL.bark), 0.42, 0.85, 0.12); break;
     case 'sling': { // 물매(삼상 17:40): 손에서 늘어진 두 줄과 돌을 담는 가죽 주머니
       for (const z of [0.06, 0.18]) add(new THREE.BoxGeometry(0.025, 0.36, 0.025), m(PAL.skins), 0.42, 0.6, z);
@@ -344,6 +363,58 @@ export function dressFigure(fig, spec) {
       roll.rotation.z = Math.PI / 2.4;
       break;
     }
+    // ---- 대표 소품(스테이지를 마치면) ----
+    case 'basket': // 열매 바구니(창 2:16): 손에 든 낮은 바구니와 열매
+      add(new THREE.CylinderGeometry(0.17, 0.12, 0.14, 8), m(PAL.bark), 0.42, 0.62, 0.16);
+      for (const [x, z, c] of [[-0.06, 0, PAL.fruit], [0.06, 0.03, 0xf2cf66], [0, -0.05, 0x9a4fd0]]) add(new THREE.IcosahedronGeometry(0.06, 0), m(c), 0.42 + x, 0.72, 0.16 + z);
+      break;
+    case 'lamb': { // 어린양(창 4:2): 품에 안은 작은 양
+      add(new THREE.IcosahedronGeometry(0.17, 1).scale(1.3, 0.9, 1), m(0xf3efe6), 0.3, 0.78, 0.24);
+      add(new THREE.BoxGeometry(0.1, 0.11, 0.12), m(0x3a302a), 0.48, 0.84, 0.26);
+      break;
+    }
+    case 'olive': // 올리브 가지(창 8:11): 위로 든 가는 가지와 잎
+      add(new THREE.CylinderGeometry(0.018, 0.022, 0.6, 5), m(PAL.bark), 0.42, 0.9, 0.14);
+      for (let i = 0; i < 5; i++) { const lf = add(new THREE.BoxGeometry(0.12, 0.03, 0.05), m(0x8aa85a), 0.42 + (i % 2 ? 0.06 : -0.06), 0.96 + i * 0.07, 0.14); lf.rotation.z = (i % 2 ? -0.6 : 0.6); }
+      break;
+    case 'jstaff': // 야곱의 지팡이(창 32:10): 위가 굽은 목자 지팡이
+      add(new THREE.CylinderGeometry(0.035, 0.04, 1.6, 5), m(0x6b4428), 0.42, 0.8, 0.12);
+      { const hook = add(new THREE.TorusGeometry(0.1, 0.035, 4, 8, Math.PI), m(0x6b4428), 0.52, 1.6, 0.12); hook.rotation.z = 0; }
+      break;
+    case 'sheaf': // 곡식 단(창 37:7): 끈으로 묶은 이삭 다발
+      for (let i = 0; i < 7; i++) { const st = add(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 4), m(0xd9b54a), 0.42 + (i - 3) * 0.025, 0.85, 0.16); st.rotation.z = (i - 3) * 0.06; }
+      add(new THREE.TorusGeometry(0.07, 0.02, 4, 8), m(PAL.bark), 0.42, 0.8, 0.16, Math.PI / 2);
+      for (let i = 0; i < 5; i++) add(new THREE.IcosahedronGeometry(0.04, 0), m(0xe6c45a), 0.42 + (i - 2) * 0.04, 1.17, 0.16);
+      break;
+    case 'oakwreath': // 상수리 잎 관(창 12:6, 각색): 머리에 두른 잎 고리
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; add(new THREE.BoxGeometry(0.1, 0.04, 0.06), m(0x5e8a3a), Math.cos(a) * 0.27, 1.45, Math.sin(a) * 0.27); }
+      break;
+    case 'nosering': // 금 코걸이(창 24:22): 코 아래 작은 금 고리
+      add(new THREE.TorusGeometry(0.035, 0.012, 4, 8), m(PAL.gold), 0, 1.25, 0.26);
+      break;
+    case 'waterskin': // 가죽 부대(창 21:14): 어깨끈과 허리의 불룩한 부대
+      add(new THREE.IcosahedronGeometry(0.16, 1).scale(0.8, 1, 0.7), m(PAL.skins), -0.36, 0.62, 0.02);
+      add(new THREE.BoxGeometry(0.04, 0.75, 0.04), m(PAL.skins), -0.05, 0.95, 0.27, 0.15);
+      break;
+    // ---- 상점 ----
+    case 'pipe': { // 피리(삼상 10:5): 입에 대는 가는 관
+      const p = add(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 6), m(0xc9a46a), 0.2, 1.08, 0.3);
+      p.rotation.set(Math.PI / 2.6, 0, -0.6);
+      break;
+    }
+    case 'belt': // 금띠(계 1:13): 허리에 두른 금빛 띠
+      add(new THREE.TorusGeometry(0.34, 0.05, 4, 12), m(PAL.gold), 0, 0.74, 0, Math.PI / 2);
+      break;
+    case 'censer': { // 금 향로(계 8:3): 사슬에 매단 향로와 피어오르는 연기
+      add(new THREE.CylinderGeometry(0.1, 0.07, 0.12, 8), m(PAL.gold), 0.42, 0.55, 0.16);
+      add(new THREE.BoxGeometry(0.015, 0.3, 0.015), m(PAL.gold), 0.42, 0.74, 0.16);
+      add(new THREE.IcosahedronGeometry(0.05, 0), glowMat(0xffffff, 0.5), 0.42, 0.66, 0.16);
+      break;
+    }
+    case 'crown': // 생명의 면류관(계 2:10): 머리 위의 금 관
+      add(new THREE.CylinderGeometry(0.24, 0.24, 0.1, 10, 1, true), m(PAL.gold), 0, 1.52, 0);
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; add(new THREE.ConeGeometry(0.035, 0.1, 4), m(PAL.gold), Math.cos(a) * 0.24, 1.61, Math.sin(a) * 0.24); }
+      break;
     default: break;
   }
 
@@ -378,7 +449,7 @@ const hexOf = (list, id) => (list.find((x) => x.id === id) ?? list[0]).hex;
 export function earthSpec(look) {
   return {
     skin: hexOf(SKINS, look.skin), hair: look.hair, hairColor: hexOf(HAIR_COLORS, look.hairColor), beard: look.beard,
-    outfit: look.outfit, outfitColor: hexOf(CLOTH, look.outfitColor), item: look.item,
+    outfit: look.outfit, outfitColor: hexOf(CLOTH, look.outfitColor), item: look.item, waist: look.waist, head: look.head,
     height: (HEIGHTS.find((h) => h.id === look.height) ?? HEIGHTS[1]).k, aura: hexOf(COLORS, look.aura),
   };
 }

@@ -340,6 +340,14 @@ export function askLook(current, onChange, { title, text, options, tabs = null, 
       input.onchange = () => { pressed(wrap); choose(key, opt.id); };
       const label = document.createElement('span');
       label.textContent = opt.name;
+      if (opt.icon) { // 미리보기 칩: 그림 위, 이름 아래(S11 "텍스트가 아닌 미리보기 버튼")
+        wrap.classList.add('chip--icon');
+        const pic = document.createElement('span');
+        pic.className = 'chip__icon';
+        pic.innerHTML = opt.icon;
+        wrap.append(pic);
+        label.className = 'chip__name';
+      }
       if (opt.hex !== undefined) {
         wrap.style.setProperty('--swatch', `#${opt.hex.toString(16).padStart(6, '0')}`);
         wrap.title = opt.name;

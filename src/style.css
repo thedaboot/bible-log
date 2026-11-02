@@ -1347,3 +1347,52 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
   #clearBox { padding: 0; place-items: end stretch; }
   #clearBox > .modal__panel { width: 100%; padding-bottom: max(var(--space-md), env(safe-area-inset-bottom)); animation-name: sheet-up; }
 }
+
+/* ---------- 꾸미기·인벤토리 다듬기(2026-11-02 S08·S11) ---------- */
+.px-v { fill: var(--color-leaf); }
+/* 닫기 ✕: 숨긴 '닫기' 글자가 격자 한 줄을 차지해 ✕가 위로 떠 보였다. ✕는 버튼 한가운데에 겹쳐 그린다 */
+.modal__panel .menu-panel__close { position: relative; }
+@media (max-width: 39.99rem) {
+  .modal__panel .menu-panel__close, .modal__panel .map__top .menu-panel__close { line-height: 0; }
+  .modal__panel .menu-panel__close::before { position: absolute; inset: 0; margin: auto; }
+}
+.inv__hint { white-space: pre-line; }
+/* 미리보기 칩: 그림 위, 이름 아래 */
+.chip--icon { flex-direction: column; gap: 2px; min-height: 64px; padding: var(--space-2xs) var(--space-3xs); }
+.chip__icon { width: 30px; height: 30px; }
+.chip__name { font-size: var(--text-label); font-weight: 700; }
+.look__group:has(.chip--icon) { grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr)); }
+/* 지상 꾸미기(전용 화면) 휴대폰: 캐릭터는 위 40%, 시트는 아래 60%를 스크롤 없이. 설명 글은 줄이고 칸을 촘촘히(S11) */
+@media (max-width: 39.99rem) {
+  .modal--page .look { max-height: 62dvh; height: 62dvh; padding: var(--space-md) var(--space-sm) var(--space-sm); gap: var(--space-sm); grid-template-rows: auto auto minmax(0, 1fr) auto; align-content: stretch; overflow: hidden; }
+  .modal--page .look > #lookText, .modal--page .look > #lookKicker { display: none; }
+  .modal--page .look .modal__title { font-size: var(--text-lede); }
+  .modal--page .look .look__groups { gap: var(--space-sm); align-content: start; overflow-y: auto; }
+  .modal--page .look__group { gap: var(--space-2xs); }
+  .modal--page .look__group legend { margin-bottom: var(--space-2xs); }
+  .modal--page .swatch { width: 36px; height: 36px; }
+  .modal--page .chip { min-height: 40px; padding: 0 var(--space-2xs); }
+  .modal--page .chip--icon { min-height: 54px; }
+  .modal--page .chip__icon { width: 26px; height: 26px; }
+  .modal--page .look__group:has(.chip) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .modal--page .look__group:has(.chip--icon) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .modal--page .look__actions { position: static; padding-block: var(--space-2xs) 0; box-shadow: none; }
+}
+
+/* ---------- 도감 칸(2026-11-02 S25·S26): 그림 위주. 번호·그림·이름, 누르면 아래 설명 칸 ---------- */
+.codex__grid { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); grid-auto-rows: auto; }
+.codex__item { display: grid; min-width: 0; }
+.codex__cell { position: relative; display: grid; justify-items: center; align-content: center; gap: var(--space-2xs); min-height: 7.5rem; padding: var(--space-sm) var(--space-2xs) var(--space-xs); border: 0; cursor: pointer; font: inherit; color: var(--color-frame); background: var(--color-light); box-shadow: inset 0 0 0 2px var(--color-frame), inset 0 -4px 0 var(--color-paper-3); transition: transform var(--dur-micro) var(--ease-out); }
+@media (hover: hover) { .codex__cell:hover { transform: translateY(-2px); } }
+.codex__cell:active { transform: translateY(2px); }
+.codex__cell:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.codex__cell[aria-pressed="true"] { background: var(--color-paper-2); box-shadow: inset 0 0 0 3px var(--color-accent), inset 0 -4px 0 var(--color-paper-3); }
+.codex__cell .codex__no { position: absolute; top: 6px; left: 8px; font-size: var(--text-label); }
+.codex__pic { width: 48px; height: 48px; }
+.codex__cell .codex__name { font-size: var(--text-small); font-weight: 800; line-height: 1.3; text-align: center; text-wrap: balance; }
+.codex__cell[data-state="unknown"], .codex__cell[data-state="missed"] { background: var(--color-paper-2); box-shadow: inset 0 0 0 2px var(--color-paper-3); }
+.codex__cell[data-state="unknown"] .codex__pic, .codex__cell[data-state="missed"] .codex__pic { filter: brightness(0); opacity: 0.18; }
+.codex__cell[data-state="unknown"] .codex__name { margin: 0 !important; font-size: var(--text-small); opacity: 0.6; }
+.codex__detail { align-items: start; }
+.codex__detail .codex__memo { margin: var(--space-2xs) 0 0; }
+@media (max-width: 39.99rem) { .codex__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .codex__cell { min-height: 6.5rem; } .codex__pic { width: 40px; height: 40px; } }

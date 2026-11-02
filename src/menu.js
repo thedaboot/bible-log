@@ -4,9 +4,10 @@ import { $, isTouch, hideModal } from './ui.js';
 import { SPIRIT, SPIRIT_STAGES, slotsAt, CODEX_TITLES } from './data/growth.js';
 import { CODEX, CODEX_TABS } from './data/codex.js';
 import { CHAPTERS } from './data/chapters.js';
+import { josa } from './text.js';
 import { levelOf, stageOf, likeness, codexState, ownsLook } from './growth.js';
-import { TALENT, ITEM_ICONS } from './icons.js';
-import { ITEMS } from './data/items.js';
+import { TALENT, ITEM_ICONS, CODEX_ICONS } from './icons.js';
+import { ITEMS, SLOTS, SLOT_KEY, slotOf } from './data/items.js';
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -145,7 +146,10 @@ function statusView(state) {
 const INV_TABS = [{ id: 'tool', name: '도구' }, { id: 'look', name: '꾸미기' }];
 function inventoryView(state, ctx) {
   const lv = levelOf(state.xp).level;
-  const heldId = () => state.earthLook?.item ?? 'none'; // 손에 들면 바뀌므로 그릴 때마다 읽는다
+  // 소품은 손·허리·머리 세 자리에 하나씩 단다(data/items.js slot). 달면 바뀌므로 그릴 때마다 읽는다
+  const keyOf = (it) => SLOT_KEY[slotOf(it)];
+  const worn = (it) => (state.earthLook?.[keyOf(it)] ?? 'none') === it.id;
+  const VERB = { hand: ['손에 들기', '손에 든 중'], waist: ['허리에 차기', '허리에 찬 중'], head: ['머리에 쓰기', '머리에 쓴 중'] };
   const wrap = el('div', 'inv');
   const cats = el('div', 'inv__cats');
   const box = el('div', 'codex__box');
@@ -154,9 +158,10 @@ function inventoryView(state, ctx) {
   const detail = (it) => {
     const d = el('div', 'inv__detail');
     if (!it) {
+      // 안내 문구는 한 문장씩 줄을 바꾼다(dialogue.md 줄바꿈 2판 6항)
       d.append(el('p', 'inv__hint', ctx.kind === 'tool'
-        ? '도구는 도전이 있는 스테이지 앞부분에서 얻어요. 쓸 곳에서 다 쓰면 사라져요.'
-        : '꾸미기는 레벨이 오르면 하나씩 열려요. 칸을 고르면 손에 들 수 있어요.'));
+        ? '도구는 도전이 있는 스테이지에서 얻어요.\n쓸 곳에서 다 쓰면 사라져요.'
+        : '꾸미기는 레벨·스테이지·상점에서 얻어요.\n손·허리·머리에 하나씩, 셋까지 달 수 있어요.'));
       return d;
     }
     const icon = el('span', 'inv__bigicon');
@@ -165,13 +170,15 @@ function inventoryView(state, ctx) {
     text.append(el('p', 'inv__name', it.name), el('p', 'codex__ref', it.ref), el('p', 'inv__note', it.note));
     const act = el('div', 'inv__actions');
     const owned = it.kind === 'tool' ? state.items.tools.includes(it.id) : ownsLook(state, it.id);
-    if (!owned) act.append(el('p', 'inv__lock', it.level ? `Lv.${it.level}에 열려요` : `상점 · ${it.price} 달란트`));
+    const how = it.level ? `Lv.${it.level}에 열려요` : it.stage ? `${josa(CHAPTERS.find((c) => c.id === it.stage)?.title ?? '', '을', '를')} 마치면 받아요` : `상점 · ${it.price} 달란트`;
+    if (!owned) act.append(el('p', 'inv__lock', how));
     else if (ctx.onHold) {
-      const isHeld = heldId() === it.id;
-      const hold = button('btn inv__hold', isHeld ? '손에 든 중' : '손에 들기', () => { ctx.onHold(it.id); render(); }, null, 'inv:hold');
-      hold.disabled = isHeld;
+      const on = worn(it);
+      const [verb, wearing] = VERB[slotOf(it)];
+      const hold = button('btn inv__hold', on ? wearing : verb, () => { ctx.onHold(it.id, keyOf(it)); render(); }, null, 'inv:hold');
+      hold.disabled = on;
       act.append(hold);
-      if (isHeld) act.append(button('btn btn--quiet inv__hold', '내려놓기', () => { ctx.onHold('none'); render(); }, null, 'inv:drop'));
+      if (on) act.append(button('btn btn--quiet inv__hold', '내려놓기', () => { ctx.onHold('none', keyOf(it)); render(); }, null, 'inv:drop'));
     }
     d.append(icon, text, act);
     return d;
@@ -181,11 +188,12 @@ function inventoryView(state, ctx) {
     const b = button('slot', '', () => { picked = it.id; render(); }, null, `slot:${it.id}`);
     b.dataset.state = owned ? 'owned' : 'locked';
     b.setAttribute('aria-pressed', String(picked === it.id));
-    if (heldId() === it.id) b.dataset.held = '';
+    if (worn(it)) b.dataset.held = '';
     const icon = el('span', 'slot__icon');
     icon.innerHTML = ITEM_ICONS[it.id];
-    b.append(icon, el('span', 'slot__name', owned ? it.name : it.level ? `Lv.${it.level}` : '상점'));
-    if (heldId() === it.id) b.append(el('span', 'slot__badge', '손에 든 중'));
+    // 잠긴 칸: 여는 길(레벨·스테이지·상점)을 짧게
+    b.append(icon, el('span', 'slot__name', owned ? it.name : it.level ? `Lv.${it.level}` : it.stage ? '스테이지' : '상점'));
+    if (worn(it)) b.append(el('span', 'slot__badge', SLOTS[slotOf(it)]));
     return b;
   };
 
@@ -232,20 +240,33 @@ function inventoryView(state, ctx) {
 // 도감 한 장(스테이지)의 한 분류, 한 페이지. 페이지마다 PAGE칸.
 export const PAGE = 6;
 const BOOK_CHAPTERS = CHAPTERS.filter((ch) => CODEX.some((c) => c.stage === ch.id));
-function codexCell(state, c, no) {
+// 도감 칸(2026-11-02 S25·S26): 글 대신 분류 그림을 크게, 이름만 아래에. 만난 칸을 누르면 아래 설명 칸에 사실·장절·메모가 나온다.
+function codexCell(state, c, no, picked, onPick) {
   const st = codexState(state, c);
-  const li = el('li', 'codex__cell');
-  li.dataset.state = st;
-  li.append(el('p', 'codex__no', `No.${String(no).padStart(3, '0')}`));
-  if (st === 'met') {
-    li.append(el('p', 'codex__name', c.name), el('p', 'codex__fact', c.fact), el('p', 'codex__ref', c.ref), el('p', 'codex__memo', c.memo));
-  } else if (st === 'missed') {
-    const where = CHAPTERS.find((ch) => ch.id === c.stage)?.title ?? '';
-    li.append(el('p', 'codex__name', '? ? ?'), el('p', 'codex__fact', `${where}에서 다시 찾아보세요`));
-  } else {
-    li.append(el('p', 'codex__name', '?'));
-  }
+  const li = el('li', 'codex__item');
+  const b = button('codex__cell', '', () => onPick(c.id), null, `dex:${c.id}`);
+  b.dataset.state = st;
+  b.setAttribute('aria-pressed', String(picked === c.id));
+  const pic = el('span', 'codex__pic');
+  pic.innerHTML = CODEX_ICONS[c.id.split('/')[0]] ?? '';
+  b.append(el('span', 'codex__no', String(no).padStart(3, '0')), pic, el('span', 'codex__name', st === 'met' ? c.name : st === 'missed' ? '? ? ?' : '?'));
+  if (st !== 'met') b.setAttribute('aria-label', st === 'missed' ? '놓친 항목' : '아직 못 만난 항목');
+  li.append(b);
   return li;
+}
+// 고른 칸의 설명: 만난 칸은 이름·사실·장절·메모, 놓친 칸은 다시 찾을 곳, 고른 칸이 없으면 안내 한 줄
+function codexDetail(state, c) {
+  const d = el('div', 'inv__detail codex__detail');
+  if (!c) { d.append(el('p', 'inv__hint', '칸을 누르면 자세히 볼 수 있어요.')); return d; }
+  const st = codexState(state, c);
+  const pic = el('span', 'inv__bigicon');
+  pic.innerHTML = CODEX_ICONS[c.id.split('/')[0]] ?? '';
+  const text = el('div', 'inv__text');
+  if (st === 'met') text.append(el('p', 'inv__name', c.name), el('p', 'codex__ref', c.ref), el('p', 'inv__note', c.fact), el('p', 'codex__memo', c.memo));
+  else if (st === 'missed') text.append(el('p', 'inv__name', '? ? ?'), el('p', 'inv__note', `${CHAPTERS.find((ch) => ch.id === c.stage)?.title ?? ''}에서 다시 찾아보세요.`));
+  else text.append(el('p', 'inv__name', '?'), el('p', 'inv__note', '이야기를 걸으며 만나 보세요.'));
+  d.append(pic, text);
+  return d;
 }
 
 let open = null;
@@ -276,7 +297,7 @@ function shopView(state, ctx) {
     }
     const it = ITEMS.find((i) => i.id === picked);
     const d = el('div', 'inv__detail');
-    if (!it) d.append(el('p', 'inv__hint', '산 꾸미기는 인벤토리의 꾸미기 칸에서 손에 들 수 있어요.'));
+    if (!it) d.append(el('p', 'inv__hint', '산 꾸미기는 인벤토리 꾸미기 칸에서 달아요.'));
     else {
       const big = el('span', 'inv__bigicon');
       big.innerHTML = ITEM_ICONS[it.id];
@@ -333,6 +354,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
   };
 
   let codexBox = null;
+  let dexPick = null; // 도감에서 고른 칸(설명 칸에 보인다)
   const codexBody = (dir) => {
     const ch = BOOK_CHAPTERS[chapter];
     const entries = CODEX.filter((c) => c.stage === ch.id && c.id.startsWith(`${cat}/`));
@@ -347,8 +369,9 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
     else {
       const grid = el('ul', 'codex__grid');
       const first = page * PAGE;
-      entries.slice(first, first + PAGE).forEach((c, i) => grid.append(codexCell(state, c, first + i + 1)));
-      view.append(grid);
+      const onPick = (id) => { dexPick = id; codexBody(0); };
+      entries.slice(first, first + PAGE).forEach((c, i) => grid.append(codexCell(state, c, first + i + 1, dexPick, onPick)));
+      view.append(grid, codexDetail(state, entries.find((c) => c.id === dexPick)));
     }
     if (pages > 1) {
       const pager = el('div', 'pager pager--page');

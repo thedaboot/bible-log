@@ -16,10 +16,11 @@ import { load, save, reach, newState, openNext } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
 import { josa } from './text.js';
 import { REWARDS, SPIRIT } from './data/growth.js';
-import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook, addTool, useTool, assistOf, deepOpen, codexDone } from './growth.js';
+import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook, addTool, useTool, assistOf, deepOpen, codexDone, canHold, stageLooks } from './growth.js';
 import { CHALLENGE, CODEX_TITLES } from './data/growth.js';
 import { WORLDS } from './data/chapters.js';
 import { ITEMS } from './data/items.js';
+import { ITEM_ICONS, HAIR_ICONS, EMPTY } from './icons.js';
 import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
 import { openMap, stageInfo } from './map.js';
@@ -588,7 +589,13 @@ const dressWith = (spec) => (look, key) => dressFx(key, look, () => { finishWipe
 
 // ---------- 꾸미기 방: 처음 땅에 내려가기 전, 지상에서의 모습을 전용 화면에서 고른다 ----------
 // 손에 드는 물건(item)은 인벤토리에서 고르므로 꾸미기 화면(무작위 포함)에서 뺀다.
-const EARTH_OPTIONS = Object.fromEntries(Object.entries(LOOK.earth).filter(([k]) => k !== 'item'));
+// 지상 꾸미기: 소품 세 자리는 가진 것만 보인다(없음 + 가진 꾸미기·도구)
+// 머리 모양과 소품은 글자 대신 미리보기 그림 칩으로 보인다(S11)
+const earthOptions = () => Object.fromEntries(Object.entries(LOOK.earth).map(([k, list]) => {
+  if (['item', 'waist', 'head'].includes(k)) return [k, list.filter((o) => canHold(state, o.id)).map((o) => ({ ...o, icon: ITEM_ICONS[o.id] ?? EMPTY }))];
+  if (k === 'hair') return [k, list.map((o) => ({ ...o, icon: HAIR_ICONS[o.id] }))];
+  return [k, list];
+}));
 async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submit = '이 모습으로 내려가기' } = {}) {
   heaven.group.visible = angel.visible = false;
   if (creation) { scene.remove(creation.group); camera.remove(creation.stars); disposeTree(creation.group); disposeTree(creation.stars); creation = null; }
@@ -605,7 +612,7 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
   camAngle = 0;
   camTarget.copy(camFollow);
   camOffset = ROOM_OFFSET;
-  viewShift = { x: 0.2, y: 0.24 }; // 패널이 오른쪽(휴대폰은 아래)에 있으니 캐릭터를 반대쪽에 크게 둔다
+  viewShift = { x: 0.2, y: 0.31 }; // 패널이 오른쪽(휴대폰은 아래 62%)에 있으니 캐릭터를 반대쪽(위 38%의 가운데)에 크게 둔다
   setView(4.2);
   dressFigure(player, earthSpec(state.earthLook ?? DEFAULT_EARTH)); // 화면을 걷기 전에 지상 모습을 입힌다
   await fade(0);
@@ -614,7 +621,7 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
     kicker,
     title: '지상에서의 내 모습',
     text: '땅에서도 사람들 눈에는 보이지 않아요.\n여러 시대를 함께 걸을 모습을 골라 주세요.',
-    options: EARTH_OPTIONS,
+    options: earthOptions(),
     tabs: LOOK_TABS.earth,
     page: true,
     submit,
@@ -669,6 +676,7 @@ function reward(key, kind, entry, spirit) {
   // 레벨·꾸미기 열림·열매 성장은 HUD 아래 배너로 차례로
   if (after.level > before) toast(`레벨 ${after.level} · ${after.title}`, { gain: true, kind: 'level' });
   for (const it of looksOpened(before, after.level)) toast(`꾸미기 열림 · ${it.name}`, { gain: true });
+  if (kind === 'clear') for (const it of stageLooks(stage)) toast(`대표 소품 · ${it.name}`, { gain: true });
   for (const m of msgs) toast(m, { gain: true });
 }
 function note(entry, stage = 'eden') {
@@ -689,8 +697,9 @@ async function showMenu() {
   mode = 'none';
   target = null;
   // 손에 들기: 지상에서만(천국 모습에는 손에 드는 물건이 없다). 빛이 손으로 날아와 물건이 된다(dressFx 'item').
-  const onHold = state.earthLook && land() ? (id) => {
-    state.earthLook = { ...state.earthLook, item: id };
+  // 소품은 손·허리·머리 세 자리(data/items.js slot). id가 'none'이면 key 자리를 비운다.
+  const onHold = state.earthLook && land() ? (id, key = 'item') => {
+    state.earthLook = { ...state.earthLook, [key]: id };
     save(state);
     dressWith(earthSpec)(state.earthLook, 'item');
   } : null;

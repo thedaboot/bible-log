@@ -16,7 +16,7 @@ import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
 import { layout } from '../src/map.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL, CHALLENGE } from '../src/data/growth.js';
 import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook, codexDone } from '../src/growth.js';
-import { ITEMS } from '../src/data/items.js';
+import { ITEMS, SLOT_KEY, slotOf } from '../src/data/items.js';
 import { ITEM_ICONS } from '../src/icons.js';
 import { STAGE_MODS } from '../src/stages/index.js';
 import { pagesOf, MAX_LINES, BOUND, NUMERAL } from '../src/ui.js';
@@ -162,18 +162,20 @@ mem.set('bible-rpg/save/v1', '{깨진 JSON');
 assert.equal(load(storage), null);
 assert.equal(load(null), null);
 
-// 손에 드는 물건: 모두 손에 그릴 수 있고(LOOK.earth.item), 아이콘이 있고, 장절이 맞다. 꾸미기는 열리는 레벨이 겹치지 않는다.
+// 소품: 제 자리(손·허리·머리, LOOK.earth의 item·waist·head)에 그릴 수 있고, 아이콘이 있고, 장절이 맞다. 꾸미기는 열리는 레벨이 겹치지 않는다.
 {
   for (const it of ITEMS) {
-    assert.ok(LOOK.earth.item.some((o) => o.id === it.id && o.name === it.name), `${it.id}: 손에 그릴 수 없음`);
+    assert.ok(LOOK.earth[SLOT_KEY[slotOf(it)]].some((o) => o.id === it.id && o.name === it.name), `${it.id}: ${slotOf(it)} 자리에 그릴 수 없음`);
     assert.ok(ITEM_ICONS[it.id], `${it.id}: 아이콘 없음`);
     assert.ok(REF.test(it.ref) && it.note, `${it.id}: 장절·설명 오류`);
     assert.ok(['tool', 'look'].includes(it.kind), `${it.id}: 종류 오류`);
   }
-  assert.deepEqual(LOOK.earth.item.filter((o) => o.id !== 'none').map((o) => o.id).sort(), ITEMS.map((i) => i.id).sort(), '소품과 손에 드는 물건 목록이 다름');
+  assert.deepEqual(['item', 'waist', 'head'].flatMap((k) => LOOK.earth[k]).filter((o) => o.id !== 'none').map((o) => o.id).sort(), ITEMS.map((i) => i.id).sort(), '소품 세 자리와 물건 목록이 다름');
   const looks = ITEMS.filter((i) => i.kind === 'look');
   const leveled = looks.filter((i) => i.level), sold = looks.filter((i) => i.price);
-  assert.ok(looks.every((i) => !!i.level !== !!i.price), '꾸미기는 레벨로 열리거나 상점에서 산다(둘 중 하나)');
+  assert.ok(looks.every((i) => [i.level, i.price, i.stage].filter(Boolean).length === 1), '꾸미기는 레벨·상점·스테이지 가운데 하나로 얻는다');
+  assert.ok(looks.filter((i) => i.stage).every((i) => CHAPTERS.some((c) => c.id === i.stage)), '대표 소품의 스테이지가 없음');
+  { const t = newState(); t.claimed.push('noah/clear'); assert.ok(ownsLook(t, 'olive') && !ownsLook(t, 'sheaf'), '스테이지를 마쳐도 대표 소품을 못 받음'); }
   assert.equal(new Set(leveled.map((i) => i.level)).size, leveled.length, '꾸미기 여는 레벨이 겹침');
   assert.ok(leveled.every((i) => i.level >= 2 && i.level <= MAX_LEVEL), '꾸미기 여는 레벨 범위');
   assert.ok(sold.every((i) => Number.isInteger(i.price) && i.price > 0), '상점 가격 오류');
@@ -197,8 +199,8 @@ assert.equal(load(null), null);
   // 상점: 달란트가 모자라면 못 사고, 사면 달란트가 줄고 갖게 되며, 두 번 사지 않는다
   s.talents = 10;
   assert.equal(buyLook(s, 'timbrel'), false, '달란트가 모자란데 삼');
-  s.talents = 40;
-  assert.ok(buyLook(s, 'timbrel') && s.talents === 25 && ownsLook(s, 'timbrel'));
+  s.talents = 75;
+  assert.ok(buyLook(s, 'timbrel') && s.talents === 15 && ownsLook(s, 'timbrel'));
   assert.equal(buyLook(s, 'timbrel'), false, '같은 꾸미기를 두 번 삼');
   assert.equal(buyLook(s, 'staff'), false, '레벨로 여는 꾸미기를 삼');
   // 도감 완성: 항목 하나가 빠지면 칭호 없음, 다 채우면 한 번만 받고 다시 받지 않는다
@@ -307,8 +309,11 @@ for (const w of WORLDS) {
 // 꾸미기: 기본값이 선택지 안에 있고, 탭이 지상 항목을 빠짐없이 한 번씩 나눈다
 for (const [k, v] of Object.entries(DEFAULT_EARTH)) assert.ok(LOOK.earth[k].some((o) => o.id === v), `지상 기본값 ${k}`);
 for (const [k, v] of Object.entries(DEFAULT_LOOK)) assert.ok(LOOK.heaven[k].some((o) => o.id === v), `천국 기본값 ${k}`);
-// 손에 드는 물건(item)은 인벤토리에서 고르므로 꾸미기 탭에는 없다
-assert.deepEqual(LOOK_TABS.earth.flatMap((t) => t.keys).sort(), Object.keys(LOOK.earth).filter((k) => k !== 'item').sort(), '탭 구성 오류');
+// 탭이 지상 항목(소품 세 자리 포함)을 빠짐없이 한 번씩 나눈다
+assert.deepEqual(LOOK_TABS.earth.flatMap((t) => t.keys).sort(), Object.keys(LOOK.earth).sort(), '탭 구성 오류');
+// 예전 저장값의 손에 든 두건은 머리 자리로 옮긴다
+mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], xp: 400, earthLook: { item: 'hood' } }));
+{ const h = load(storage).earthLook; assert.ok(h.head === 'hood' && h.item === 'none', '두건을 머리 자리로 옮기지 못함'); }
 // 예전 지상 모습(빛깔 하나)은 빛깔을 '나를 감싸는 빛'으로 옮긴다
 mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { color: 'rose', hair: 'long' } }));
 const old = load(storage);
