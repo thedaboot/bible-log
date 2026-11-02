@@ -80,7 +80,9 @@ export const REWARDS = {
 
 // 도전(docs/design.md "도전 조작"): 표시가 오가는 막대에서 금빛 구간에 Space를 누른다.
 // 열매 단계당 구간이 8% 넓어지고 최대 32%까지 넓어진다. 실패해도 감점 없이 다시 한다. ★
-export const CHALLENGE = { zone: 0.2, speed: 0.75, assistPerStage: 0.08, assistMax: 0.32 };
+// 표시가 금빛 구간을 지나는 시간 = zone ÷ speed = 96ms. 누르는 시간 오차의 표준편차를 70ms로 가정하면(미확인)
+// 씨앗일 때 한 번 눌러 성공할 확률이 절반 안팎, 보조 최대(×1.32, 127ms)일 때 약 63%다(2026-11-02, 전에는 0.2·0.75로 약 94%).
+export const CHALLENGE = { zone: 0.12, speed: 1.25, assistPerStage: 0.08, assistMax: 0.32 };
 
 // 깊은 대화가 열리는 레벨(관계 "대화" 이상과 함께). 창세기 끝까지의 레벨 속도(스테이지당 경험치 약 100)에 맞췄다. ★
 export const DEEP_LEVEL = { abraham: 5, jacob: 8, joseph: 10 };

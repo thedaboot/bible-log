@@ -14,7 +14,7 @@ import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
 import { layout } from '../src/map.js';
-import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL } from '../src/data/growth.js';
+import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL, CHALLENGE } from '../src/data/growth.js';
 import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook, codexDone } from '../src/growth.js';
 import { ITEMS } from '../src/data/items.js';
 import { ITEM_ICONS } from '../src/icons.js';
@@ -187,6 +187,12 @@ assert.equal(load(null), null);
     assert.ok(grant(c, `${w.id}/codex`, REWARDS.codexDone));
     assert.equal(codexDone(c, w), false, '칭호를 두 번 받음');
     assert.equal(grant(c, `${w.id}/codex`, REWARDS.codexDone), null);
+  }
+  // 도전 난이도: 금빛 구간을 지나는 시간이 씨앗일 때 80~130ms(성공률 절반 안팎, growth.js 주석의 가정)
+  {
+    const ms = (k) => (CHALLENGE.zone * k / CHALLENGE.speed) * 1000;
+    assert.ok(ms(1) >= 80 && ms(1) <= 130, `도전 구간 ${ms(1).toFixed(0)}ms: 씨앗일 때 성공률 절반 안팎이 아님`);
+    assert.ok(ms(1 + CHALLENGE.assistMax) < 200, '열매 보조가 커서 도전이 너무 쉬움');
   }
   // 예전 저장값: 고른 꾸미기는 갖게 하고, 고른 도구는 맨손으로
   mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { item: 'scroll' } }));
