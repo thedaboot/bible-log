@@ -27,6 +27,31 @@
   - 1-3은 `__dev.cain`(장면), `__dev.state`(저장값), `__dev.cainInterlude()`(막간만)로 확인한다.
   - 1-4부터는 `__dev.run('<스테이지>')`로 바로 시작하고, `__dev.auto = true`면 대사를 넘기고 첫 선택지·퀴즈 정답을 고르고 목표로 순간 이동하며 도전을 성공시킨다(자동 플레이). `__dev.speed = 4`는 걷기·동물 같은 게임 시간을 4배로 앞당긴다. 장면은 `__dev.field`, 막간만은 `__dev.interludeOf('<스테이지>')`.
   - 자동 플레이는 사람의 손을 대신할 뿐이라 화면(겹침, 가독성)은 중간중간 캡처해서 본다. 키보드 조작은 브라우저 도구의 실제 키 입력으로 따로 본다.
+  - `__dev.pauseAt = '대사 일부'`를 주면 그 대사가 나올 때 자동 플레이가 멈춘다. 멈춘 화면을 캡처한 뒤 다시 `__dev.auto = true`로 이어 간다.
+  - 2026-11-02 세션에서 쓴 시작 코드다. 페이지를 새로 고친 뒤 실행하고, 45초 제한을 넘기지 않게 진행은 `__st()`로 따로 읽는다.
+
+    ```js
+    // 1) 저장값 넣기(1-3까지 마친 상태, 지상 모습 있음). 넣은 뒤 location.reload()
+    localStorage.setItem('bible-rpg/save/v1', JSON.stringify({ name: '요한', look: { color: 'sky', hair: 'short', outfit: 'tunic' },
+      earthLook: { skin: 's2', height: 'mid', aura: 'sky', hair: 'short', hairColor: 'darkbrown', beard: 'none', outfit: 'tunic', outfitColor: 'linen', item: 'none' },
+      scene: 'cain', unlocked: ['prologue', 'creation-1', 'eden', 'fall', 'cain'], xp: 270, talents: 60, spirit: { joy: 6, faith: 6 },
+      bonds: {}, codex: {}, items: { tools: [], looks: [] }, claimed: ['creation/clear', 'eden/clear', 'cain/clear'], learned: ['walk', 'look'] }));
+    // 2) 첫 화면에서 이어하기 → 쉼터 → 스테이지 바로 시작. pause는 멈출 대사(없으면 null)
+    window.__start = async (id, pause) => {
+      [...document.querySelectorAll('.menu__item')].find((b) => b.textContent === '이어하기').click();
+      await new Promise((r) => setTimeout(r, 2000));
+      window.__errs = [];
+      addEventListener('error', (e) => __errs.push(String(e.message)));
+      addEventListener('unhandledrejection', (e) => __errs.push(String(e.reason?.stack || e.reason)));
+      Object.assign(__dev, { speed: 4, pauseAt: pause, auto: true });
+      __dev.run(id);
+    };
+    window.__go = (pause) => Object.assign(__dev, { pauseAt: pause, auto: true });
+    window.__st = () => JSON.stringify({ auto: __dev.auto, mode: __dev.mode, errs: __errs,
+      quest: document.getElementById('questTitle').textContent, line: document.getElementById('line').textContent,
+      claimed: __dev.state.claimed.filter((c) => c.startsWith(__dev.state.scene)).slice(-4) });
+    __start('noah', null); // 끝나면 claimed에 '<스테이지>/clear'가 생기고 쉼터로 돌아온다
+    ```
 - 걷기·동물 움직임은 프레임마다 `dt`(최대 0.05초)만큼만 진행해서, 자동화 창에서는 실제 시간의 10분의 1 정도로 느리다. 움직임을 확인할 때는 `__dev.eden.update(0.05, t, __dev.player.position)`을 여러 번 불러 시간을 앞당긴다.
 - 짧은 시간 연출(`tween`)의 중간 모습을 캡처하려면 `performance.now`를 잠시 느리게 바꾼다(예: 실제의 0.08배). 확인이 끝나면 원래 함수로 돌려놓는다.
 - 같은 이유로 CSS 애니메이션 시계가 0에 멈춰 있을 수 있다. 효과의 중간·끝 모습은 `el.getAnimations({ subtree: true })`로 `currentTime`을 정하거나 `finish()`를 부른 뒤 캡처한다. 알림(`toast`)은 2.2초 뒤 사라지므로 도구 호출 사이에 사라질 수 있다.
