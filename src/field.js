@@ -57,6 +57,8 @@ export function makeField(cfg) {
       const a = (i / 16) * Math.PI * 2;
       const p = st.c.clone().add(V(Math.cos(a) * (st.r + k), Math.sin(a) * (st.r + k)));
       if (p.length() > radius - 0.5 || collide(p.clone(), r) || Object.values(stages).some((o) => p.distanceTo(o.c) < o.r)) continue;
+      // 인물·동물 곁에는 서지 않는다(연출 중인 사람들 사이에 끼지 않게, 대천사가 설 자리까지 1.6)
+      if ([...Object.values(people), ...animals].some((o) => o.visible && o.position.distanceTo(p) < 1.6)) continue;
       const n = Math.ceil(from.distanceTo(p) / 0.25);
       let ok = true;
       for (let j = 1; j <= n && ok; j++) ok = !collide(from.clone().lerp(p, j / n).setY(0), r * 0.8);

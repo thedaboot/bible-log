@@ -81,6 +81,12 @@ export const CODEX = [
   { id: 'place/beersheba', name: '브엘세바 광야', stage: 'hagar', fact: '하갈과 아이가 물이 떨어져 헤맨 광야', ref: '창 21:14', memo: '덤불 그늘 말고는 숨을 곳이 없었다.' },
   { id: 'item/waterskin', name: '가죽 부대', stage: 'hagar', fact: '아브라함이 하갈에게 준 물 부대', ref: '창 21:14', memo: '샘물을 가득 채워 아이에게 건넨 부대. 이 스테이지의 기념물이다.' },
   { id: 'word/gen-16-13', name: '살피시는 하나님', stage: 'hagar', fact: '하갈이 자기에게 말씀하신 여호와를 나를 살피시는 하나님이라 불렀다', ref: '창 16:13', memo: '아무도 보지 않는다고 여긴 자리에서 들은 이름이다.' },
+
+  { id: 'place/mamre', name: '마므레 상수리나무', stage: 'mamre', fact: '여호와께서 아브라함에게 나타나신 곳', ref: '창 18:1', memo: '한낮에도 나무 그늘 아래는 서늘했다.' },
+  { id: 'person/guests', name: '세 사람', stage: 'mamre', fact: '아브라함의 장막 맞은편에 선 세 손님', ref: '창 18:2', memo: '얼굴은 볼 수 없었지만 그 말씀에 사라가 웃었다.' },
+  { id: 'creature/calf', name: '송아지', stage: 'mamre', fact: '아브라함이 손님을 위해 고른 좋은 송아지', ref: '창 18:7', memo: '소 떼에서 가장 부드럽고 좋은 송아지였다.' },
+  { id: 'item/cake', name: '고운 가루 떡', stage: 'mamre', fact: '사라가 고운 가루 세 스아로 만든 떡', ref: '창 18:6', memo: '나무 아래 상에 놓은 떡. 이 스테이지의 기념물이다.' },
+  { id: 'word/gen-18-14', name: '너무 어려운 일', stage: 'mamre', fact: '여호와에게 너무 어려운 일이 있겠느냐', ref: '창 18:14', memo: '웃던 사라에게 하신 말씀이다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지와 긍정형 문장(감수 목록에 오른다).

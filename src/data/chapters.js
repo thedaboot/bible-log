@@ -19,7 +19,7 @@ export const CHAPTERS = [
   { id: 'babel', title: '바벨탑', range: '창세기 11:1~9', points: [{ id: 'babel', title: '탑을 쌓는 들판' }] },
   { id: 'abram', title: '아브람의 부르심', range: '창세기 12, 15장', points: [{ id: 'abram', title: '하란에서 벧엘까지' }] },
   { id: 'hagar', title: '감찰하시는 하나님', range: '창세기 16, 21장', points: [{ id: 'hagar', title: '광야의 샘' }], side: 'abram' },
-  { id: 'mamre', title: '세 손님과 약속', range: '창세기 18장', points: [] },
+  { id: 'mamre', title: '세 손님과 약속', range: '창세기 18장', points: [{ id: 'mamre', title: '마므레 상수리나무' }] },
   { id: 'moriah', title: '모리아 산', range: '창세기 22장', points: [] },
   { id: 'rebekah', title: '우물가의 리브가', range: '창세기 24장', points: [] },
   { id: 'bethel', title: '야곱의 사닥다리', range: '창세기 25~28장', points: [] },
