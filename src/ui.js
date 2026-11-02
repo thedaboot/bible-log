@@ -37,7 +37,9 @@ export function fitLine(text, el) {
       const k = m.index + 1;
       if (best < 0 || Math.abs(k - line.length / 2) < Math.abs(best - line.length / 2)) best = k;
     }
-    return best < 0 ? line : `${split(line.slice(0, best))}\n${split(line.slice(best + 1))}`;
+    // 쉼표·마침표가 없으면 가운데에 가까운 띄어쓰기에서 나눠 두 줄 길이를 맞춘다("어디 / 있습니까?"처럼 한 어절만 남지 않게)
+    if (best < 0) for (const m of line.matchAll(/ /g)) if (best < 0 || Math.abs(m.index - line.length / 2) < Math.abs(best - line.length / 2)) best = m.index;
+    return best < 0 ? line : `${split(line.slice(0, best).trimEnd())}\n${split(line.slice(best + 1))}`;
   };
   return text.split('\n').map(split).join('\n');
 }
@@ -513,6 +515,13 @@ export function hideModal(box) {
   box.classList.add('is-closing');
   // 닫히는 사이 다시 열렸으면(is-closing이 지워졌으면) 숨기지 않는다
   setTimeout(() => { if (box.classList.contains('is-closing')) { box.hidden = true; box.classList.remove('is-closing'); } }, reducedMotion() ? 0 : 200);
+}
+
+// 대사 창이 화면 아래에서 차지하는 높이(휴대폰 배너를 그 바로 위에 띄울 때 쓴다)
+if (typeof document !== 'undefined' && typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(([e]) => {
+    if (e.target.offsetHeight) document.documentElement.style.setProperty('--dialog-h', `${innerHeight - e.target.getBoundingClientRect().top}px`);
+  }).observe(document.getElementById('dialog'));
 }
 
 export function fade(to) {

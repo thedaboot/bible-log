@@ -1227,8 +1227,12 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
 .toast[data-kind="level"]::before { background: var(--color-frame); clip-path: polygon(50% 0, 62% 36%, 100% 38%, 70% 60%, 80% 100%, 50% 76%, 20% 100%, 30% 60%, 0 38%, 38% 36%); }
 body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
 @media (max-width: 44.99rem) {
-  /* 휴대폰: HUD 아래, 퀘스트 창 위에 겹쳐 잠깐 뜬다 */
-  .toast { top: calc(max(var(--space-md), env(safe-area-inset-top)) + var(--hud-h) + var(--space-2xs)); z-index: 7; max-width: calc(100% - var(--space-md) * 2); }
+  /* 휴대폰: 위쪽은 HUD·퀘스트 창, 가운데는 인물이라 배너는 아래쪽에 띄운다.
+   * 걷는 중에는 조작 안내·메뉴 버튼 위, 대사 중에는 대사 창 바로 위(--dialog-h는 ui.js가 잰 대사 창 높이), 도전 중에는 도전 패널 위 */
+  .toast { top: auto; bottom: calc(max(var(--space-md), env(safe-area-inset-bottom)) + 9rem); z-index: 7; max-width: calc(100% - var(--space-md) * 2); animation-name: rise-banner; }
+  body:has(#dialog:not([hidden])) .toast { bottom: calc(var(--dialog-h, 9rem) + var(--space-lg)); }
+  body:has(#challenge:not([hidden])) .toast, body:has(#gauge:not([hidden])) .toast { bottom: calc(max(var(--space-md), env(safe-area-inset-bottom)) + 14rem); }
+  @keyframes rise-banner { from { opacity: 0; transform: translate(-50%, 12px); } }
 }
 
 /* 화면 밖 목표 표시: 화면 가장자리의 금빛 원과 목표 쪽 화살표(main.js edgeArrow가 자리와 방향을 정한다) */
@@ -1242,4 +1246,18 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
   .quest__items li.is-done:not(.is-new), .quest__items li.is-later { display: none; }
   /* 지상 꾸미기(전용 화면)도 '이 모습으로' 줄을 시트 아래에 붙인다 */
   .modal--page .look__actions { position: sticky; bottom: calc(-1 * var(--space-md)); padding-block: var(--space-sm); background: var(--color-paper); box-shadow: 0 -2px 0 var(--color-paper-3); }
+}
+/* 높이가 낮은 가로 화면(휴대폰 가로, 높이 30rem 이하): 폭은 PC 배치를 받지만 높이가 모자라 창들이 겹친다. 간추린다. */
+@media (orientation: landscape) and (max-height: 30rem) {
+  .hud { top: max(var(--space-xs), env(safe-area-inset-top)); left: max(var(--space-sm), env(safe-area-inset-left)); }
+  .quest { top: max(var(--space-xs), env(safe-area-inset-top)); right: max(var(--space-sm), env(safe-area-inset-right)); width: 15rem; padding: var(--space-2xs) var(--space-sm); }
+  .quest__title { margin: 0 0 var(--space-3xs); font-size: var(--text-small); }
+  .quest__count { display: inline; }
+  .quest__items li.is-done:not(.is-new), .quest__items li.is-later { display: none; }
+  .controls { bottom: max(var(--space-xs), env(safe-area-inset-bottom)); left: max(var(--space-sm), env(safe-area-inset-left)); padding: var(--space-3xs) var(--space-xs); }
+  .menu-btn { bottom: max(var(--space-xs), env(safe-area-inset-bottom)); right: max(var(--space-sm), env(safe-area-inset-right)); }
+  .gauge { bottom: max(var(--space-xs), env(safe-area-inset-bottom)); padding: var(--space-2xs) var(--space-sm); }
+  body:has(#gauge:not([hidden])) .controls, body:has(#challenge:not([hidden])) .controls { display: none; }
+  .toast { top: auto; bottom: calc(max(var(--space-xs), env(safe-area-inset-bottom)) + 6rem); }
+  body:has(#dialog:not([hidden])) .toast { bottom: calc(var(--dialog-h, 9rem) + var(--space-lg)); }
 }
