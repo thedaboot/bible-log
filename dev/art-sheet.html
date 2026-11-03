@@ -8,7 +8,8 @@
   body { background: #f3ead6; margin: 8px; overflow: auto; }
   #g { display: grid; grid-template-columns: repeat(10, 120px); gap: 6px; }
   figure { margin: 0; text-align: center; font: 12px sans-serif; color: #333; }
-  figure div { width: 96px; height: 96px; margin: 0 auto; background: #fffaf0; }
+  figure div { width: 96px; height: 96px; margin: 0 auto; background: var(--color-light); }
+  figure div + div { width: 48px; height: 48px; margin-top: 2px; background: var(--color-paper-2); }
 </style>
 </head>
 <body>
@@ -16,7 +17,7 @@
 <script type="module">
   import { CODEX } from '/src/data/codex.js';
   import { CODEX_ART } from '/src/codex-art.js';
-  document.getElementById('g').innerHTML = CODEX.map((e) => `<figure><div>${CODEX_ART[e.id] ?? ''}</div>${e.name}</figure>`).join('');
+  document.getElementById('g').innerHTML = CODEX.map((e) => `<figure><div>${CODEX_ART[e.id] ?? ''}</div><div>${CODEX_ART[e.id] ?? ''}</div>${e.name}</figure>`).join('');
 </script>
 </body>
 </html>

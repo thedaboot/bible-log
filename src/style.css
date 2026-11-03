@@ -1477,3 +1477,28 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
   .inv .codex__page > .inv__detail { position: sticky; top: 0; grid-column: 2; grid-row: 2; }
   .inv .codex__page > .slots { grid-column: 1; grid-row: 2; }
 }
+
+/* 낮은 가로 화면(높이 30rem 이하)의 메뉴·상점·도감(2026-11-03 추가 점검): 창 아래가 잘려 격자가 한두 줄만 보였다.
+   휴대폰 세로처럼 화면 전체 시트로 쓰고, 머리 막대를 얇게, 도감은 장 넘기기와 분류를 한 줄에, 격자 오른쪽에 설명을 둔다 */
+@media (orientation: landscape) and (max-height: 30rem) {
+  #menuBox { padding: 0; place-items: stretch; }
+  .menu-panel { width: 100%; max-height: none; height: 100dvh; gap: var(--space-xs); align-content: start; grid-auto-rows: max-content;
+    padding: var(--space-2xs) max(var(--space-md), env(safe-area-inset-right)) var(--space-sm) max(var(--space-md), env(safe-area-inset-left)); }
+  .menu-panel__top { position: sticky; top: calc(-1 * var(--space-2xs)); z-index: 2; align-items: center; background: var(--color-paper); box-shadow: 0 2px 0 var(--color-paper-3); }
+  .menu-panel .tab { min-height: 40px; padding-block: 0; }
+  .modal__panel .menu-panel__close { min-height: 40px; }
+  .codex { display: grid; grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr); align-items: center; column-gap: var(--space-sm); row-gap: var(--space-xs); }
+  .codex > .pager--book { grid-column: 1; }
+  .codex > .codex__cats { grid-column: 2; }
+  .codex > .codex__box, .codex > .codex__keys { grid-column: 1 / -1; }
+  .codex__cats .chip { min-height: 40px; }
+  .codex .codex__page { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; align-items: start; column-gap: var(--space-sm); row-gap: var(--space-xs); }
+  .codex .codex__page > * { grid-column: 1; }
+  .codex .codex__page > .codex__detail { grid-column: 2; grid-row: 1 / span 3; position: sticky; top: 0; }
+  .codex__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .codex__cell { min-height: 5.5rem; padding-block: var(--space-2xs); }
+  .slots { grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr)); }
+  .slot { min-height: 4.5rem; }
+  .slot:has(.slot__price) { min-height: 5.25rem; } /* 상점 칸은 값 줄까지 */
+  .codex__keys { display: none; }
+}

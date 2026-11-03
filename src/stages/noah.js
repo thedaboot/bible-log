@@ -506,10 +506,10 @@ export default {
     F.onUpdate(() => { if (g.player.visible) g.player.position.y = ark.rampY(g.player.position); });
     const onRamp = (p) => p.clone().setY(ark.rampY(p)); // 길 끝 판정이 높이까지 재므로 발판 위 길목은 발판 높이로 준다
     F.onFish = () => g.note('creature/fish');
-    g.cam(ARK.clone().setY(1.5), 15);
+    g.cam(ARK.clone().setY(1.5), 15, true);
     g.stage('door');
     await g.talk(data.lines.arrive.slice(0, 3));
-    g.cam(ARK.clone().setY(2.5), 19);
+    g.cam(ARK.clone().setY(2.5), 19, true);
     await g.talk(data.lines.arrive.slice(3));
     g.cam(null, 13);
     g.stage(null);
@@ -536,7 +536,7 @@ export default {
           await F.acts.walkTo(noah, sp.pos.clone().addScaledVector(ALONG, -1.1), 2.4); // 대천사는 관찰자의 화면 오른쪽(+ALONG)에 서므로 노아는 왼쪽에 선다
           F.acts.face(noah, ARK);
           F.acts.speak('noah');
-          g.cam(ARK.clone().addScaledVector(ALONG, (i - 1.5) * 2).setY(2.2), 17);
+          g.cam(ARK.clone().addScaledVector(ALONG, (i - 1.5) * 2).setY(2.2), 17, true);
           await ark.progress(++hits);
           g.reward(`build/${hits}`, 'step');
           g.cam(null, 13);
@@ -550,7 +550,7 @@ export default {
     g.meet('noah', 'walked', 'faith');
     await F.acts.walkTo(noah, NOAH);
     F.acts.face(noah, g.player.position);
-    g.cam(ARK.clone().setY(2.5), 19);
+    g.cam(ARK.clone().setY(2.5), 19, true);
     await g.talk(data.lines.built.slice(0, 2));
     g.cam(DOOR.clone().setY(1), 13);
     await g.talk(data.lines.built.slice(2));
@@ -602,7 +602,7 @@ export default {
     F.rain.visible = F.ripples.visible = true;
     F.water.visible = true;
     ark.floating = true;
-    g.cam(ark.g.position, 19);
+    g.cam(ark.g.position, 19, true);
     // 기다림이 3초를 넘지 않게 물이 차오르는 동안 대사를 함께 띄운다. 물은 들 → 언덕과 나무 → 산 순서로 잠근다.
     const rise = (to, ms) => { const from = F.water.position.y; return tween(ms, (p) => (F.water.position.y = from + (to - from) * easeOut(p))); };
     let r = rise(1.4, 4200);

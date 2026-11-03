@@ -66,21 +66,25 @@ function setEdges(on) {
 }
 
 // 천국 모습 고르기 창(옆 창, 휴대폰은 아래 시트)이 떠 있는 동안 내 캐릭터가 창에 가리지 않게 장면을 민다
+let wideShot = false;
 function sideView(on) { viewShift = on ? { x: 0.2, y: 0.2 } : null; resize(); }
 function resize() {
   const w = innerWidth, h = innerHeight, aspect = w / h;
   // 세로 화면(휴대폰): 높이 기준으로만 넓히면 가로로 보이는 폭이 데스크톱의 3분의 1로 줄어 대상이 화면 밖으로 나가고,
   // 가로 폭을 viewSize 전체로 맞추면 인물이 너무 작아진다(2026-11-02 사용자 캡처 S01). 가로 폭을 viewSize의 0.72배로 두고
   // 화면 밖 목표는 가장자리 화살표가 가리킨다. 창조의 일곱 날만 하늘과 땅 전체를 봐야 해서 viewSize 전체 폭이다.
-  const fitW = creation ? 1 : 0.72;
+  // 큰 구조물 전체를 보이는 장면(방주 등, g.cam의 wide)도 세로 화면에서 양 끝이 잘리지 않게 넓게 본다(2026-11-03, S22부터 남은 문제)
+  const fitW = creation ? 1 : wideShot ? 1.15 : 0.72;
   const view = aspect < 1 ? Math.max(viewSize * 1.35, (viewSize * fitW) / aspect) : viewSize;
   camera.left = (-view * aspect) / 2;
   camera.right = (view * aspect) / 2;
   camera.top = view / 2;
   camera.bottom = -view / 2;
   // 메뉴·패널이 없을 때도 대사 창이 덮는 쪽을 피해 장면을 민다: 세로 화면은 위로(가로 화면은 데스크톱처럼 그대로)
-  const shift = viewShift ?? (aspect < 1 ? { x: 0, y: 0.05 } : null);
-  if (shift) camera.setViewOffset(w, h, aspect >= 1 ? shift.x * w : 0, aspect >= 1 ? 0 : shift.y * h, w, h);
+  // 낮은 가로 화면(높이 30rem 이하)은 대사 창이 아래 40% 안팎을 덮어 인물이 획득 알림 높이에 걸렸다(2026-11-03 1-5 캡처). 장면을 10% 위로 민다
+  const lowLand = aspect >= 1 && h <= 480;
+  const shift = viewShift ?? (aspect < 1 ? { x: 0, y: 0.05 } : lowLand ? { x: 0, y: 0.1 } : null);
+  if (shift) camera.setViewOffset(w, h, aspect >= 1 ? shift.x * w : 0, aspect < 1 || (lowLand && !viewShift) ? shift.y * h : 0, w, h);
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
@@ -89,7 +93,7 @@ function resize() {
 }
 addEventListener('resize', resize);
 resize();
-function setView(size) { viewSize = size; resize(); }
+function setView(size, wide = false) { viewSize = size; wideShot = wide; resize(); }
 
 // ---------- 등장 요소 ----------
 let state = load() ?? newState();
@@ -1231,7 +1235,7 @@ function stageApi(id, mod) {
   const g = {
     F, state, player, V: (x, z) => new THREE.Vector3(x, 0, z),
     talk: (lines, opts) => talk(lines, state, opts),
-    cam: (p, view) => { camFocus = p ?? null; if (view) setView(view); },
+    cam: (p, view, wide = false) => { camFocus = p ?? null; if (view) setView(view, wide); },
     stage: (name) => setStage(name),
     quest: questFind,
     challenge: runChallenge,
