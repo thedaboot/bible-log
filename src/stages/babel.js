@@ -112,7 +112,9 @@ export default {
       radius: 2, hold: 1, holdLabel: () => '곁에서 듣는 중',
       onFound: async (t) => {
         F.acts.face(workers[t.i], g.player.position);
+        g.cam(workers[t.i].position.clone().lerp(g.player.position, 0.4)); // 말하는 일꾼이 화면 안에 오게(R6)
         await g.talk([data.lines.workers[t.i]]);
+        g.cam(null);
         F.acts.face(workers[t.i], TOWER);
         g.reward(`listen/${t.i}`, 'step');
       },
@@ -149,8 +151,14 @@ export default {
       text: (t) => `${['벽돌 나르는', '역청 바르는', '꼭대기를 보는', '터를 고르는'][t.i]} 일꾼 곁에 머물기`,
       radius: 2, hold: 1, holdLabel: () => '곁에서 듣는 중',
       onFound: async (t) => {
+        // 휴대폰 세로에서 말하는 일꾼이 화면 밖이나 대천사 뒤에 가려 있었다(2026-11-02 캡처, R6).
+        // 말하기 전에 일꾼이 관찰자의 화면 왼쪽(대천사 반대편)으로 한 걸음 다가오고, 말하는 동안 둘 사이를 비춘다
+        const side = g.player.position.clone().add(g.V(-1, 1).normalize().multiplyScalar(1.4));
+        await F.acts.walkTo(workers[t.i], side, 2.2);
         F.acts.face(workers[t.i], g.player.position);
+        g.cam(workers[t.i].position.clone().lerp(g.player.position, 0.4));
         await g.talk(data.lines.scattered.slice(t.i * 2, t.i * 2 + 2));
+        g.cam(null);
         F.acts.carry(F.bricks[t.i], null);
         F.bricks[t.i].position.copy(workers[t.i].position).setY(0.06);
         const w = workers[t.i];

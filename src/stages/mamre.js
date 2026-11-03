@@ -25,32 +25,6 @@ const SOURCES = [
   { id: 'curds', name: '엉긴 젖', text: '소 떼 곁에서 엉긴 젖 받기', pos: V(5, 2.2), color: 0xf6f0dc },
 ];
 
-// 땅에 엎드림(창 18:2 몸을 땅에 굽혀): 무릎을 꿇고(몸을 낮춤) 상체와 이마가 땅에 닿도록 숙이며 팔을 앞으로 뻗는다.
-// 공용 bow는 고개 숙임(인사)까지라 여기서 rig와 팔을 직접 움직인다. toward가 있으면 내려가며 그쪽으로 돈다.
-function prostrate(fig, toward) {
-  const u = fig.userData, { rig, arms } = u;
-  u.pose = 'bow';
-  const yaw0 = fig.rotation.y;
-  const turn = toward ? Math.atan2(Math.sin(Math.atan2(toward.x - fig.position.x, toward.z - fig.position.z) - yaw0), Math.cos(Math.atan2(toward.x - fig.position.x, toward.z - fig.position.z) - yaw0)) : 0;
-  const pose = (kneel, lean, reach) => {
-    rig.position.set(0, -0.34 * kneel, -0.18 * lean);
-    rig.rotation.set(1.15 * lean, 0, 0);
-    arms?.forEach((a, i) => { a.rotation.x = -2.75 * reach; a.rotation.z = (i ? 1 : -1) * (0.12 + 0.1 * reach); });
-  };
-  // 무릎 꿇기 → 이마를 땅에 대기(천천히), 끝은 엎드린 채로 둔다. 일어날 때는 rise를 부른다.
-  return tween(650, (p) => { fig.rotation.y = yaw0 + turn * easeOut(p); pose(easeOut(p), 0.25 * easeOut(p), 0); })
-    .then(() => tween(1100, (p) => { const k = easeOut(p); pose(1, 0.25 + 0.75 * k, k); }));
-}
-function rise(fig) {
-  const u = fig.userData, { rig, arms } = u;
-  const y0 = rig.position.y, z0 = rig.position.z, x0 = rig.rotation.x, a0 = arms?.map((a) => a.rotation.x) ?? [];
-  return tween(900, (p) => {
-    const k = easeOut(p);
-    rig.position.set(0, y0 * (1 - k), z0 * (1 - k));
-    rig.rotation.set(x0 * (1 - k), 0, 0);
-    arms?.forEach((a, i) => { a.rotation.x = a0[i] * (1 - k); a.rotation.z = (i ? 1 : -1) * 0.12; });
-  }).then(() => { u.pose = null; });
-}
 // 창 18:12 속으로 웃음: 몸을 움츠려 낮추고 손을 입가로 모은 채 어깨를 들썩인다.
 function giggle(fig) {
   const u = fig.userData, { rig, arms } = u;
@@ -139,11 +113,11 @@ export default {
     g.note('person/guests');
     // 창 18:2 달려 나가 땅에 엎드림: 서술과 함께 달려가 무릎 꿇고 이마를 땅에 댄다. "내 주여"는 엎드린 채 말한다.
     await F.acts.bow(abraham, 0);
-    const bowDown = F.acts.walkTo(abraham, TABLE.clone().addScaledVector(ALONG, 1.8), 2.4).then(() => prostrate(abraham, GUESTS[1]));
+    const bowDown = F.acts.walkTo(abraham, TABLE.clone().addScaledVector(ALONG, 1.8), 2.4).then(() => F.acts.prostrate(abraham, GUESTS[1]));
     await g.talk(data.lines.arrive.slice(2, 3));
     await bowDown;
     await g.talk(data.lines.arrive.slice(3, 4));
-    await rise(abraham);
+    await F.acts.rise(abraham);
     g.note('place/mamre');
     // 아브라함이 장막과 소 떼로 달려간다(창 18:6~7)
     F.acts.walkTo(abraham, DOOR, 2.4);

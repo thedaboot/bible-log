@@ -1085,7 +1085,7 @@ const GRACE_MS = 150; // 도전 판정 여유: 누르기 전 이 시간 안에 �
 // 난도(2026-11-03 사용자 F18 "갈수록 어렵게"): 성공할 때마다, 그리고 같은 스테이지의 다음 도전(tier)일수록 구간이 좁아지고 표시가 빨라진다.
 // 성공 k번째: 속도 ×(1 + 0.12k), 구간 ×(1 − 0.08k). tier: 속도 ×(1 + 0.15·tier), 구간 ×(1 − 0.1·tier). 구간은 기본의 0.5배, 속도는 1.8배에서 멈춘다.
 const challengeLevel = (k, tier = 0) => ({ speed: Math.min(1.8, (1 + 0.12 * k) * (1 + 0.15 * tier)), zone: Math.max(0.5, (1 - 0.08 * k) * (1 - 0.1 * tier)) });
-function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, speed = CHALLENGE.speed, tier = 0 }) {
+function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, onMiss, missText = '다시 해 보세요', speed = CHALLENGE.speed, tier = 0 }) {
   return new Promise((resolve) => {
     const assist = assistOf(state, fruits);
     const left = new Set(spots);
@@ -1114,7 +1114,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       // 조금 늦게 온다. 표시는 0.1초에 구간 폭(0.12)만큼 움직여서 그 사이에 구간을 벗어났다. 최근 GRACE_MS 안에 구간에 있었으면 성공이다.
       const now = performance.now();
       const inZone = (m) => m >= ch.zone[0] && m <= ch.zone[1];
-      if (!inZone(ch.m) && !ch.hist.some((h) => now - h.t <= GRACE_MS && inZone(h.m))) { label('다시 해 보세요'); flash('is-miss'); return; }
+      if (!inZone(ch.m) && !ch.hist.some((h) => now - h.t <= GRACE_MS && inZone(h.m))) { label(missText); flash('is-miss'); onMiss?.(sp); return; }
       // 구간 한가운데(가운데 40%)에 맞히면 "딱 맞아요"
       const mid = (ch.zone[0] + ch.zone[1]) / 2, half = (ch.zone[1] - ch.zone[0]) / 2;
       const best = Math.min(Math.abs(ch.m - mid), ...ch.hist.filter((h) => now - h.t <= GRACE_MS).map((h) => Math.abs(h.m - mid)));
@@ -1590,7 +1590,7 @@ function tick() {
 
 // 개발 서버에서만: 브라우저 점검용으로 캐릭터와 세계에 접근한다(배포 빌드에는 빠진다).
 // run은 쉼터의 걸어서 닿는 자리를 지우고 시작한다(지도에서 들어갈 때와 같다).
-if (import.meta.env.DEV) globalThis.__dev = { player, get heaven() { return heaven; }, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => { stopWalk(); $('title').hidden = true; refreshHud(); showHud(true); titleView = false; viewShift = null; resize(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`) };
+if (import.meta.env.DEV) globalThis.__dev = { player, get heaven() { return heaven; }, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => { stopWalk(); $('title').hidden = true; refreshHud(); showHud(true); titleView = false; viewShift = null; resize(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`), goNext: () => { if (mode !== 'walk') return; if (holdQuest?.cur) holdQuest.p = 1; else if (aimPos) { player.position.copy(aimPos).add(new THREE.Vector3(0.6, 0, 0.6)); land()?.collide(player.position, 0.35); } } }; // goNext: 키보드 점검(R3)에서 걷는 거리만 건너뛴다
 
 scene.background = new THREE.Color(0xfdf3d8);
 player.position.set(0, 0, -3);

@@ -174,7 +174,7 @@ export default {
     await limp;
     F.acts.face(jacob, ESAU_FROM);
     // 야곱이 일곱 번 엎드리며 다가가는 동안 에서가 달려온다(창 33:3~4). 절은 대사와 함께 진행한다.
-    const bows = (async () => { for (let i = 0; i < 7; i++) { await F.acts.bow(jacob, 0.6, 300); await F.acts.bow(jacob, 0, 300); } })();
+    const bows = (async () => { for (let i = 0; i < 7; i++) { await F.acts.prostrate(jacob, ESAU_FROM, 0.3); await F.acts.rise(jacob, 0.3); } })(); // 창 33:3 땅에 굽힘(R5)
     const run = F.acts.walkTo(esau, MEET.clone().addScaledVector(ALONG, 0.4), 3);
     await g.talk(data.lines.meet.slice(1, 2));
     await Promise.all([bows, run]);

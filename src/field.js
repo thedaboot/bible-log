@@ -160,7 +160,34 @@ export function makeField(cfg) {
     day: () => acts.sky(sky, 0, 0),
     dusk: () => acts.sky(0xe8a878, 0.4, 1),
     night: () => acts.sky(0x1c2340, 0.75, 0),
-    // 고개를 숙이거나(엎드림 0.6, 절 0.35) 바로 선다(0)
+    // 땅에 엎드림(창 18:2, 24:26이 아닌 '땅에 굽혀' 장면: 33:3, 42:6, 50:18): 무릎을 꿇고 상체와 이마를 땅에 대며 팔을 앞으로 뻗는다.
+    // 고개만 숙이는 bow와 나눈다(quests-and-staging.md). toward가 있으면 내려가며 그쪽으로 돈다. k는 걸리는 시간 배수(일곱 번 엎드림은 짧게).
+    // 끝은 엎드린 채로 두고, 일어날 때는 rise를 부른다. 2026-11-03 R5에 1-7(mamre.js)에서 옮겼다.
+    prostrate: (fig, toward = null, k = 1) => {
+      const u = fig.userData, { rig, arms } = u;
+      u.pose = 'bow';
+      const yaw0 = fig.rotation.y;
+      const want = toward ? Math.atan2(toward.x - fig.position.x, toward.z - fig.position.z) : yaw0;
+      const turn = Math.atan2(Math.sin(want - yaw0), Math.cos(want - yaw0));
+      const pose = (kneel, lean, reach) => {
+        rig.position.set(0, -0.34 * kneel, -0.18 * lean);
+        rig.rotation.set(1.15 * lean, 0, 0);
+        arms?.forEach((a, i) => { a.rotation.x = -2.75 * reach; a.rotation.z = (i ? 1 : -1) * (0.12 + 0.1 * reach); });
+      };
+      return tween(650 * k, (p) => { fig.rotation.y = yaw0 + turn * easeOut(p); pose(easeOut(p), 0.25 * easeOut(p), 0); })
+        .then(() => tween(1100 * k, (p) => { const e = easeOut(p); pose(1, 0.25 + 0.75 * e, e); }));
+    },
+    rise: (fig, k = 1) => {
+      const u = fig.userData, { rig, arms } = u;
+      const y0 = rig.position.y, z0 = rig.position.z, x0 = rig.rotation.x, a0 = arms?.map((a) => a.rotation.x) ?? [];
+      return tween(900 * k, (p) => {
+        const e = easeOut(p);
+        rig.position.set(0, y0 * (1 - e), z0 * (1 - e));
+        rig.rotation.set(x0 * (1 - e), 0, 0);
+        arms?.forEach((a, i) => { a.rotation.x = a0[i] * (1 - e); a.rotation.z = (i ? 1 : -1) * 0.12; });
+      }).then(() => { u.pose = null; });
+    },
+    // 고개를 숙이거나(절 0.35) 바로 선다(0)
     bow: (fig, k = 0.35, ms = 600) => {
       fig.userData.pose = k ? 'bow' : null;
       const { rig } = fig.userData;

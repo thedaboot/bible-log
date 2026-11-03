@@ -75,9 +75,9 @@ export default {
     await arrive;
     brothers.forEach((b) => F.acts.face(b, JOSEPH));
     F.acts.face(joseph, YARD);
-    await Promise.all(brothers.map((b) => F.acts.bow(b, 0.6)));
+    await Promise.all(brothers.map((b) => F.acts.prostrate(b, JOSEPH, 0.7))); // 창 42:6 땅에 엎드려 절함(R5)
     await g.talk(data.lines.arrive.slice(2, 5));
-    await Promise.all(brothers.map((b) => F.acts.bow(b, 0)));
+    await Promise.all(brothers.map((b) => F.acts.rise(b, 0.7)));
     g.stage(null);
     g.cam(null, 13);
     await g.talk(data.lines.arrive.slice(5));
@@ -158,9 +158,9 @@ export default {
 
     // 창 50:15~21
     await g.talk(data.lines.end.slice(0, 2));
-    await Promise.all(brothers.map((b) => F.acts.bow(b, 0.6)));
+    await Promise.all(brothers.map((b) => F.acts.prostrate(b, joseph.position, 0.7))); // 창 50:18 그의 앞에 엎드림(R5)
     await g.talk(data.lines.end.slice(2, 5));
-    await Promise.all(brothers.map((b) => F.acts.bow(b, 0)));
+    await Promise.all(brothers.map((b) => F.acts.rise(b, 0.7)));
     g.stage(null);
     g.cam(null, 13);
     await g.talk(data.lines.end.slice(5));
