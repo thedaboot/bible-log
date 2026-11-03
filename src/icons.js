@@ -437,6 +437,103 @@ export const ITEM_ICONS = {
     '...obbo...',
     '...oooo...',
   ], '수금'),
+  // 2026-11-03 상점 귀한 물건
+  myrrh: pixel([
+    '....oo....',
+    '...oggo...',
+    '..oooooo..',
+    '..ogggdo..',
+    '.obbbbbbo.',
+    'obblbbbbdo',
+    'obbbbbbbdo',
+    'obbbbbbddo',
+    '.obbbbddo.',
+    '..oooooo..',
+  ], '몰약 합'),
+  alabaster: pixel([
+    '...oooo...',
+    '...ollo...',
+    '...ollo...',
+    '..ollllo..',
+    '.ollllllo.',
+    'olgllllldo',
+    'ollllllldo',
+    'ollllllldo',
+    '.ollllldo.',
+    '..oooooo..',
+  ], '옥합'),
+  pearl: pixel([
+    '..........',
+    '...oooo...',
+    '..ollllo..',
+    '.olgllldo.',
+    '.ollllldo.',
+    '.ollllddo.',
+    '..oldddo..',
+    '...oooo...',
+    '..........',
+    '..........',
+  ], '값진 진주'),
+  budrod: pixel([
+    '..ov..ol..',
+    '.ovvo.olo.',
+    '..ooobooo.',
+    '....obvo..',
+    '....obo...',
+    '...vobo...',
+    '....obo...',
+    '....obo...',
+    '....obo...',
+    '....ooo...',
+  ], '싹 난 지팡이'),
+  breastplate: pixel([
+    '..o....o..',
+    '..ob..bo..',
+    '.oooooooo.',
+    '.ogrgwgvo.',
+    '.oggggggo.',
+    '.ogsgrgwo.',
+    '.oggggggo.',
+    '.ogvgkgro.',
+    '.ogggggdo.',
+    '..oooooo..',
+  ], '판결 흉패'),
+  goldplate: pixel([
+    '..........',
+    '..........',
+    'wwwwwwwwww',
+    'w.oooooo.w',
+    'wwoggggoww',
+    '..oglgdo..',
+    '..oggddo..',
+    '..oooooo..',
+    '..........',
+    '..........',
+  ], '성결 금패'),
+  menorah: pixel([
+    'g.g.g.g.g.',
+    'o.o.o.o.o.',
+    'og.ogo.go.',
+    '.ogggggo..',
+    '...ogo....',
+    '...ogo....',
+    '...ogo....',
+    '..oggdo...',
+    '.oggggdo..',
+    '.oooooooo.',
+  ], '금 등잔대'),
+  stars: pixel([
+    '....go....',
+    '.go.oo.go.',
+    '.oo....oo.',
+    '..........',
+    'go......go',
+    'oo......oo',
+    '..........',
+    '..go..go..',
+    '..oo..oo..',
+    '..........',
+  ], '일곱 별'),
 };
 
 // 새싹: 열매 단계로 열린 선택지에 다는 표시(docs/design.md "막간 화면")
@@ -453,7 +550,7 @@ export const SPROUT = pixel([
 
 // 머리 모양 미리보기(지상 꾸미기 칩, S11): 정면 얼굴(빛)과 머리(갈색)
 export const HAIR_ICONS = {
-  // 2026-11-03 F06: 기본 셋(앞머리·어깨 머리·옆머리)과 상점 셋
+  // 2026-11-03 F06: 기본 셋(일자앞머리·어깨 단발·옆가르마)과 상점 셋. 이름은 props.js HAIR_NAMES와 같다
   fringe: pixel([
     '...oooo...',
     '..obbbbo..',
@@ -465,7 +562,7 @@ export const HAIR_ICONS = {
     '..ollllo..',
     '...oooo...',
     '..........',
-  ], '앞머리'),
+  ], '일자앞머리'),
   shoulder: pixel([
     '...oooo...',
     '..obbbbo..',
@@ -477,7 +574,7 @@ export const HAIR_ICONS = {
     '.obboobbo.',
     '..oo..oo..',
     '..........',
-  ], '어깨 머리'),
+  ], '어깨 단발'),
   side: pixel([
     '..ooooo...',
     '.obbbbbo..',
@@ -489,7 +586,7 @@ export const HAIR_ICONS = {
     '..ollllo..',
     '...oooo...',
     '..........',
-  ], '옆머리'),
+  ], '옆가르마'),
   locks: pixel([
     '...oooo...',
     '..obbbbo..',
@@ -525,7 +622,7 @@ export const HAIR_ICONS = {
     '..ollllo..',
     '...oooo...',
     '..........',
-  ], '땋은 관'),
+  ], '둘러 땋기'),
   none: pixel([
     '..........',
     '...oooo...',
@@ -537,7 +634,7 @@ export const HAIR_ICONS = {
     '..ollllo..',
     '...oooo...',
     '..........',
-  ], '없음'),
+  ], '민머리'),
   short: pixel([
     '...oooo...',
     '..obbbbo..',
@@ -549,7 +646,7 @@ export const HAIR_ICONS = {
     '..ollllo..',
     '...oooo...',
     '..........',
-  ], '단발'),
+  ], '짧은 머리'),
   long: pixel([
     '...oooo...',
     '..obbbbo..',
@@ -561,7 +658,7 @@ export const HAIR_ICONS = {
     'obbllllbbo',
     'obboooobbo',
     'oo......oo',
-  ], '장발'),
+  ], '긴 생머리'),
   tied: pixel([
     '...oooo.oo',
     '..obbbbobo',
@@ -573,7 +670,7 @@ export const HAIR_ICONS = {
     '..ollllo..',
     '...oooo...',
     '..........',
-  ], '묶은 머리'),
+  ], '말총머리'),
   curly: pixel([
     '.oooooooo.',
     'obbobbobbo',
@@ -597,7 +694,7 @@ export const HAIR_ICONS = {
     '..ollllobo',
     '...oooo.ob',
     '........oo',
-  ], '땋은 머리'),
+  ], '땋아 내림'),
   bun: pixel([
     '...oooo...',
     '...obbo...',
@@ -621,7 +718,7 @@ export const HAIR_ICONS = {
     '..ollllo..',
     '...oooo...',
     '..........',
-  ], '짧은 머리'),
+  ], '짧게 깎음'),
   wavy: pixel([
     '..oooooo..',
     '.obbbbbbo.',
@@ -633,7 +730,7 @@ export const HAIR_ICONS = {
     'ob.ollo.bo',
     '.b.oooo.b.',
     '..........',
-  ], '물결 머리'),
+  ], '물결 단발'),
   twin: pixel([
     '...oooo...',
     '..obbbbo..',

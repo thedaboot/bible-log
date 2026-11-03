@@ -25,7 +25,7 @@ export const CODEX = [
   { id: 'creature/grape', name: '포도나무', stage: 'eden', fact: '정탐꾼이 메고 온 큰 포도송이', ref: '민 13:23', memo: '송이가 무거워 가지가 휘어 있었다.' },
   { id: 'creature/olive', name: '올리브나무', stage: 'eden', fact: '약속의 땅에 나는 열매', ref: '신 8:8', memo: '잎 뒷면이 은빛으로 반짝였다.' },
   { id: 'creature/date', name: '대추야자나무', stage: 'eden', fact: '종려나무 성읍 여리고', ref: '신 34:3', memo: '높은 꼭대기에 열매가 주렁주렁 달렸다.' },
-  { id: 'creature/bird', name: '공중의 새', stage: 'eden', fact: '아담이 이름을 지어 준 하늘의 새', ref: '창 2:20', memo: '나뭇가지에 앉아 고개를 갸웃하며 제 이름을 들었다.' },
+  { id: 'creature/bird', name: '참새', stage: 'eden', fact: '아담이 이름을 지어 준 공중의 새', ref: '창 2:20', memo: '나뭇가지에서 꽁지를 까딱이며 제 이름을 들었다. 두 마리가 한 앗사리온에 팔리는 작은 새다(마 10:29).' },
   { id: 'creature/serpent', name: '뱀', stage: 'eden', fact: '들짐승 가운데 가장 간교했다', ref: '창 3:1', memo: '말은 부드러웠지만 하나님의 말씀을 비틀었다.' },
 
   { id: 'place/eden', name: '에덴 동산', stage: 'eden', fact: '하나님께서 동쪽에 만드신 동산', ref: '창 2:8', memo: '보기에 아름답고 먹기에 좋은 나무가 가득했다.' },

@@ -5,7 +5,9 @@ import {
   PAL, mat, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, collapseFigure, turnFigure, makeLightPillar, makeSpiritLight,
 } from './props.js';
 import { tween, easeOut } from './anim.js';
-import { FLOCK } from './data/cain.js';
+import { CAIN, FLOCK } from './data/cain.js';
+import { toast } from './ui.js';
+import { SPEAKERS } from './text.js';
 
 const V = (x, z) => new THREE.Vector3(x, 0, z);
 const UP = new THREE.Vector3(0, 1, 0);
@@ -442,7 +444,66 @@ export function makeCain(scene) {
     return an.position.distanceTo(dest) < 0.35;
   }
 
+  // 밭 밟기(각색, CAIN.furrow): 경고(main.js 인사 CAIN_GREETING)를 들은 뒤 밭을 또 밟으면 가인이 몇 걸음 따라와 팔을 휘두르며 꾸짖는다.
+  // 관찰자가 밭을 벗어나면 멈춰 제자리로 돌아가고, 한 번 꾸짖은 뒤 4초는 쉰다. 연출(stage)·대사 중에는 반응하지 않고, 걷기를 막지 않는다.
+  const SIDE = V(1, -1).normalize(); // 화면 가로 방향(카메라가 (+x, +z)에서 본다)
+  const onSoil = (p) => Math.abs(p.x - FIELD.x) < 2.2 && Math.abs(p.z - FIELD.z) < 1.6;
+  const furrow = { warned: false, armed: false, from: null, t: 0, rest: 0, line: 0 };
+  function calm() {
+    const { rig } = cain.userData;
+    rig.position.y = rig.rotation.x = rig.rotation.z = 0;
+    cain.userData.pose = null;
+  }
+  function furrowTick(dt, t, pp) {
+    furrow.rest = Math.max(0, furrow.rest - dt);
+    if (!pp || !globalThis.document) return;
+    const u = cain.userData, mine = u.pose === 'furrow';
+    const talking = !document.getElementById('dialog').hidden;
+    const on = onSoil(pp);
+    if (!furrow.warned) {
+      // 가인 곁에서 대사 창이 뜬 순간(main.js 인사)을 경고로 본다
+      if (talking && pp.distanceTo(cain.position) < 2.6) furrow.warned = true;
+      return;
+    }
+    if (!mine) {
+      if (talking) return;
+      furrow.from ??= pp.clone();
+      // 경고 뒤 밭을 한 번 벗어났거나 밭 위를 더 걸었으면 "다시 밟은" 것으로 본다
+      if (!on || pp.distanceTo(furrow.from) > 1.2) furrow.armed = true;
+      const free = !stage && cain.visible && !u.pose && !movers.has(cain) && cain.position.distanceTo(CAIN_SPOT) < 0.3;
+      if (!(on && furrow.armed && free && !furrow.rest)) return;
+      u.pose = 'furrow';
+      furrow.t = 0;
+      const line = CAIN.furrow[furrow.line++ % CAIN.furrow.length]; // 차례로 돌아 같은 말이 이어지지 않는다
+      toast(`${SPEAKERS.cain}: ${line.text}`, { kind: 'say' });
+    }
+    furrow.t += dt;
+    // 밭을 벗어났거나 다 꾸짖었으면 제자리로 돌아간다. 연출·대사가 시작되어도 그만둔다(연출이 가인을 옮기면 그쪽을 따른다).
+    if (!on || furrow.t > 2.6 || stage || talking || !cain.visible) {
+      calm();
+      Object.assign(furrow, { rest: 4, armed: false, from: pp.clone() });
+      if (!movers.has(cain)) walkTo(cain, CAIN_SPOT, 1.4).then(() => face(cain, CAIN_SPOT.clone().add(V(1, 1))));
+      return;
+    }
+    // 관찰자 쪽으로 성큼 다가간다. 화면에서 겹치지 않게 관찰자의 화면 가로 옆(SIDE, 가인이 오던 쪽) 한 걸음에 서고, 제자리에서 3.2 넘게는 가지 않는다.
+    const side = Math.sign(tmp.subVectors(cain.position, pp).dot(SIDE)) || 1;
+    const goal = pp.clone().setY(0).addScaledVector(SIDE, 1.1 * side);
+    if (goal.distanceTo(CAIN_SPOT) > 3.2) goal.sub(CAIN_SPOT).setLength(3.2).add(CAIN_SPOT);
+    const d = stepToward(cain, goal, 2.6, dt, 0.3);
+    turnFigure(cain, Math.atan2(pp.x - cain.position.x, pp.z - cain.position.z), dt);
+    animateFigure(cain, d > 0.1 ? 2.6 : 0, dt, t, 1.3);
+    // 꾸짖는 몸짓: 한 팔을 머리 위로 들어 휘두르고, 다른 팔은 앞으로 내지르며 몸을 들썩인다
+    const { rig, arms } = u;
+    rig.position.y += Math.abs(Math.sin(t * 9)) * 0.08;
+    rig.rotation.x = 0.12 + Math.sin(t * 9) * 0.06;
+    if (arms) {
+      arms[0].rotation.x = -2.5 + Math.sin(t * 14) * 0.5;
+      arms[1].rotation.x = -1.1 + Math.sin(t * 14 + Math.PI) * 0.35;
+    }
+  }
+
   function update(dt, t, playerPos = null) {
+    furrowTick(dt, t, playerPos);
     if (pillar.visible) pillar.userData.pulse(t);
     if (cry) moundMat.emissiveIntensity = 0.35 + 0.2 * Math.sin(t * 2.4);
     for (const [fig, m] of movers) {

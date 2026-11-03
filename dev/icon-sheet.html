@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- 개발 점검용: 머리·소품 픽셀 아이콘을 크게 늘어놓는다 -->
+<link rel="stylesheet" href="/src/tokens.css">
+<link rel="stylesheet" href="/src/style.css">
+<style>
+  body { background: #f3ead6; margin: 8px; overflow: auto; }
+  #g { display: grid; grid-template-columns: repeat(12, 110px); gap: 6px; }
+  figure { margin: 0; text-align: center; font: 12px sans-serif; color: #333; }
+  figure div { width: 72px; height: 72px; margin: 0 auto; background: var(--color-light); }
+</style>
+</head>
+<body>
+<div id="g"></div>
+<script type="module">
+  import { HAIR_ICONS, ITEM_ICONS } from '/src/icons.js';
+  import { LOOK } from '/src/props.js';
+  const all = [...LOOK.earth.hair.map((o) => [o.name, HAIR_ICONS[o.id]]), ...Object.entries(ITEM_ICONS).map(([id, svg]) => [id, svg])];
+  document.getElementById('g').innerHTML = all.map(([n, svg]) => `<figure><div>${svg ?? ''}</div>${n}</figure>`).join('');
+  window.__ready = true;
+</script>
+</body>
+</html>

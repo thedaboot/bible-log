@@ -5,8 +5,8 @@
 // note는 성경에서 그 물건이 나오는 자리 한 줄이다.
 // slot: 몸에 다는 자리. 손(hand)·허리(waist)·머리(head)에 하나씩, 한 번에 셋까지 단다(2026-11-02 사용자 요청 S11 "소품은 최대 3개").
 // stage: 그 스테이지를 마치면 받는 대표 소품(인물의 물건, 사용자 요청 "아브라함의 지팡이 같은 대표 소품").
-// 달란트 계획(growth.md "달란트"): 창세기 끝 약 320, 요한계시록 끝 약 3,000(계산값). 상점 합계 1,190이라 창세기에서는 둘쯤,
-// 성경 중반에 다 산다. 생명의 면류관(500)은 마지막 목표다.
+// 달란트 계획(growth.md "달란트 계획"): 창세기 끝 약 320, 요한계시록 끝 약 3,000(계산값). 상점 합계 6,270이라 성경을 끝내도
+// 다 사지 못한다. 무엇을 살지 골라 모으게 한다(2026-11-03 사용자 "달란트 모으는 맛").
 export const SLOTS = { hand: '손', waist: '허리', head: '머리' };
 export const SLOT_KEY = { hand: 'item', waist: 'waist', head: 'head' }; // earthLook에서 그 자리의 키
 export const ITEMS = [
@@ -46,13 +46,22 @@ export const ITEMS = [
   { id: 'belt', kind: 'look', slot: 'waist', price: 150, name: '금띠', ref: '계 1:13', note: '인자 같은 이가 가슴에 띤 금띠' },
   { id: 'censer', kind: 'look', slot: 'hand', price: 200, name: '금 향로', ref: '계 8:3', note: '천사가 성도의 기도와 함께 드린 금 향로' },
   { id: 'crown', kind: 'look', slot: 'head', price: 500, name: '생명의 면류관', ref: '계 2:10', note: '죽도록 충성하는 이에게 주시는 면류관' },
+  // 2026-11-03 사용자 "더 많은 물품, 조금 더 희귀한 것": 성경에 한 번 나오는 귀한 물건. 값은 귀한 정도대로 200~1,000
+  { id: 'myrrh', kind: 'look', slot: 'hand', price: 200, name: '몰약 합', ref: '마 2:11', note: '동방 박사들이 아기 예수께 드린 몰약' },
+  { id: 'alabaster', kind: 'look', slot: 'hand', price: 300, name: '옥합', ref: '막 14:3', note: '한 여자가 깨뜨려 예수의 머리에 부은 나드 향유의 옥합' },
+  { id: 'pearl', kind: 'look', slot: 'hand', price: 400, name: '값진 진주', ref: '마 13:46', note: '장사가 가진 것을 다 팔아 산 값진 진주 하나' },
+  { id: 'budrod', kind: 'look', slot: 'hand', price: 500, name: '싹 난 지팡이', ref: '민 17:8', note: '움이 돋고 꽃이 피어 살구 열매가 열린 아론의 지팡이' },
+  { id: 'breastplate', kind: 'look', slot: 'waist', price: 600, name: '판결 흉패', ref: '출 28:15', note: '열두 지파의 이름을 새긴 보석 열두 개를 단 대제사장의 흉패' },
+  { id: 'goldplate', kind: 'look', slot: 'head', price: 700, name: '성결 금패', ref: '출 28:36', note: '여호와께 성결이라 새겨 청색 끈으로 관 앞에 맨 순금 패' },
+  { id: 'menorah', kind: 'look', slot: 'hand', price: 800, name: '금 등잔대', ref: '출 25:31', note: '순금을 쳐서 만든 일곱 가지 등잔대' },
+  { id: 'stars', kind: 'look', slot: 'hand', price: 1000, name: '일곱 별', ref: '계 1:16', note: '인자 같은 이가 오른손에 든 일곱 별' },
 ];
 // 상점에서 파는 머리 모양과 옷(2026-11-03 사용자 F06 "옷이나 머리도 어느 정도는 기본 제공하나, 이쁜 머리는 상점에서").
 // kind는 지상 모습의 키(hair·outfit)다. 사면 state.items.looks에 들고, 지상 모습에 바로 입힌다. props.js LOOK.earth에 같은 id가 있다.
 export const STYLES = [
   { id: 'longwave', kind: 'hair', price: 100, name: '긴 물결', ref: '아 4:1', note: '길르앗 산기슭에 누운 염소 떼 같은 머리털' },
   { id: 'locks', kind: 'hair', price: 120, name: '일곱 가닥', ref: '삿 16:13', note: '삼손이 일곱 가닥으로 땋아 내린 머리' },
-  { id: 'crownbraid', kind: 'hair', price: 140, name: '땋은 관', ref: '아 7:5', note: '자줏빛 머리카락을 땋아 머리에 두른 모양' },
+  { id: 'crownbraid', kind: 'hair', price: 140, name: '둘러 땋기', ref: '아 7:5', note: '자줏빛 머리카락을 땋아 머리에 두른 모양' },
   { id: 'coat', kind: 'outfit', price: 180, name: '채색옷', ref: '창 37:3', note: '야곱이 요셉에게 지어 입힌 여러 빛깔의 옷' },
 ];
 // 상점 진열(값 순서): 꾸미기 소품과 머리·옷

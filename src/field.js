@@ -110,9 +110,58 @@ export function makeField(cfg) {
   // ---------- 인물 이동: walkTo(fig, 목표) → 도착하면 끝나는 Promise. 막혀서 1.5초 넘게 못 가면 목표에 둔다. ----------
   const movers = new Map();
   const tmp = new THREE.Vector3();
+  // 곧게 걸어 닿는지: 0.25 간격으로 짚어 장애물에 걸리는지 본다
+  const lineClear = (a, b, r) => { const n = Math.max(1, Math.ceil(a.distanceTo(b) / 0.25)); for (let j = 1; j <= n; j++) if (collide(a.clone().lerp(b, j / n).setY(0), r)) return false; return true; };
+  // 돌아가는 길(2026-11-03 사용자 "1-5 일꾼이 탑 쪽으로 가서 박고 있다, 스테이지 전반에 이런 충돌이 없는지"):
+  // 곧은 길이 막히면 0.25 간격 격자에서 막히지 않은 칸만 이어 최단 길을 찾고(BFS), 보이는 점까지 건너뛰어 꺾는 점만 남긴다.
+  // 이어진 벽(1-11 여울 말고는 막은 강, 1-12 옥의 벽)도 문·여울로 돌아간다. 목표가 장애물 안이면 밖으로 밀어낸다.
+  const CELL = 0.25; // 1-11 여울(틈 약 1.1)도 지나가는 간격
+  function routeTo(from, to, r = 0.3) {
+    const goal = to.clone().setY(0);
+    collide(goal, r);
+    const start = from.clone().setY(0);
+    if (lineClear(start, goal, r * 0.8)) return [goal];
+    const n = Math.ceil((radius + 1) / CELL), size = n * 2 + 1;
+    const idx = (x, z) => (Math.round(z / CELL) + n) * size + (Math.round(x / CELL) + n);
+    const pos = (k) => V((k % size - n) * CELL, (Math.floor(k / size) - n) * CELL);
+    const free = new Map();
+    const ok = (k) => { if (!free.has(k)) { const p = pos(k); free.set(k, p.length() < radius - 0.3 && !collide(p.clone(), r)); } return free.get(k); };
+    const s0 = idx(start.x, start.z), g0 = idx(goal.x, goal.z);
+    const prev = new Map([[s0, -1]]);
+    const queue = [s0];
+    for (let q = 0; q < queue.length && !prev.has(g0); q++) {
+      const k = queue[q], x = k % size, z = Math.floor(k / size);
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const nx = x + dx, nz = z + dz;
+        if (nx < 0 || nz < 0 || nx >= size || nz >= size) continue;
+        const nk = nz * size + nx;
+        if (prev.has(nk) || (nk !== g0 && !ok(nk))) continue;
+        if (dx && dz && (!ok(z * size + nx) || !ok(nz * size + x))) continue; // 대각선은 양옆이 비었을 때만(모서리를 스치지 않게)
+        prev.set(nk, k);
+        queue.push(nk);
+      }
+    }
+    if (!prev.has(g0)) return [goal]; // 길이 없으면 곧게(막히면 walkTo가 1.5초 뒤 순간 이동)
+    const cells = [];
+    for (let k = prev.get(g0); k !== -1 && k !== s0; k = prev.get(k)) cells.unshift(pos(k));
+    // 보이는 점까지 건너뛰어 꺾는 점만 남긴다
+    const route = [];
+    let at = start;
+    for (let a = 0; a < cells.length; ) {
+      let b = cells.length - 1;
+      while (b > a && !lineClear(at, cells[b], r * 0.8)) b--;
+      if (lineClear(at, goal, r * 0.8)) break;
+      route.push(cells[b]);
+      at = cells[b];
+      a = b + 1;
+    }
+    route.push(goal);
+    return route;
+  }
   function walkTo(fig, to, speed = 1.6) {
     fig.userData.faceYaw = undefined;
-    return new Promise((resolve) => movers.set(fig, { to: to.clone().setY(0), speed, resolve, best: Infinity, stuck: 0 }));
+    const route = routeTo(fig.position, to, fig.userData.radius ?? 0.3);
+    return new Promise((resolve) => movers.set(fig, { to: route.shift(), route, speed, resolve, best: Infinity, stuck: 0 }));
   }
   const face = (fig, p) => { fig.userData.faceYaw = Math.atan2(p.x - fig.position.x, p.z - fig.position.z); };
   const handOf = (fig) => { fig.updateMatrixWorld(true); return fig.localToWorld(new THREE.Vector3(0.36, 0.8, 0.22)); };
@@ -124,6 +173,7 @@ export function makeField(cfg) {
     stage: (name) => (stage = name ? stages[name] : null),
     speak: (who) => { if (people[who]) people[who].userData.talk = 1; },
     walkTo,
+    routeTo,
     face,
     // 인물이 물체를 손에 든다(fig가 null이면 내려놓는다)
     carry: (obj, fig) => {
@@ -246,8 +296,14 @@ export function makeField(cfg) {
     for (const [fig, m] of movers) {
       const d = stepToward(fig, m.to, m.speed, dt, 0.3);
       if (d < m.best - 0.02) { m.best = d; m.stuck = 0; } else m.stuck += dt;
+      // 거쳐 가는 점에 닿으면 다음 점으로(마지막 점만 정확히 선다)
+      if (m.route.length && (d < 0.2 || m.stuck > 1.5)) { m.to = m.route.shift(); m.best = Infinity; m.stuck = 0; continue; }
       if (d < 0.05 || m.stuck > 1.5) {
-        if (m.stuck > 1.5) fig.position.copy(m.to);
+        if (m.stuck > 1.5) {
+          fig.position.copy(m.to);
+          // 개발 점검용: 걷다가 막혀 순간 이동한 기록(스테이지 전반 충돌 점검, dev/steps/stuck-scan.mjs)
+          if (import.meta.env?.DEV) (globalThis.__stuck ??= []).push({ who: Object.keys(people).find((k) => people[k] === fig) ?? fig.userData.kind ?? '?', at: [+m.to.x.toFixed(1), +m.to.z.toFixed(1)] });
+        }
         movers.delete(fig);
         m.resolve();
         continue;

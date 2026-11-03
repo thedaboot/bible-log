@@ -208,6 +208,8 @@ function inventoryView(state, ctx) {
       if (on) act.append(button('btn inv__hold', '내려놓기', () => { ctx.onHold('none', keyOf(it)); render(); }, null, 'inv:drop'));
       else act.append(button('btn inv__hold', verb, () => { ctx.onHold(it.id, keyOf(it)); render(); }, null, 'inv:hold'));
     }
+    // 아직 못 얻은 꾸미기는 형체만 보인다(2026-11-03 사용자 F27 "미리보기도 안 되게, 형체만"). 이름·장절·설명도 얻은 뒤에 보인다
+    if (!owned) { d.classList.add('is-locked'); d.append(detailHead(ITEM_ICONS[it.id], '? ? ?', tags), act); return d; }
     d.append(detailHead(ITEM_ICONS[it.id], it.name, tags, it.ref), el('p', 'inv__note', it.note), act);
     return d;
   };
@@ -329,7 +331,9 @@ function shopView(state, ctx) {
       const act = el('div', 'inv__actions');
       const owned = ownsLook(state, it.id);
       const kind = it.kind === 'hair' ? '머리 모양' : it.kind === 'outfit' ? '옷' : SLOTS[slotOf(it)];
-      const buy = button('btn inv__hold', owned ? '가짐' : `${it.price} 달란트로 사기`, () => { if (ctx.onBuy(it.id)) render(); }, null, 'shop:buy');
+      // 버튼은 값만 보인다(2026-11-03 사용자 F37 "~달란트로 사기보다는 ~달란트만"). 화면 읽기는 "60 달란트로 사기"
+      const buy = button('btn inv__hold shop__buy', owned ? '가짐' : '', () => { if (ctx.onBuy(it.id)) render(); }, owned ? null : `${it.price} 달란트로 사기`, 'shop:buy');
+      if (!owned) { const coin = el('span', 'shop__buycoin'); coin.innerHTML = TALENT; buy.append(coin, el('span', 'shop__buynum', it.price), el('span', 'stat__unit', '달란트')); }
       buy.disabled = owned || state.talents < it.price;
       act.append(buy);
       if (!owned && state.talents < it.price) act.append(el('p', 'inv__lock', `${it.price - state.talents} 달란트 모자라요`));
@@ -344,7 +348,7 @@ function shopView(state, ctx) {
 }
 
 // opts.only: 'codex'면 첫 화면처럼 도감만, 'shop'이면 상점만 연다. opts.stage: 처음 펼칠 장 id.
-export function openMenu(state, { tab = 'status', only = null, stage = null, onHold = null, onBuy = null } = {}) {
+export function openMenu(state, { tab = 'status', only = null, stage = null, onHold = null, onBuy = null, onQuit = null } = {}) {
   if (open) return open.promise;
   const box = $('menuBox');
   const tabsEl = $('menuTabs');
@@ -497,6 +501,12 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
   };
   addEventListener('keydown', onKey, true);
   $('menuClose').onclick = close;
+  // 스테이지 중에만: 메뉴 아래 '쉼터로 나가기'(F26). 메뉴를 닫은 뒤 확인 창을 띄운다
+  box.querySelector('.menu-panel__quit')?.remove();
+  if (onQuit) {
+    const q = button('btn btn--quiet menu-panel__quit', '쉼터로 나가기', () => { close(); onQuit(); }, null, 'menu:quit');
+    box.querySelector('.menu-panel').append(q);
+  }
   box.onclick = (e) => { if (e.target === box) close(); };
   open = { promise };
   return promise;

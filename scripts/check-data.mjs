@@ -617,6 +617,13 @@ for (const mod of MODS) {
   for (const [name, st] of Object.entries(f.stages)) {
     for (const from of [st.c, st.c.clone().add(new THREE.Vector3(1, 0, -1))]) assert.ok(f.stepAside(name, from).length, `${mod.id}/${name}: 비킬 자리가 없음`);
   }
+  // 돌아가는 길(2026-11-03, field.js routeTo): 연출 자리 사이를 걸으면 길의 모든 구간이 장애물에 걸리지 않는다(이어진 벽·강은 문·여울로 돌아간다)
+  const pts = Object.entries(f.spots).filter(([k]) => !(f.solid ?? []).includes(k)).map(([, p]) => p.clone().setY(0)).filter((p) => !f.collide(p.clone(), 0.3));
+  const clear = (a, b) => { const n = Math.max(1, Math.ceil(a.distanceTo(b) / 0.25)); for (let j = 1; j <= n; j++) if (f.collide(a.clone().lerp(b, j / n), 0.24)) return false; return true; };
+  for (let i = 0; i + 1 < pts.length; i++) {
+    let at = pts[i];
+    for (const q of f.acts.routeTo(pts[i], pts[i + 1])) { assert.ok(clear(at, q), `${mod.id}: 자리 ${i}→${i + 1} 길이 장애물에 걸림 (${at.x.toFixed(1)}, ${at.z.toFixed(1)})→(${q.x.toFixed(1)}, ${q.z.toFixed(1)})`); at = q; }
+  }
 }
 console.log(`OK: 스테이지 점검 통과(${MODS.map((m) => m.id).join(', ') || '없음'})`);
 

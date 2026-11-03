@@ -27,8 +27,7 @@ import { openMenu, menuIsOpen } from './menu.js';
 import { openMap, stageInfo } from './map.js';
 import { tween, easeOut, setInstant } from './anim.js';
 import {
-  $, isTouch, say, askName, askLook, askClear, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, popHud,
-} from './ui.js';
+  $, isTouch, say, askName, askLook, askClear, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, popHud, askQuit } from './ui.js';
 
 // ---------- 렌더링: 쿼터뷰 정사영 카메라 + 픽셀화 후처리 ----------
 const renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -92,6 +91,7 @@ function resize() {
   pixelPass.setPixelSize(Math.max(3, Math.round(Math.min(w, h) / 200)));
 }
 addEventListener('resize', resize);
+addEventListener('contextmenu', (e) => { if (!e.target.closest('input, textarea')) e.preventDefault(); }); // 길게 누르기 메뉴(F24)
 resize();
 function setView(size, wide = false) { viewSize = size; wideShot = wide; resize(); }
 
@@ -481,7 +481,7 @@ async function runCreation(fromDay = 1) {
 //  머리 모양·수염 → 머리에 빛 알갱이가 모였다 흩어지며 새 모양이 나온다 / 소품 → 빛이 손으로 날아와 소품이 된다
 //  키 → 부드럽게 늘고 준다 / 나를 감싸는 빛 → 발밑 고리가 새 색으로 퍼진다 / 무작위 → 이 효과들이 차례로
 const PART_HEIGHT = { hair: 1.4, beard: 1.15 };
-const HAND = new THREE.Vector3(0.42, 0.82, 0.15);
+const HAND = new THREE.Vector3(0.4, 0.6, 0.2); // 빛 구슬이 날아가는 손 자리: props.js HOLD의 내린 손(LOW)과 앞 손(FRONT) 사이(2026-11-03 꾸미기 조합)
 const glow = (color, opacity = 0.95) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
 const hexOf = (key, id) => (LOOK.earth[key] ?? LOOK.heaven[key])?.find((o) => o.id === id)?.hex;
 let finishWipe = null; // 진행 중인 차오름/물듦을 바로 끝내는 함수(빨리 연달아 고를 때)
@@ -714,7 +714,23 @@ async function showMenu() {
     save(state);
     dressWith(earthSpec)(state.earthLook, 'item');
   } : null;
-  await openMenu(state, { stage: chapterOf(state.scene), onHold });
+  // 스테이지 중(지상 장면)에만 '쉼터로 나가기'. 쉼터에서는 보이지 않는다
+  let quitting = false;
+  const onQuit = land() && stageSnap ? () => { quitting = true; } : null;
+  await openMenu(state, { stage: chapterOf(state.scene), onHold, onQuit });
+  if (quitting && await askQuit()) {
+    // 이 이야기에 들어설 때의 저장값으로 되돌리고 쉼터로 간다. 걷던 퀘스트·도전의 기다림은 stopWalk가 풀어 이전 진행은 그 자리에서 멈춘다
+    for (const k of Object.keys(state)) if (!(k in stageSnap)) delete state[k];
+    Object.assign(state, JSON.parse(JSON.stringify(stageSnap)));
+    save(state);
+    stopWalk();
+    setQuest(null);
+    speaker = speakerFrame = null;
+    camFocus = null;
+    await fade(1);
+    runShelter();
+    return;
+  }
   mode = 'walk';
 }
 $('menuBtn').onclick = showMenu;
@@ -723,13 +739,41 @@ addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat && !menu
 
 // 에덴의 대사: 말하는 인물이 고개를 끄덕이며 들썩인다(eden.acts.speak).
 function talk(lines, ctx, opts = {}) {
-  return say(lines, ctx, { choices: opts.choices, onLine: (l, i) => { land()?.acts.speak(l.who); opts.onLine?.(l, i); } });
+  return say(lines, ctx, { choices: opts.choices, onLine: (l, i) => { land()?.acts.speak(l.who); speaker = figOf(l.who); speakerFrame = null; opts.onLine?.(l, i); } })
+    .finally(() => { speaker = speakerFrame = null; });
+}
+// 말하는 인물 비추기(2026-11-03 사용자 F23·F32 "대화 중 아담·노아가 화면 밖"): 대사가 떠 있는 동안 말하는 인물이 화면 밖이거나
+// 대사 창 뒤로 내려가면, 그 대사가 끝날 때까지 인물과 관찰자 사이를 비춘다(한 번 잡으면 놓지 않아 카메라가 흔들리지 않는다).
+let speaker = null, speakerFrame = null;
+const figOf = (who) => { const L = land(); return L?.people?.[who] ?? (L && L === eden ? { adam: eden.adam, eve: eden.eve }[who] : null) ?? null; };
+const ndc = new THREE.Vector3();
+function speakerFocus() {
+  if (!speaker?.visible || $('dialog').hidden) return null;
+  if (!speakerFrame) {
+    ndc.copy(speaker.position).setY(speaker.position.y + 1).project(camera);
+    const bottom = innerHeight <= 480 && innerWidth > innerHeight ? -0.1 : -0.45; // 대사 창이 덮는 아래쪽
+    if (Math.abs(ndc.x) < 0.82 && ndc.y < 0.8 && ndc.y > bottom) return null;
+    speakerFrame = player.visible ? speaker.position.clone().lerp(player.position, 0.45) : speaker.position.clone();
+  }
+  return speakerFrame;
 }
 
 // 막간: say 다음에 choose가 오면 그 say의 마지막 대사에서 선택지를 띄운다. 고른 뒤 자라는 열매를 획득 효과로 보여 주고 답을 듣는다.
 // 열매 단계로 열린 선택지(need)에는 그 열매 이름과 새싹 표시를 단다. key/번호마다 열매는 한 번만 자란다.
 async function runInterlude(data, key) {
   const { steps } = data;
+  // 막간 상대가 관찰자에게서 멀면(에덴: 이름 짓기를 마친 자리) 관찰자 화면 왼쪽 곁으로 걸어오고, 카메라가 두 사람 사이를 비춘다(2026-11-03 F23)
+  const fig = figOf(data.who);
+  const L = land();
+  if (fig?.visible && player.visible && L?.acts.walkTo && fig.position.distanceTo(player.position) > 2.4) {
+    const spot = player.position.clone().add(new THREE.Vector3(-1, 0, 1).normalize().multiplyScalar(1.5)).setY(0);
+    L.collide?.(spot, 0.35);
+    await L.acts.walkTo(fig, spot, 2.4);
+  }
+  if (fig) { L?.acts.face?.(fig, player.position); playerFace = fig.position; }
+  // 에덴은 막간 전에 아담의 처음 자리(spots.adam)를 비추고 있어서, 이름 짓기로 옮겨 간 두 사람이 화면 밖이었다. 막간 동안은 늘 두 사람 사이를 비춘다
+  const camBefore = camFocus;
+  if (fig) camFocus = fig.position.clone().lerp(player.position, 0.5).add(new THREE.Vector3(1.4, 0, 1.4));
   for (let i = 0; i < steps.length; i++) {
     const { say: lines } = steps[i];
     const next = steps[i + 1]?.choose;
@@ -743,6 +787,7 @@ async function runInterlude(data, key) {
     await talk(picked.reply, state);
     i++;
   }
+  if (fig) camFocus = camBefore;
 }
 
 async function runEdenGarden() {
@@ -780,15 +825,17 @@ async function runEdenGarden() {
   await talk(EDEN.command, state);
 
   // 퀘스트 2: 동물 이름 짓기. 하나님께서 동물들을 아담에게 데려가시고(창 2:19), 아담이 관찰자 곁을 따라다닌다.
-  await eden.acts.gatherAnimals();
-  await talk(EDEN.animalsIntro, state);
+  // 동물이 모이는 걸음(최대 6초)을 대사 없이 기다리면 아담이 가만히 서 있었다(2026-11-03 F20). 창 2:19 대사와 함께 모인다
+  let gather = null;
+  await talk(EDEN.animalsIntro, state, { onLine: (l, i) => { if (i >= 1 && !gather) { gather = eden.acts.gatherAnimals(); } } });
+  await (gather ?? eden.acts.gatherAnimals());
   eden.acts.releaseAnimals();
   eden.acts.follow(eden.adam, player.position);
   setStage(null);
   camFocus = null;
   await questFind({
     title: '아담이 이름 지은 동물',
-    targets: [...eden.animals.map((an) => ({ name: an.userData.name, pos: an.position, animal: an })), { name: '새', pos: eden.perch.ground, animal: eden.perch.bird }],
+    targets: [...eden.animals.map((an) => ({ name: an.userData.name, pos: an.position, animal: an })), { name: '참새', pos: eden.perch.ground, animal: eden.perch.bird }],
     text: (a) => `${a.name} 곁에 머물러 이름 듣기`,
     radius: 2.4,
     hold: 1.6,
@@ -1089,7 +1136,7 @@ const GRACE_MS = 150; // 도전 판정 여유: 누르기 전 이 시간 안에 �
 // 난도(2026-11-03 사용자 F18 "갈수록 어렵게"): 성공할 때마다, 그리고 같은 스테이지의 다음 도전(tier)일수록 구간이 좁아지고 표시가 빨라진다.
 // 성공 k번째: 속도 ×(1 + 0.12k), 구간 ×(1 − 0.08k). tier: 속도 ×(1 + 0.15·tier), 구간 ×(1 − 0.1·tier). 구간은 기본의 0.5배, 속도는 1.8배에서 멈춘다.
 const challengeLevel = (k, tier = 0) => ({ speed: Math.min(1.8, (1 + 0.12 * k) * (1 + 0.15 * tier)), zone: Math.max(0.5, (1 - 0.08 * k) * (1 - 0.1 * tier)) });
-function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, onMiss, missText = '다시 해 보세요', speed = CHALLENGE.speed, tier = 0 }) {
+function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, onMiss, missText = '다시 해 보세요', speed = CHALLENGE.speed, tier = 0, kind = 'time' }) {
   return new Promise((resolve) => {
     const assist = assistOf(state, fruits);
     const left = new Set(spots);
@@ -1103,26 +1150,60 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     const newZone = () => {
       const lvl = challengeLevel(done, tier);
       ch.speed = speed * lvl.speed;
-      const w = Math.min(0.6, CHALLENGE.zone * lvl.zone * (1 + assist));
-      ch.zone = [0.15 + Math.random() * (0.7 - w), 0];
+      const w = Math.min(0.6, CHALLENGE.zone * lvl.zone * (1 + assist) * (kind === 'time' ? 1 : 1.4));
+      // 박자(rhythm)는 끝 가까이 고정, 꾹 누르기(hold)는 뒤쪽 절반 어딘가, 타이밍(time)은 아무 데나
+      const at = kind === 'rhythm' ? 0.7 : kind === 'hold' ? 0.45 + Math.random() * (0.5 - w) : 0.15 + Math.random() * (0.7 - w);
+      ch.zone = [at, 0];
       ch.zone[1] = ch.zone[0] + w;
       $('chZone').style.transform = `translateX(${ch.zone[0] * 100}%) scaleX(${w})`;
     };
     const flash = (cls) => { panel.classList.remove('is-hit', 'is-miss'); void panel.offsetWidth; panel.classList.add(cls); };
     const label = (text) => { ch.msg = text; ch.msgT = 1.2; };
+    // 동작 세 가지(2026-11-03 사용자 F30b "힘 모으기 한 방식이 질린다"):
+    //  time   표시가 오가다 금빛 구간에 들어올 때 누른다(물 붓기, 씨름, 꿈 풀기)
+    //  rhythm 표시가 한쪽으로 흘러가며 박자마다 금빛 구간을 지난다. 박자에 맞춰 BEATS번 이어 누르면 한 번 성공(망치질)
+    //  hold   꾹 누르는 동안 표시가 점점 빨리 차오른다. 금빛 구간에서 떼면 성공, 끝까지 가면 너무 세게(가시 빼기)
+    const BEATS = 3;
+    const inZone = (m) => m >= ch.zone[0] && m <= ch.zone[1];
+    const miss = (sp, text = missText) => { label(text); flash('is-miss'); onMiss?.(sp); };
     const act = async () => {
       const sp = ch?.near;
       if (!sp || mode !== 'walk' || ch.busy) return;
       if (!sp.ready) { label(`${isTouch() ? '' : 'F 키로 '}${toolName} 먼저 쓰기`); flash('is-miss'); return; }
+      if (kind === 'hold') { ch.holding = true; ch.m = 0; return; }
       // 판정(2026-11-02 S20 "구간에 들어왔는데 안 될 때가 많다"): 눈에 보인 표시는 몇 프레임 전 자리이고, 터치는 손을 댄 뒤
       // 조금 늦게 온다. 표시는 0.1초에 구간 폭(0.12)만큼 움직여서 그 사이에 구간을 벗어났다. 최근 GRACE_MS 안에 구간에 있었으면 성공이다.
       const now = performance.now();
-      const inZone = (m) => m >= ch.zone[0] && m <= ch.zone[1];
-      if (!inZone(ch.m) && !ch.hist.some((h) => now - h.t <= GRACE_MS && inZone(h.m))) { label(missText); flash('is-miss'); onMiss?.(sp); return; }
+      const ok = inZone(ch.m) || ch.hist.some((h) => now - h.t <= GRACE_MS && inZone(h.m));
+      if (kind === 'rhythm') {
+        if (ch.beatPressed) return; // 한 박자에 한 번만
+        ch.beatPressed = true;
+        if (!ok) { ch.combo = 0; miss(sp, '박자가 어긋났어요'); return; }
+        ch.combo++;
+        if (ch.combo < BEATS) { label(`좋아요! ${ch.combo} / ${BEATS}`); flash('is-hit'); return; }
+        ch.combo = 0;
+        return succeed(sp, '탕! 단단히 박혔어요');
+      }
+      if (!ok) { miss(sp); return; }
       // 구간 한가운데(가운데 40%)에 맞히면 "딱 맞아요"
       const mid = (ch.zone[0] + ch.zone[1]) / 2, half = (ch.zone[1] - ch.zone[0]) / 2;
       const best = Math.min(Math.abs(ch.m - mid), ...ch.hist.filter((h) => now - h.t <= GRACE_MS).map((h) => Math.abs(h.m - mid)));
-      label(best <= half * 0.4 ? '딱 맞아요!' : '좋아요!');
+      return succeed(sp, best <= half * 0.4 ? '딱 맞아요!' : '좋아요!');
+    };
+    // 꾹 누르기: 손을 떼는 순간 판정한다
+    const release = () => {
+      if (kind !== 'hold' || !ch?.holding) return;
+      ch.holding = false;
+      const sp = ch.near;
+      const m = ch.m;
+      ch.m = 0;
+      if (!sp || ch.busy) return;
+      if (inZone(m)) succeed(sp, '살살, 잘 뺐어요!');
+      else if (m < ch.zone[0]) { label('조금 더 당겨요'); flash('is-miss'); } // 덜 당긴 것은 실패 반응(onMiss) 없이 다시
+      else miss(sp);
+    };
+    const succeed = async (sp, text) => {
+      label(text);
       flash('is-hit');
       sp.n++;
       done++;
@@ -1159,11 +1240,17 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       if (e.code === 'Space') { e.preventDefault(); act(); }
       if (e.code === 'KeyF') { e.preventDefault(); useIt(); }
     };
-    ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, panel, busy: false, msg: '', msgT: 0, toolName, hist: [] };
+    const onKeyUp = (e) => { if (e.code === 'Space') release(); };
+    ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, onKeyUp, panel, busy: false, msg: '', msgT: 0, toolName, hist: [],
+      kind, beats: BEATS, combo: 0, beatPressed: false, holding: false, release: () => release(), miss: (sp, text) => miss(sp, text),
+      auto: () => { if (ch.near) succeed(ch.near, '좋아요!'); } }; // auto: 개발용 자동 플레이(한 번 성공)
     newZone();
+    panel.dataset.kind = kind;
     addEventListener('keydown', onKey);
+    addEventListener('keyup', onKeyUp);
     // 버튼은 손이 닿는 순간(pointerdown)에 판정한다. click은 손을 뗀 뒤에 와서 늦다. 키보드(Enter)로 누른 click만 따로 받는다.
     $('chAct').onpointerdown = (e) => { e.preventDefault(); act(); };
+    $('chAct').onpointerup = $('chAct').onpointercancel = $('chAct').onpointerleave = () => release();
     $('chAct').onclick = (e) => { if (e.detail === 0) act(); };
     $('chTool').onpointerdown = (e) => { e.preventDefault(); useIt(); };
     $('chTool').onclick = (e) => { if (e.detail === 0) useIt(); };
@@ -1180,6 +1267,8 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
 function endChallenge() {
   if (!ch) return;
   removeEventListener('keydown', ch.onKey);
+  removeEventListener('keyup', ch.onKeyUp);
+  $('chAct').onpointerup = $('chAct').onpointercancel = $('chAct').onpointerleave = null;
   ch.panel.hidden = true;
   ch = null;
 }
@@ -1191,9 +1280,25 @@ function challengeTick(dt) {
   ch.near = near;
   ch.panel.hidden = !near || mode !== 'walk';
   if (!near) return;
-  ch.m += ch.dir * ch.speed * dt;
-  if (ch.m > 1) { ch.m = 1; ch.dir = -1; }
-  if (ch.m < 0) { ch.m = 0; ch.dir = 1; }
+  if (ch.kind === 'rhythm') {
+    // 한쪽으로 흘러가고 끝에서 처음으로 돌아온다(한 바퀴가 한 박자). 박자를 그냥 보내면 이어 친 수가 끊긴다
+    ch.m += ch.speed * dt;
+    if (ch.m > 1) {
+      ch.m -= 1;
+      if (ch.combo && !ch.beatPressed) { ch.combo = 0; ch.msg = '박자를 놓쳤어요'; ch.msgT = 1.2; }
+      ch.beatPressed = false;
+    }
+  } else if (ch.kind === 'hold') {
+    // 누르는 동안 점점 빨리 차오른다. 끝까지 가면 너무 세게 당긴 것이다
+    if (ch.holding && !ch.busy) {
+      ch.m += ch.speed * dt * (0.45 + ch.m);
+      if (ch.m >= 1) { ch.holding = false; ch.m = 0; ch.miss(near); }
+    }
+  } else {
+    ch.m += ch.dir * ch.speed * dt;
+    if (ch.m > 1) { ch.m = 1; ch.dir = -1; }
+    if (ch.m < 0) { ch.m = 0; ch.dir = 1; }
+  }
   // 최근 표시 자리(판정 여유용). GRACE_MS보다 오래된 것은 버린다
   const now = performance.now();
   ch.hist.push({ t: now, m: ch.m });
@@ -1201,7 +1306,8 @@ function challengeTick(dt) {
   $('chMark').style.transform = `translateX(${ch.m * $('chTrack').clientWidth}px)`;
   ch.panel.classList.toggle('is-gold', near.ready && ch.m >= ch.zone[0] && ch.m <= ch.zone[1]);
   ch.msgT -= dt;
-  $('chLabel').textContent = ch.msgT > 0 ? ch.msg : near.ready ? `${ch.verb} ${near.n} / ${near.hits ?? ch.hits}` : `${isTouch() ? '' : 'F 키로 '}${ch.toolName || '도구'} 쓰기`;
+  const how = ch.kind === 'rhythm' ? ` · 박자 ${ch.combo} / ${ch.beats}` : ch.kind === 'hold' && !ch.holding ? ' · 꾹 눌렀다 금빛에서 떼기' : '';
+  $('chLabel').textContent = ch.msgT > 0 ? ch.msg : near.ready ? `${ch.verb} ${near.n} / ${near.hits ?? ch.hits}${how}` : `${isTouch() ? '' : 'F 키로 '}${ch.toolName || '도구'} 쓰기`;
 }
 
 // ---------- 1-4부터의 스테이지: src/stages/<id>.js가 장면(build)과 진행(run)을 맡고, 여기는 공용 기능(g)만 건넨다 ----------
@@ -1347,8 +1453,7 @@ function autoTick(dt) {
   if (mode !== 'walk') return;
   if (ch?.near && !ch.busy) {
     if (!ch.near.ready) { dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF' })); return; }
-    ch.m = (ch.zone[0] + ch.zone[1]) / 2;
-    ch.act();
+    ch.auto();
     return;
   }
   if (holdQuest?.cur) { holdQuest.p = 1; return; }
@@ -1456,7 +1561,10 @@ async function runShelter() {
 }
 
 // ---------- 첫 화면 ----------
+// 쉼터로 나가기(F26)에서 되돌릴 저장값: 스테이지에 들어설 때 떠 둔다
+let stageSnap = null;
 function startAt(id) {
+  stageSnap = id === 'prologue' ? null : JSON.parse(JSON.stringify(state));
   if (id === 'prologue') return runPrologue();
   if (id.startsWith('creation-')) return runCreation(Number(id.split('-')[1]));
   if (id === 'cain') return runCain();
@@ -1585,7 +1693,7 @@ function tick() {
     if (dragX !== null || held('KeyQ', 'KeyE')) practiced('look', dt);
   }
   tapped.clear();
-  camTarget.lerp(camFocus ?? camFollow, Math.min(1, dt * 4));
+  camTarget.lerp(speakerFocus() ?? camFocus ?? camFollow, Math.min(1, dt * 4));
   camera.position.copy(camTarget).add(camTmp.copy(camOffset).applyAxisAngle(Y_AXIS, camAngle));
   camera.lookAt(camTarget);
   composer.render();

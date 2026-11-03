@@ -1,7 +1,7 @@
 // 곁길 에녹의 동행(창 5:21~24). 걷는 동안 함께 하는 일 넷:
 // 갈림길에서 함께 기도(게이지) → 길 잃은 어린양의 가시 빼기(도전) → 중턱 막간(에녹) → 언덕 끝에서 아래 동네를 내려다보며 예언 듣기(유 1:14~15)
 // → 빛 쪽으로 함께 걷기(움직이는 목표) → 하나님께서 데려가심 → 퀴즈(창 5:24)
-// 창 5:24는 본문이 말하는 만큼만: 에녹이 천천히 떠올라 구름 위로 올라가 보이지 않게 된다. 죽음 장면이 아니다(히 11:5 옮겨짐).
+// 창 5:24는 본문이 말하는 만큼만: 에녹이 천천히 떠올라 모여드는 구름 속에서 보이지 않게 된다. 죽음 장면이 아니다(히 11:5 옮겨짐).
 // 경로: 므두셀라(짧은 인사)는 장막 동쪽에 두어, 에녹의 언덕길과 퀘스트 목표 사이 길에서 2.2 안으로 들어오지 않게 한다.
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
@@ -188,6 +188,19 @@ export default {
       c.position.set(x, 0, z);
       clouds.add(c);
     }
+    // 에녹이 구름 아래에 닿을 때 앞쪽(카메라 쪽)에서 감싸 오는 구름 둘. 처음에는 작게 숨겨 둔다
+    for (const [x, z, s] of [[0.8, 1.3, 1.1], [-0.9, 1.0, 1.0]]) {
+      const c = makeCloud(s);
+      c.position.set(x * 2, -0.6, z);
+      c.scale.setScalar(0.01);
+      c.userData.wrap = s;
+      clouds.add(c);
+    }
+    for (const c of clouds.children) c.userData.home = c.position.clone();
+    const cloudGlow = new THREE.PointLight(PAL.holy, 0, 12);
+    cloudGlow.position.set(0, -1.2, 0.8);
+    clouds.add(cloudGlow);
+    clouds.userData.glow = cloudGlow;
     clouds.position.copy(TOP).setY(16);
     clouds.visible = false;
     F.group.add(clouds);
@@ -252,7 +265,7 @@ export default {
     };
     const up = new THREE.Vector3(0, 1, 0);
     await g.challenge({
-      title: '어린양의 가시 빼기', spots: thorns, verb: '살살 빼기', tier: 1, onMiss: flinch, missText: '어린양이 움찔했어요', radius: 0.9, fruits: ['gentle', 'patience'],
+      title: '어린양의 가시 빼기', spots: thorns, verb: '살살 빼기', kind: 'hold', tier: 1, onMiss: flinch, missText: '너무 세게 당겨 어린양이 움찔했어요', radius: 0.9, fruits: ['gentle', 'patience'],
       onHit: async (sp, n) => {
         const th = sp.thorn;
         if (n < sp.hits) {
@@ -335,26 +348,52 @@ export default {
     g.reward('walk-done', 'questDone', null, 'peace');
     g.meet('enoch', 'walked', 'faith');
 
-    // 창 5:24(F14): 에녹이 천천히 떠올라 구름 속으로 올라가고, 화면 위로 멀어진다. 빛이 먼저 구름으로 오르고 에녹이 따라간다.
-    // 카메라는 절반만 따라 올라가 올려다보고, 에녹은 화면 위로 벗어난다. 오르는 동안 창 5:24 서술이 떠 있다.
+    // 창 5:24(F14, 2차): 발이 땅에서 아주 천천히 떨어지고, 일정한 느린 속도로 오르다가 구름 아래에서 더 느려진다.
+    // 그동안 구름이 에녹 둘레로 모여 앞을 감싸고 구름 속 빛이 밝아진다. 에녹은 구름 속에서 서서히 흐려져 보이지 않게 되고,
+    // 구름 위로 튀어 나가지 않는다(히 11:5 옮겨짐, 빛기둥 없음). 오르는 동안 창 5:24 서술이 떠 있다.
     g.stage('top');
     F.acts.face(enoch, g.player.position);
     const { rig } = enoch.userData;
     enoch.userData.pose = 'rise';
+    enoch.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; } });
     const focus = TOP.clone();
     g.cam(focus, 12);
     F.acts.presence(TOP.clone().setY(clouds.position.y - 1), 3000);
-    const rise = tween(4400, (p) => {
-      const h = 22 * p ** 2.4;
+    const ss = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+    // 속도: 0~T1초 0에서 v까지 서서히, T2초까지 v로 일정, T3초에 0으로 멈춘다. 멈추는 높이 H는 위에서 내려다볼 때 구름 아래 끝에 닿는 곳(구름 중심은 9)
+    const T1 = 1.6, T2 = 3.6, T3 = 6.6, H = 5.8;
+    const v = H / (T1 / 2 + (T2 - T1) + (T3 - T2) / 2);
+    const lift = (t) => t < T1 ? v * t * t / (2 * T1)
+      : t < T2 ? v * (T1 / 2 + t - T1)
+        : v * (T1 / 2 + T2 - T1 + (t - T2) - (t - T2) ** 2 / (2 * (T3 - T2)));
+    const glow = clouds.userData.glow;
+    // 구름 하나하나: k(0 제자리 ~ 1 모임)만큼 에녹 쪽으로 모이고 내려온다. 앞쪽 구름은 커지며 감싼다
+    const gather = (k) => {
+      for (const c of clouds.children) {
+        const { home, wrap } = c.userData;
+        if (!home) continue;
+        c.position.set(home.x * (1 - 0.55 * k), home.y - (wrap ? 1.6 : 1.0) * k, home.z * (1 - 0.3 * k));
+        if (wrap) c.scale.setScalar(Math.max(0.01, wrap * k));
+        c.children[0].material.emissiveIntensity = 0.35 + 0.2 * k;
+      }
+    };
+    const rise = tween(T3 * 1000, (p) => {
+      const t = p * T3, h = lift(t);
       rig.position.y = h;
-      rig.rotation.z = Math.sin(p * 10) * 0.03 * (1 - p);
-      focus.y = Math.min(6, h * 0.55);
+      rig.rotation.z = Math.sin(t * 1.6) * 0.03 * (1 - p);
+      focus.y = h * 0.85;
       setArms(enoch, 'raise', 0.03);
+      gather(ss(2.6, 5.8, t));
+      glow.intensity = 6 * ss(2.6, 5.8, t);
+      const a = 1 - ss(3.8, 6.4, t);
+      enoch.traverse((o) => { if (o.isMesh) o.material.opacity = a; });
     });
     await g.talk(data.lines.taken.slice(0, 1));
     await rise;
     enoch.visible = false;
     F.acts.presence(null);
+    // 구름은 천천히 흩어져 제자리로 돌아가고 빛이 잦아든다(어린양 대사와 함께, 기다리지 않는다)
+    tween(3200, (p) => { gather(1 - easeOut(p)); glow.intensity = 6 * (1 - p); });
     lamb.rotation.z = 0.35; // 어린양이 고개를 들어 하늘을 본다(머리가 +x)
     g.cam(lamb.position.clone(), 12);
     await g.talk(data.lines.taken.slice(1, 2));

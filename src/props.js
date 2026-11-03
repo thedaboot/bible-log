@@ -108,18 +108,16 @@ const COLORS = [
   { id: 'clay', name: '흙빛', hex: 0xd9a982 },
   { id: 'mist', name: '안개', hex: 0xdfe6ee },
 ];
-const HAIRS = [
-  { id: 'none', name: '없음' }, { id: 'short', name: '단발' }, { id: 'long', name: '장발' },
-  { id: 'tied', name: '묶은 머리' }, { id: 'curly', name: '곱슬머리' },
-];
-// 지상 꾸미기에서 더 고를 수 있는 머리(2026-11-02 사용자 요청 S11 "더 다양한 남자·여자 머리")
-const EARTH_HAIRS = [
-  ...HAIRS, { id: 'crop', name: '짧은 머리' }, { id: 'wavy', name: '물결 머리' }, { id: 'braid', name: '땋은 머리' },
-  { id: 'twin', name: '양갈래' }, { id: 'bun', name: '올림머리' }, { id: 'veil', name: '머릿수건' },
-  // 2026-11-03 F06: 기본 셋을 더하고, 상점 머리 셋(data/items.js STYLES)은 산 뒤에만 고를 수 있다(main.js earthOptions)
-  { id: 'fringe', name: '앞머리' }, { id: 'shoulder', name: '어깨 머리' }, { id: 'side', name: '옆머리' },
-  { id: 'longwave', name: '긴 물결' }, { id: 'locks', name: '일곱 가닥' }, { id: 'crownbraid', name: '땋은 관' },
-];
+// 머리 이름은 실제 머리 모양 이름이다(2026-11-03 사용자 "옆 머리처럼 대충 쓰지 말 것"). id는 저장값이라 바꾸지 않는다.
+const HAIR_NAMES = {
+  none: '민머리', crop: '짧게 깎음', short: '짧은 머리', side: '옆가르마', fringe: '일자앞머리', curly: '곱슬머리',
+  tied: '말총머리', bun: '올림머리', shoulder: '어깨 단발', wavy: '물결 단발', braid: '땋아 내림', twin: '양갈래',
+  veil: '머릿수건', long: '긴 생머리', longwave: '긴 물결', locks: '일곱 가닥', crownbraid: '둘러 땋기',
+};
+const hairs = (ids) => ids.map((id) => ({ id, name: HAIR_NAMES[id] }));
+const HAIRS = hairs(['none', 'short', 'long', 'tied', 'curly']);
+// 지상 꾸미기 머리: 짧은 머리에서 긴 머리 순(남녀로 나누지 않는다). 상점 머리 셋(data/items.js STYLES)은 맨 뒤에 두고 산 뒤에만 보인다(main.js earthOptions)
+const EARTH_HAIRS = hairs(['none', 'crop', 'short', 'side', 'fringe', 'curly', 'tied', 'bun', 'shoulder', 'wavy', 'braid', 'twin', 'veil', 'long', 'longwave', 'locks', 'crownbraid']);
 const OUTFITS = [
   { id: 'tunic', name: '겉옷' }, { id: 'cape', name: '망토' }, { id: 'robe', name: '두루마기' },
   { id: 'shepherd', name: '목자 옷' }, { id: 'traveler', name: '나그네 옷' },
@@ -136,12 +134,16 @@ const HAIR_COLORS = [
   { id: 'black', name: '검정', hex: 0x231a16 }, { id: 'darkbrown', name: '흑갈색', hex: 0x3e2a1e },
   { id: 'brown', name: '갈색', hex: 0x6b4428 }, { id: 'chestnut', name: '밤색', hex: 0x8a4f2c },
   { id: 'sand', name: '모래색', hex: 0xc9a46a }, { id: 'gray', name: '회색', hex: 0x9a9590 },
+  { id: 'auburn', name: '붉은 갈색', hex: 0x7a3a22 }, { id: 'copper', name: '붉은빛', hex: 0xa8532a },
+  { id: 'ash', name: '잿빛 금색', hex: 0xb3a58a }, { id: 'white', name: '흰머리', hex: 0xe8e4dc },
 ];
 const CLOTH = [
   { id: 'linen', name: '흰 아마포', hex: 0xf1ead8 }, { id: 'beige', name: '베이지', hex: 0xd8c3a0 },
   { id: 'earth', name: '흙빛', hex: 0x9a6b45 }, { id: 'olive', name: '올리브', hex: 0x7f8a4a },
   { id: 'indigo', name: '쪽빛', hex: 0x3f5a8a }, { id: 'purple', name: '자주', hex: 0x6e3f73 },
   { id: 'scarlet', name: '다홍', hex: 0xb8452f }, { id: 'sky', name: '하늘색', hex: 0x8fbcd8 },
+  { id: 'black', name: '먹색', hex: 0x3a3430 }, { id: 'saffron', name: '노랑', hex: 0xd9a63a },
+  { id: 'crimson', name: '홍색', hex: 0x8a2a3a },
 ];
 const HEIGHTS = [{ id: 'small', name: '작게', k: 0.9 }, { id: 'mid', name: '보통', k: 1 }, { id: 'tall', name: '크게', k: 1.1 }];
 const BEARDS = [{ id: 'none', name: '없음' }, { id: 'short', name: '짧은 수염' }, { id: 'long', name: '긴 수염' }];
@@ -178,6 +180,66 @@ export const DEFAULT_EARTH = {
   outfit: 'tunic', outfitColor: 'linen', item: 'none', waist: 'none', head: 'none',
 };
 
+// ---------- 꾸미기 조합 규칙(docs/standards/art-3d.md "꾸미기 조합 규칙") ----------
+// 머리 소품: cover(덮어쓰는 것)는 hide에 든 머리 부품을 그리지 않고, 남은 머리카락 반지름에 맞춰 키운다. ring(두르는 것)은 머리카락 바깥에 맞춰 키운다.
+// 머리 부품 꼬리표: top(정수리·뒤통수 위로 솟는 것), brow(이마를 덮는 것), back(뒤로 늘어져 두건 밖으로 뚫고 나오는 것)
+const HEAD_FIT = {
+  hood: { kind: 'cover', hide: ['top', 'brow', 'back'] },
+  helmet: { kind: 'cover', hide: ['top', 'brow'] },
+  turban: { kind: 'cover', hide: ['top', 'brow'] },
+  oakwreath: { kind: 'ring', hide: [] },
+  crown: { kind: 'ring', hide: [] },
+  goldplate: { kind: 'ring', hide: ['brow'] }, // 이마 앞 금패: 앞머리를 덮는다
+};
+// 나그네 옷의 두건은 hood와 같은 부품을 숨긴다. 머리에 cover를 쓰거나 머릿수건이면 나그네 두건은 벗는다(그리지 않는다).
+const TRAVELER_HIDE = HEAD_FIT.hood.hide;
+// 머리카락 바깥 반지름(머리 가운데 y 1.33 기준). cover는 숨긴 뒤 남는 부피, ring은 전체 부피. 소품은 0.28에 맞춰 만들었다.
+const HAIR_R = {
+  cover: { none: 0.26, crop: 0.27, curly: 0.3, veil: 0.3, wavy: 0.3, longwave: 0.3 },
+  ring: { none: 0.26, crop: 0.27, curly: 0.34, crownbraid: 0.335, veil: 0.3, wavy: 0.29, longwave: 0.29 },
+};
+const hairR = (hair, kind) => HAIR_R[kind][hair] ?? 0.28;
+// 옷의 몸통 반지름(앞쪽 절반, 높이 y에서). [위 반지름, 아래 반지름, 위 y, 아래 y]. 허리·손 소품이 옷 안에 파묻히지 않게 이 값만큼 밀어낸다.
+const OUTFIT_BODY = {
+  tunic: [0.31, 0.38, 0.84, 0.22], traveler: [0.31, 0.38, 0.84, 0.22], cape: [0.31, 0.36, 0.85, 0.35], robe: [0.31, 0.46, 0.92, 0],
+  shepherd: [0.31, 0.4, 0.85, 0.15], girded: [0.31, 0.37, 0.83, 0.17], linen: [0.31, 0.36, 0.945, 0], coat: [0.31, 0.44, 0.92, 0],
+  figleaves: [0.33, 0.43, 0.69, 0.27], skins: [0.33, 0.42, 0.94, 0.16],
+};
+export function outfitR(outfit, y) {
+  const b = OUTFIT_BODY[outfit];
+  if (!b || y > b[2] || y < b[3]) return 0.28; // 옷이 없는 높이는 몸통(캡슐 0.28)
+  return b[0] + (b[1] - b[0]) * (b[2] - y) / (b[2] - b[3]);
+}
+// 손 소품: grip은 소품을 쥐는 자리(소품을 만든 인물 좌표), hand는 오른손을 둘 자리다. 소품은 오른손에 붙어 팔과 함께 움직이고,
+// 손에 무엇을 들면 그 팔은 걸을 때 흔들지 않는다(animateFigure). w·drop: 소품 반폭과 쥔 자리 아래로 내려오는 길이. 옷 반지름 + w보다 손이 몸에 가까우면 바깥으로 민다.
+// both: 두 팔로 가슴 앞에 안는다(어린양). 두 팔을 다 고정하고 소품은 몸 앞에 둔다.
+const LOW = [0.4, 0.55, 0.16], FRONT = [0.4, 0.7, 0.4];
+const HOLD = {
+  staff: { grip: [0.42, 0.58, 0.12], hand: LOW }, jstaff: { grip: [0.42, 0.58, 0.12], hand: LOW },
+  sling: { grip: [0.42, 0.78, 0.12], hand: LOW, w: 0.08, drop: 0.4 }, horn: { grip: [0.44, 0.86, 0.1], hand: LOW, w: 0.1, drop: 0.1 },
+  jar: { grip: [0.36, 1.36, -0.05], hand: [0.5, 1.42, 0.02] },
+  timbrel: { grip: [0.42, 0.66, 0.18], hand: FRONT }, palm: { grip: [0.42, 0.62, 0.12], hand: FRONT },
+  olive: { grip: [0.42, 0.66, 0.14], hand: FRONT }, lyre: { grip: [0.42, 0.74, 0.2], hand: FRONT },
+  lamp: { grip: [0.42, 0.72, 0.18], hand: FRONT }, scroll: { grip: [0.38, 0.75, 0.2], hand: FRONT },
+  basket: { grip: [0.42, 0.86, 0.16], hand: LOW, w: 0.17, drop: 0.32 }, sheaf: { grip: [0.42, 0.8, 0.16], hand: LOW, w: 0.1, drop: 0.25 },
+  net: { grip: [0.42, 0.72, 0.14], hand: LOW, w: 0.2, drop: 0.26 }, sickle: { grip: [0.42, 0.62, 0.14], hand: LOW, w: 0.05, drop: 0.12 },
+  torch: { grip: [0.42, 0.62, 0.14], hand: FRONT }, dove: { grip: [0.42, 0.53, 0.18], hand: FRONT },
+  pomegranate: { grip: [0.42, 0.46, 0.16], hand: FRONT }, censer: { grip: [0.42, 0.89, 0.16], hand: LOW, w: 0.1, drop: 0.4 },
+  pipe: { hand: [0.15, 1.0, 0.42] }, // 입에 댄다: 피리는 입과 손 사이에 그린다(grip 없음)
+  lamb: { both: true, hand: [0.2, 0.66, 0.44] },
+  myrrh: { grip: [0.42, 0.67, 0.18], hand: FRONT }, alabaster: { grip: [0.42, 0.65, 0.18], hand: FRONT },
+  pearl: { grip: [0.42, 0.53, 0.18], hand: FRONT }, budrod: { grip: [0.42, 0.58, 0.12], hand: LOW },
+  menorah: { grip: [0.42, 0.62, 0.16], hand: FRONT }, stars: { grip: [0.42, 0.56, 0.2], hand: FRONT },
+};
+// 허리 자리지만 몸 가운데에 두르거나 다는 것(옆 허리로 돌리지 않는다)
+const WAIST_CENTER = ['belt', 'breastplate'];
+const SHOULDER = new THREE.Vector3(0.33, 0.96, 0), ARM_LEN = 0.47;
+// 오른손을 t(인물 좌표)로 뻗는 팔 회전 [x, z]과 실제 손 자리. 팔은 한 마디라 길이가 모자라면 그 방향 끝까지 뻗는다.
+function aimArm(t) {
+  const n = new THREE.Vector3(...t).sub(SHOULDER).normalize();
+  return { rot: [Math.atan2(-n.z, -n.y), Math.asin(n.x)], hand: SHOULDER.clone().addScaledVector(n, ARM_LEN) };
+}
+
 // spec: { ghost?: 0xRRGGBB (반투명 관찰자), skin, hair, hairColor, outfit, outfitColor }
 export function makeFigure(spec) {
   const fig = new THREE.Group();
@@ -202,13 +264,19 @@ export function dressFigure(fig, spec) {
   };
   const skin = m(spec.skin ?? PAL.skin);
   const hairM = m(spec.hairColor ?? PAL.hairDark);
+  let into = rig; // 소품은 자리마다 무리에 모아 한꺼번에 옮긴다
   const add = (geo, material, x, y, z, rx = 0) => {
     const mesh = new THREE.Mesh(geo, material);
     mesh.position.set(x, y, z);
     mesh.rotation.x = rx;
-    rig.add(mesh);
+    into.add(mesh);
     return mesh;
   };
+  // 꾸미기 조합 규칙: 머리에 쓴 것(또는 나그네 두건)이 덮는 머리 부품은 그리지 않는다
+  const fit = HEAD_FIT[spec.head];
+  const travelerHood = spec.outfit === 'traveler' && fit?.kind !== 'cover' && spec.hair !== 'veil';
+  const hide = new Set([...(fit?.hide ?? []), ...(travelerHood ? TRAVELER_HIDE : [])]);
+  const hp = (tag, geo, x, y, z) => (hide.has(tag) ? null : add(geo, hairM, x, y, z));
 
   add(new THREE.CapsuleGeometry(0.28, 0.5, 3, 8), skin, 0, 0.62, 0);
   add(new THREE.SphereGeometry(0.26, 8, 6), skin, 0, 1.3, 0);
@@ -219,23 +287,23 @@ export function dressFigure(fig, spec) {
     add(new THREE.SphereGeometry(spec.hair === 'crop' ? 0.27 : 0.28, 8, 6, 0, Math.PI * 2, 0, Math.PI * (spec.hair === 'crop' ? 0.42 : 0.55)), hairM, 0, 1.33, -0.02);
   }
   if (spec.hair === 'long') {
-    add(new THREE.BoxGeometry(0.46, 0.8, 0.12), hairM, 0, 1.02, -0.18);
+    add(new THREE.BoxGeometry(0.46, 0.8, 0.12), hairM, 0, 1.02, -0.22);
     for (const x of [-0.2, 0.2]) add(new THREE.BoxGeometry(0.11, 0.62, 0.1), hairM, x, 0.98, 0.13);
   }
   if (spec.hair === 'tied') {
-    add(new THREE.SphereGeometry(0.11, 6, 5), hairM, 0, 1.38, -0.3);
-    add(new THREE.BoxGeometry(0.1, 0.32, 0.1), hairM, 0, 1.16, -0.33);
+    hp('top', new THREE.SphereGeometry(0.11, 6, 5), 0, 1.38, -0.3);
+    hp('back', new THREE.BoxGeometry(0.1, 0.32, 0.1), 0, 1.16, -0.33);
   }
   if (spec.hair === 'braid') {
-    for (let i = 0; i < 4; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, 0, 1.24 - i * 0.13, -0.3 - i * 0.015);
+    for (let i = 0; i < 4; i++) hp('back', new THREE.IcosahedronGeometry(0.075, 0), 0, 1.24 - i * 0.13, -0.3 - i * 0.015);
   }
-  if (spec.hair === 'bun') add(new THREE.SphereGeometry(0.14, 7, 5), hairM, 0, 1.58, -0.08);
+  if (spec.hair === 'bun') hp('top', new THREE.SphereGeometry(0.14, 7, 5), 0, 1.58, -0.08);
   if (spec.hair === 'wavy') { // 물결 머리: 어깨에 닿는 굽은 머리 다발
-    add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hairM, 0, 1.15, -0.19);
+    add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hairM, 0, 1.15, -0.22);
     for (const x of [-0.24, 0.24]) for (let i = 0; i < 3; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, x + Math.sin(i * 2) * 0.03, 1.22 - i * 0.12, 0.05);
   }
   if (spec.hair === 'twin') for (const x of [-0.26, 0.26]) { // 양갈래: 귀 뒤로 묶어 내린 두 다발
-    add(new THREE.SphereGeometry(0.07, 6, 5), hairM, x, 1.3, -0.12);
+    hp('top', new THREE.SphereGeometry(0.07, 6, 5), x, 1.3, -0.12);
     for (let i = 0; i < 3; i++) add(new THREE.IcosahedronGeometry(0.06, 0), hairM, x * 1.08, 1.16 - i * 0.11, -0.12);
   }
   if (spec.hair === 'veil') { // 머릿수건: 머리를 덮고 등으로 늘어진 천(옷 색)
@@ -243,26 +311,26 @@ export function dressFigure(fig, spec) {
     add(new THREE.BoxGeometry(0.5, 0.55, 0.06), m(spec.outfitColor ?? PAL.robe), 0, 1.05, -0.26, 0.08);
   }
   // 2026-11-03 F06 머리
-  if (spec.hair === 'fringe') add(new THREE.BoxGeometry(0.4, 0.1, 0.08), hairM, 0, 1.47, 0.19);
+  if (spec.hair === 'fringe') hp('brow', new THREE.BoxGeometry(0.4, 0.1, 0.08), 0, 1.47, 0.19);
   if (spec.hair === 'shoulder') {
-    add(new THREE.BoxGeometry(0.5, 0.42, 0.12), hairM, 0, 1.18, -0.18);
+    add(new THREE.BoxGeometry(0.5, 0.42, 0.12), hairM, 0, 1.18, -0.22);
     for (const x of [-0.22, 0.22]) add(new THREE.BoxGeometry(0.1, 0.36, 0.1), hairM, x, 1.2, 0.1);
   }
   if (spec.hair === 'side') {
-    add(new THREE.BoxGeometry(0.24, 0.12, 0.1), hairM, -0.09, 1.47, 0.18);
-    add(new THREE.BoxGeometry(0.1, 0.32, 0.12), hairM, -0.24, 1.26, 0.06);
+    hp('brow', new THREE.BoxGeometry(0.24, 0.12, 0.1), -0.09, 1.47, 0.18);
+    hp('brow', new THREE.BoxGeometry(0.1, 0.32, 0.12), -0.24, 1.26, 0.06);
   }
   if (spec.hair === 'locks') for (let i = 0; i < 7; i++) { // 일곱 가닥(삿 16:13): 뒤로 땋아 내린 가는 다발 일곱
     const a = Math.PI * (0.12 + 0.76 * i / 6);
-    add(new THREE.CylinderGeometry(0.04, 0.025, 0.6, 5), hairM, Math.cos(a) * 0.3, 1.06, -Math.sin(a) * 0.3 - 0.02);
+    hp('back', new THREE.CylinderGeometry(0.04, 0.025, 0.6, 5), Math.cos(a) * 0.3, 1.06, -Math.sin(a) * 0.3 - 0.02);
   }
   if (spec.hair === 'longwave') { // 긴 물결(아 4:1): 허리까지 내려오는 머리와 굽이치는 옆 다발
-    add(new THREE.BoxGeometry(0.5, 0.95, 0.12), hairM, 0, 0.95, -0.2);
+    add(new THREE.BoxGeometry(0.5, 0.95, 0.12), hairM, 0, 0.95, -0.22);
     for (const x of [-0.23, 0.23]) for (let i = 0; i < 5; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, x + Math.sin(i * 1.7) * 0.03, 1.22 - i * 0.14, 0.04);
   }
   if (spec.hair === 'crownbraid') for (let i = 0; i < 12; i++) { // 땋은 관(아 7:5): 머리 둘레에 땋아 두른 머리
     const a = (i / 12) * Math.PI * 2;
-    add(new THREE.IcosahedronGeometry(0.07, 0), hairM, Math.cos(a) * 0.25, 1.47, Math.sin(a) * 0.25 - 0.02);
+    hp('top', new THREE.IcosahedronGeometry(0.07, 0), Math.cos(a) * 0.25, 1.47, Math.sin(a) * 0.25 - 0.02);
   }
   if (spec.beard === 'short') add(new THREE.BoxGeometry(0.3, 0.12, 0.12), hairM, 0, 1.17, 0.19);
   if (spec.beard === 'long') {
@@ -274,9 +342,9 @@ export function dressFigure(fig, spec) {
     for (let i = 0; i < 9; i++) {
       const a = (i / 9) * Math.PI * 2 + 0.3;
       if (Math.sin(a) > 0.75) continue; // 이마 앞은 비워 얼굴이 보이게
-      add(new THREE.IcosahedronGeometry(0.08, 0), hairM, Math.cos(a) * 0.25, 1.38, Math.sin(a) * 0.25 - 0.04);
+      hp('top', new THREE.IcosahedronGeometry(0.08, 0), Math.cos(a) * 0.25, 1.38, Math.sin(a) * 0.25 - 0.04);
     }
-    for (const [x, z] of [[0, 0.04], [-0.12, -0.08], [0.12, -0.08], [0, -0.18]]) add(new THREE.IcosahedronGeometry(0.08, 0), hairM, x, 1.56, z);
+    for (const [x, z] of [[0, 0.04], [-0.12, -0.08], [0.12, -0.08], [0, -0.18]]) hp('top', new THREE.IcosahedronGeometry(0.08, 0), x, 1.56, z);
   }
 
   const cloth = m(spec.outfitColor ?? PAL.robe);
@@ -316,7 +384,7 @@ export function dressFigure(fig, spec) {
       add(new THREE.CylinderGeometry(0.31, 0.38, 0.62, 8), cloth, 0, 0.53, 0);
       shoulders(cloth);
       addCape(cloth);
-      add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth, 0, 1.25, -0.12, -0.5);
+      if (travelerHood) add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth, 0, 1.25, -0.12, -0.5);
       break;
     case 'girded': { // 띠 띤 옷(왕상 18:46 허리를 동이고): 넓은 허리띠와 어깨에서 허리로 맨 끈
       add(new THREE.CylinderGeometry(0.31, 0.37, 0.66, 8), cloth, 0, 0.5, 0);
@@ -348,7 +416,29 @@ export function dressFigure(fig, spec) {
     default: break;
   }
 
-  for (const prop of [spec.item, spec.waist, spec.head]) switch (prop) {
+  // 팔: 어깨에 축을 둔 무리(걷기·안기·들기에 따라 돌린다). 옷이 있으면 소매는 옷 색, 끝은 손.
+  const sleeve = spec.outfit && !['figleaves'].includes(spec.outfit) ? (spec.outfit === 'skins' ? m(PAL.skins) : cloth) : skin;
+  fig.userData.arms = [-1, 1].map((side) => {
+    const arm = new THREE.Group();
+    arm.position.set(side * 0.33, 0.96, 0);
+    arm.rotation.z = side * 0.12;
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.34, 2, 6), sleeve);
+    upper.position.y = -0.22;
+    const hand = new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 0), skin);
+    hand.position.y = -0.47;
+    arm.add(upper, hand);
+    rig.add(arm);
+    return arm;
+  });
+
+  fig.userData.hold = null;
+  const strap = () => { into = rig; const st = add(new THREE.BoxGeometry(0.05, 0.66, 0.04), m(PAL.skins), 0, 0.86, 0.3); st.rotation.z = -0.75; }; // 오른 어깨에서 왼 허리로 맨 끈
+  for (const [slot, prop] of [['hand', spec.item], ['waist', spec.waist], ['head', spec.head]]) {
+  if (!prop || prop === 'none') continue;
+  const g = new THREE.Group();
+  rig.add(g);
+  into = g;
+  switch (prop) {
     case 'staff': add(new THREE.CylinderGeometry(0.035, 0.035, 1.7, 5), m(PAL.bark), 0.42, 0.85, 0.12); break;
     case 'sling': { // 물매(삼상 17:40): 손에서 늘어진 두 줄과 돌을 담는 가죽 주머니
       for (const z of [0.06, 0.18]) add(new THREE.BoxGeometry(0.025, 0.36, 0.025), m(PAL.skins), 0.42, 0.6, z);
@@ -366,7 +456,6 @@ export function dressFigure(fig, spec) {
       const o = add(new THREE.ConeGeometry(0.07, 0.3, 6), m(PAL.horn), -0.36, 0.56, 0.12);
       o.rotation.z = Math.PI - 0.3;
       add(new THREE.CylinderGeometry(0.04, 0.04, 0.05, 6), m(PAL.gold), -0.4, 0.71, 0.12);
-      add(new THREE.BoxGeometry(0.03, 0.3, 0.03), m(PAL.skins), -0.3, 0.82, 0.12, 0.3);
       break;
     }
     case 'jar': // 물동이(창 24:15): 어깨에 멘 항아리
@@ -396,11 +485,11 @@ export function dressFigure(fig, spec) {
     }
     case 'bag': // 목자 가방(삼상 17:40)
       add(new THREE.BoxGeometry(0.22, 0.26, 0.12), m(PAL.skins), -0.36, 0.62, 0.05);
-      add(new THREE.BoxGeometry(0.05, 0.75, 0.05), m(PAL.skins), -0.05, 0.95, 0.27, 0.15);
+      strap();
       break;
     case 'hood':
       add(new THREE.SphereGeometry(0.31, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.6), cloth, 0, 1.33, -0.03);
-      add(new THREE.BoxGeometry(0.5, 0.45, 0.06), cloth, 0, 1.1, -0.26, 0.1);
+      add(new THREE.BoxGeometry(0.5, 0.45, 0.06), cloth, 0, 1.1, -0.3, 0.04);
       break;
     case 'lamp':
       add(new THREE.BoxGeometry(0.16, 0.1, 0.12), m(PAL.soil), 0.42, 0.78, 0.18);
@@ -414,11 +503,14 @@ export function dressFigure(fig, spec) {
     // ---- 대표 소품(스테이지를 마치면) ----
     case 'basket': // 열매 바구니(창 2:16): 손에 든 낮은 바구니와 열매
       add(new THREE.CylinderGeometry(0.17, 0.12, 0.14, 8), m(PAL.bark), 0.42, 0.62, 0.16);
+      add(new THREE.TorusGeometry(0.15, 0.02, 4, 10, Math.PI), m(PAL.bark), 0.42, 0.69, 0.16);
       for (const [x, z, c] of [[-0.06, 0, PAL.fruit], [0.06, 0.03, 0xf2cf66], [0, -0.05, 0x9a4fd0]]) add(new THREE.IcosahedronGeometry(0.06, 0), m(c), 0.42 + x, 0.72, 0.16 + z);
       break;
     case 'lamb': { // 어린양(창 4:2): 품에 안은 작은 양
-      add(new THREE.IcosahedronGeometry(0.17, 1).scale(1.3, 0.9, 1), m(0xf3efe6), 0.3, 0.78, 0.24);
-      add(new THREE.BoxGeometry(0.1, 0.11, 0.12), m(0x3a302a), 0.48, 0.84, 0.26);
+      const z = outfitR(spec.outfit, 0.72) + 0.13; // 옷 앞에 닿게
+      add(new THREE.IcosahedronGeometry(0.17, 1).scale(1.25, 0.85, 0.75), m(0xf3efe6), -0.03, 0.74, z);
+      add(new THREE.BoxGeometry(0.11, 0.12, 0.12), m(0x3a302a), 0.22, 0.84, z + 0.02);
+      for (const x of [-0.07, 0.05]) add(new THREE.BoxGeometry(0.04, 0.12, 0.04), m(0x3a302a), x, 0.6, z + 0.05);
       break;
     }
     case 'olive': // 올리브 가지(창 8:11): 위로 든 가는 가지와 잎
@@ -435,14 +527,14 @@ export function dressFigure(fig, spec) {
       for (let i = 0; i < 5; i++) add(new THREE.IcosahedronGeometry(0.04, 0), m(0xe6c45a), 0.42 + (i - 2) * 0.04, 1.17, 0.16);
       break;
     case 'oakwreath': // 상수리 잎 관(창 12:6, 각색): 머리에 두른 잎 고리
-      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; add(new THREE.BoxGeometry(0.1, 0.04, 0.06), m(0x5e8a3a), Math.cos(a) * 0.27, 1.45, Math.sin(a) * 0.27); }
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; const lf = add(new THREE.BoxGeometry(0.1, 0.04, 0.06), m(0x5e8a3a), Math.cos(a) * 0.26, 1.45, Math.sin(a) * 0.26); lf.rotation.y = Math.PI / 2 - a; }
       break;
     case 'nosering': // 금 코걸이(창 24:22): 코 아래 작은 금 고리
-      add(new THREE.TorusGeometry(0.035, 0.012, 4, 8), m(PAL.gold), 0, 1.25, 0.26);
+      add(new THREE.TorusGeometry(0.035, 0.012, 4, 8), m(PAL.gold), 0, 1.27, 0.26);
       break;
     case 'waterskin': // 가죽 부대(창 21:14): 어깨끈과 허리의 불룩한 부대
       add(new THREE.IcosahedronGeometry(0.16, 1).scale(0.8, 1, 0.7), m(PAL.skins), -0.36, 0.62, 0.02);
-      add(new THREE.BoxGeometry(0.04, 0.75, 0.04), m(PAL.skins), -0.05, 0.95, 0.27, 0.15);
+      strap();
       break;
     // ---- 상점 ----
     // ---- 2026-11-03 F05 ----
@@ -492,12 +584,14 @@ export function dressFigure(fig, spec) {
       for (let i = 0; i < 3; i++) add(new THREE.TorusGeometry(0.25 - i * 0.04, 0.06, 5, 12), m(0xf1ead8), 0, 1.44 + i * 0.07, -0.02, Math.PI / 2);
       break;
     case 'pipe': { // 피리(삼상 10:5): 입에 대는 가는 관
-      const p = add(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 6), m(0xc9a46a), 0.2, 1.08, 0.3);
-      p.rotation.set(Math.PI / 2.6, 0, -0.6);
+      const mouth = new THREE.Vector3(0.03, 1.19, 0.27), dir = aimArm(HOLD.pipe.hand).hand.sub(mouth).normalize();
+      const p = add(new THREE.CylinderGeometry(0.025, 0.03, 0.42, 6), m(0xc9a46a), 0, 0, 0);
+      p.position.copy(mouth).addScaledVector(dir, 0.21);
+      p.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
       break;
     }
     case 'belt': // 금띠(계 1:13): 허리에 두른 금빛 띠
-      add(new THREE.TorusGeometry(0.34, 0.05, 4, 12), m(PAL.gold), 0, 0.74, 0, Math.PI / 2);
+      add(new THREE.TorusGeometry(outfitR(spec.outfit, 0.74) + 0.03, 0.05, 4, 12), m(PAL.gold), 0, 0.74, 0, Math.PI / 2);
       break;
     case 'censer': { // 금 향로(계 8:3): 사슬에 매단 향로와 피어오르는 연기
       add(new THREE.CylinderGeometry(0.1, 0.07, 0.12, 8), m(PAL.gold), 0.42, 0.55, 0.16);
@@ -509,23 +603,86 @@ export function dressFigure(fig, spec) {
       add(new THREE.CylinderGeometry(0.24, 0.24, 0.1, 10, 1, true), m(PAL.gold), 0, 1.52, 0);
       for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; add(new THREE.ConeGeometry(0.035, 0.1, 4), m(PAL.gold), Math.cos(a) * 0.24, 1.61, Math.sin(a) * 0.24); }
       break;
+    // ---- 2026-11-03 상점(귀한 물건) ----
+    case 'myrrh': // 몰약 합(마 2:11): 손바닥 위의 둥근 나무 합과 금 뚜껑
+      add(new THREE.CylinderGeometry(0.08, 0.07, 0.12, 8), m(0x6b4428), 0.42, 0.74, 0.18);
+      add(new THREE.CylinderGeometry(0.085, 0.085, 0.03, 8), m(PAL.gold), 0.42, 0.815, 0.18);
+      add(new THREE.IcosahedronGeometry(0.025, 0), m(PAL.gold), 0.42, 0.85, 0.18);
+      break;
+    case 'alabaster': // 옥합(막 14:3): 흰 돌로 깎은 목이 긴 향유 병
+      add(new THREE.SphereGeometry(0.09, 8, 6).scale(1, 1.15, 1), m(0xf3eee2), 0.42, 0.75, 0.18);
+      add(new THREE.CylinderGeometry(0.03, 0.04, 0.12, 6), m(0xf3eee2), 0.42, 0.88, 0.18);
+      add(new THREE.CylinderGeometry(0.045, 0.045, 0.025, 6), m(0xd9cfb8), 0.42, 0.95, 0.18);
+      break;
+    case 'pearl': // 값진 진주(마 13:46): 손바닥 위에서 은은히 빛나는 큰 진주
+      add(new THREE.SphereGeometry(0.075, 10, 8), glowMat(0xf6f1ff, 0.35), 0.42, 0.6, 0.18);
+      break;
+    case 'budrod': // 싹 난 지팡이(민 17:8): 지팡이 위쪽에 잎과 흰 살구꽃, 열매
+      add(new THREE.CylinderGeometry(0.035, 0.04, 1.6, 5), m(0x7a5230), 0.42, 0.8, 0.12);
+      for (let i = 0; i < 6; i++) {
+        const side = i % 2 ? 1 : -1, y = 1.25 + i * 0.08;
+        const lf = add(new THREE.BoxGeometry(0.12, 0.03, 0.05), m(0x8aa85a), 0.42 + side * 0.07, y, 0.12);
+        lf.rotation.z = side * -0.5;
+        add(new THREE.IcosahedronGeometry(0.035, 0), m(i % 3 ? 0xfbf3f0 : 0xd9a46a), 0.42 - side * 0.05, y + 0.04, 0.15);
+      }
+      break;
+    case 'breastplate': { // 판결 흉패(출 28:15): 가슴 앞에 매단 금 판과 네 줄 보석 열두 개
+      const z = Math.max(0.31, outfitR(spec.outfit, 0.9)) + 0.02;
+      add(new THREE.BoxGeometry(0.22, 0.25, 0.03), m(PAL.gold), 0, 0.9, z);
+      [0xb8452f, 0x3f8a3a, 0x3f5a8a, 0xe0b040, 0x6e3f73, 0xf1ead8, 0x7fd6d0, 0x8a2a3a, 0x2f7d3a, 0xd9a63a, 0x5a3a22, 0x9fd0ff]
+        .forEach((hex, i) => add(new THREE.BoxGeometry(0.045, 0.04, 0.02), m(hex), (i % 3 - 1) * 0.065, 0.99 - Math.floor(i / 3) * 0.06, z + 0.02));
+      for (const x of [-0.09, 0.09]) add(new THREE.BoxGeometry(0.02, 0.14, 0.02), m(PAL.gold), x, 1.07, z - 0.02);
+      break;
+    }
+    case 'goldplate': // 성결 금패(출 28:36): 이마 앞 순금 패와 머리를 두른 청색 끈
+      add(new THREE.TorusGeometry(0.25, 0.015, 4, 14), m(0x3f5a8a), 0, 1.46, 0, Math.PI / 2);
+      add(new THREE.BoxGeometry(0.17, 0.07, 0.025), m(PAL.gold), 0, 1.46, 0.255);
+      break;
+    case 'menorah': { // 금 등잔대(출 25:31): 가운데 줄기에서 양쪽으로 세 가지씩 굽어 오른 일곱 등잔
+      const gm = m(PAL.gold);
+      add(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 5), gm, 0.42, 0.82, 0.16);
+      add(new THREE.CylinderGeometry(0.07, 0.09, 0.04, 8), gm, 0.42, 0.62, 0.16);
+      for (const r of [0.06, 0.11, 0.16]) { const arc = add(new THREE.TorusGeometry(r, 0.012, 4, 10, Math.PI), gm, 0.42, 1.0, 0.16); arc.rotation.z = Math.PI; }
+      for (const x of [-0.16, -0.11, -0.06, 0, 0.06, 0.11, 0.16]) add(new THREE.IcosahedronGeometry(0.025, 0), glowMat(0xffb347, 0.9), 0.42 + x, 1.03, 0.16);
+      break;
+    }
+    case 'stars': // 일곱 별(계 1:16): 손 위에 둥글게 떠 있는 일곱 별빛
+      for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; add(new THREE.OctahedronGeometry(0.03, 0), glowMat(0xfff2b0, 1), 0.42 + Math.cos(a) * 0.1, 0.7 + Math.sin(a) * 0.1, 0.2); }
+      break;
     default: break;
   }
-
-  // 팔: 어깨에 축을 둔 무리(걷기·안기·들기에 따라 돌린다). 옷이 있으면 소매는 옷 색, 끝은 손.
-  const sleeve = spec.outfit && !['figleaves'].includes(spec.outfit) ? (spec.outfit === 'skins' ? m(PAL.skins) : cloth) : skin;
-  fig.userData.arms = [-1, 1].map((side) => {
-    const arm = new THREE.Group();
-    arm.position.set(side * 0.33, 0.96, 0);
-    arm.rotation.z = side * 0.12;
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.34, 2, 6), sleeve);
-    upper.position.y = -0.22;
-    const hand = new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 0), skin);
-    hand.position.y = -0.47;
-    arm.add(upper, hand);
-    rig.add(arm);
-    return arm;
-  });
+  into = rig;
+  if (slot === 'head' && fit) { // 머리 가운데(0, 1.33, 0)를 중심으로 머리카락 크기에 맞춰 키운다
+    const k = hairR(spec.hair, fit.kind) / 0.28;
+    g.scale.setScalar(k);
+    g.position.y = 1.33 * (1 - k);
+  }
+  if (slot === 'waist' && !WAIST_CENTER.includes(prop)) { // 왼쪽 옆구리에서 앞 허리로 돌려 걷는 팔과 비키고, 옷이 넓으면 그만큼 밀어낸다
+    const a = 0.6, d = Math.max(0, outfitR(spec.outfit, 0.6) - 0.335);
+    g.rotation.y = a;
+    g.position.set(-d * Math.cos(a), 0, d * Math.sin(a));
+  }
+  if (slot === 'hand') {
+    const h = HOLD[prop] ?? { grip: [0.42, 0.75, 0.15], hand: LOW };
+    const t = [...h.hand];
+    if (h.w) { // 넓은 옷: 소품 아래 끝 높이의 옷 반지름보다 바깥으로
+      const need = outfitR(spec.outfit, t[1] - (h.drop ?? 0)) + h.w + 0.02, r = Math.hypot(t[0], t[2]);
+      if (r < need) { t[0] *= need / r; t[2] *= need / r; }
+    }
+    const { rot, hand } = aimArm(t);
+    const [left, right] = fig.userData.arms;
+    if (h.both) {
+      fig.userData.hold = [[rot[0], -rot[1]], rot];
+    } else {
+      fig.userData.hold = [null, rot];
+      if (h.grip) g.position.copy(hand).sub(new THREE.Vector3(...h.grip));
+      right.rotation.set(rot[0], 0, rot[1]);
+      rig.updateMatrixWorld(true);
+      right.attach(g); // 손에 붙여 팔과 함께 움직인다
+    }
+    if (h.both) { left.rotation.set(rot[0], 0, -rot[1]); right.rotation.set(rot[0], 0, rot[1]); }
+  }
+  }
 
   // 지상 모습: 발밑의 빛 고리
   if (spec.aura !== undefined) {
@@ -569,7 +726,7 @@ export function animateFigure(fig, speed, dt, t, ref = 4) {
   rig.rotation.x = 0.14 * s + Math.sin(t * 7) * 0.06 * talk;
   rig.rotation.z = Math.sin(p) * 0.06 * s + Math.sin(t * 0.9 + (u.seed ??= Math.random() * 6)) * 0.025 * idle;
   if (u.armPose) setArms(fig, u.armPose);
-  else u.arms?.forEach((arm, i) => { arm.rotation.x = Math.sin(p + (i ? Math.PI : 0)) * 0.55 * s + Math.sin(t * 1.2 + i) * 0.04 * idle - 0.3 * talk * (i ? 1 : 0); arm.rotation.z = (i ? 1 : -1) * 0.12; });
+  else u.arms?.forEach((arm, i) => { const hold = u.hold?.[i]; if (hold) { arm.rotation.x = hold[0]; arm.rotation.z = hold[1]; return; } arm.rotation.x = Math.sin(p + (i ? Math.PI : 0)) * 0.55 * s + Math.sin(t * 1.2 + i) * 0.04 * idle - 0.3 * talk * (i ? 1 : 0); arm.rotation.z = (i ? 1 : -1) * 0.12; });
   if (u.limp && s > 0) { rig.rotation.z += Math.max(0, Math.sin(p)) * 0.16 * s; rig.position.y -= Math.max(0, Math.sin(p)) * 0.08 * s; }
   const h = u.height ?? 1;
   rig.scale.set(h, h * (1 + Math.sin(t * 2 + u.seed) * 0.015 * idle), h);

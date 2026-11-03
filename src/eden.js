@@ -260,9 +260,9 @@ export function makeEden(scene) {
     branch.rotation.set(out.z * 1.2, 0, -out.x * 1.2);
     tree.add(branch);
     const bird = new THREE.Group();
-    const body = mat(0xc8743a), belly = mat(0xf0d9a8);
+    const body = mat(0x8a6446), belly = mat(0xe3d6bc), cap = mat(0x5e3f2a); // 참새(F22): 갈색 등, 밝은 배, 짙은 정수리
     bird.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 7, 5).scale(1.25, 1, 0.9), body)); // 몸
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 7, 5), body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 7, 5), cap);
     head.position.set(0.12, 0.1, 0);
     bird.add(head);
     const beak = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.07, 4), mat(PAL.gold));
@@ -280,7 +280,7 @@ export function makeEden(scene) {
     bird.position.copy(tree.position).add(V(out.x * 0.62 * s, 0, out.z * 0.62 * s)).setY(0.92 * s);
     bird.rotation.y = -Math.atan2(out.z, out.x) + Math.PI * 0.75; // 가지 끝에서 옆을 보고 앉는다
     bird.scale.setScalar(1.7); // 동산의 큰 짐승들 사이에서도 보이게
-    bird.userData = { name: '새', kind: 'bird', calm: false, wings, tail, head };
+    bird.userData = { name: '참새', kind: 'bird', calm: false, wings, tail, head };
     group.add(bird);
     return { bird, ground: tree.position.clone().addScaledVector(out, 1.3 * s) };
   })();

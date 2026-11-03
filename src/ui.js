@@ -588,13 +588,16 @@ export function askQuiz(questions) {
       const next = $('quizNext');
       next.hidden = true;
       const opts = $('quizOptions');
-      opts.replaceChildren(...q.options.map((text, n) => {
+      // 보기 순서는 열 때마다 섞는다(2026-11-03 사용자 F25). 번호 키캡은 화면 순서, 정답 판정은 데이터 번호(n)로 한다
+      const order = q.options.map((_, k) => k).sort(() => Math.random() - 0.5);
+      opts.replaceChildren(...order.map((n, at) => {
+        const text = q.options[n];
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'btn btn--option';
         const key = document.createElement('kbd');
         key.className = 'choice__key';
-        key.textContent = n + 1;
+        key.textContent = at + 1;
         b.append(key, text);
         b.onclick = () => {
           if (n !== q.answer) {
@@ -699,6 +702,21 @@ export function popHud({ xp = 0, talent = 0 } = {}) {
 
 // 마침 창(2026-11-02 S29): 스테이지를 마치면 다음 이야기 입장(먼저), 지도, 쉼터 가운데 고른다. 'next' | 'map' | 'home'
 // next가 없으면(마지막 이야기) 다음 칸과 입장 버튼을 숨긴다. Enter는 입장, Esc는 쉼터.
+// 쉼터로 나가기 확인: 나가면 true. 기본 포커스는 '계속하기'(실수로 나가지 않게), Esc는 계속하기.
+export function askQuit() {
+  const box = $('quitBox');
+  box.classList.remove('is-closing');
+  box.hidden = false;
+  $('quitNo').focus({ preventScroll: true });
+  return new Promise((resolve) => {
+    const done = (v) => { hideModal(box); removeEventListener('keydown', onKey, true); resolve(v); };
+    const onKey = (e) => { if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); } };
+    addEventListener('keydown', onKey, true);
+    $('quitNo').onclick = () => done(false);
+    $('quitYes').onclick = () => done(true);
+    box.onclick = (e) => { if (e.target === box) done(false); };
+  });
+}
 export function askClear({ kicker, title, next }) {
   const box = $('clearBox');
   $('clearKicker').textContent = kicker;

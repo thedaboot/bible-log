@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- 개발 점검용: 머리 × 머리 소품, 옷 × 손·허리 소품 조합을 격자로 세운다. ?set=head|hand|waist&view=front|cam&walk=0~1 -->
+<style>
+  body { margin: 0; background: #f6efe2; overflow: hidden; }
+  .lb { position: absolute; font: 11px sans-serif; color: #333; transform: translate(-50%, 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<script type="module">
+  import * as THREE from 'three';
+  import { makeFigure, earthSpec, animateFigure, LOOK, DEFAULT_EARTH } from '/src/props.js';
+  const q = new URLSearchParams(location.search);
+  const set = q.get('set') ?? 'head', view = q.get('view') ?? 'front', walk = Number(q.get('walk') ?? 0);
+  const E = LOOK.earth;
+  let rows, cols, look;
+  if (set === 'head') { rows = E.hair; cols = [...E.head, { id: 'traveler', name: '나그네 옷' }]; look = (r, c) => (c.id === 'traveler' ? { hair: r.id, outfit: 'traveler' } : { hair: r.id, head: c.id, beard: 'short' }); }
+  else if (set === 'hand') { rows = E.outfit; cols = E.item.slice(1); look = (r, c) => ({ outfit: r.id, item: c.id }); }
+  else { rows = E.outfit; cols = [...E.waist.slice(1), ...E.item.filter((o) => ['staff', 'basket', 'lamb'].includes(o.id))]; look = (r, c) => ({ outfit: r.id, waist: E.waist.some((w) => w.id === c.id) ? c.id : 'none', item: E.item.some((w) => w.id === c.id) ? c.id : 'none' }); }
+  // 칸마다 따로 그린다(scissor). 인물은 멀리 떨어뜨려 이웃이 칸에 들어오지 않게 한다. head는 머리만 크게 본다.
+  const W = innerWidth, H = innerHeight, top = 18, left = 70;
+  const cw = (W - left) / cols.length, ch = (H - top) / rows.length;
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(W, H);
+  renderer.setScissorTest(true);
+  document.body.append(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf6efe2);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x9a8a70, 2.2));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(3, 6, 5); scene.add(sun);
+  const [y0, y1] = set === 'head' ? [0.95, 1.85] : [-0.05, 1.9];
+  const yaw = { front: 0, cam: -Math.PI / 4, side: Math.PI / 2, back: Math.PI }[view];
+  const lab = (t, x, y) => { const d = document.createElement('div'); d.className = 'lb'; d.textContent = t; d.style.left = `${x}px`; d.style.top = `${y}px`; document.body.append(d); };
+  rows.forEach((r, i) => cols.forEach((c, j) => {
+    const f = makeFigure(earthSpec({ ...DEFAULT_EARTH, outfitColor: 'indigo', hairColor: 'chestnut', ...look(r, c) }));
+    const X = (i * cols.length + j) * 10;
+    f.position.set(X, 0, 0);
+    f.rotation.y = yaw;
+    f.userData.phase = walk * Math.PI / 2;
+    animateFigure(f, walk ? 4 : 0, 0, 0);
+    scene.add(f);
+    const hh = (y1 - y0) / 2, ww = hh * cw / ch;
+    const cam = new THREE.OrthographicCamera(-ww, ww, hh, -hh, -50, 50);
+    cam.position.set(X, (y0 + y1) / 2 + (view === 'cam' ? 1.2 : 0), 5);
+    cam.lookAt(X, (y0 + y1) / 2, 0);
+    const vx = left + j * cw, vy = H - top - (i + 1) * ch;
+    renderer.setViewport(vx, vy, cw, ch); renderer.setScissor(vx, vy, cw, ch);
+    renderer.render(scene, cam);
+    f.visible = false;
+  }));
+  cols.forEach((c, j) => lab(c.name, left + (j + 0.5) * cw, 2));
+  rows.forEach((r, i) => lab(r.name, left / 2, top + (i + 0.5) * ch));
+  window.__ready = true;
+</script>
+</body>
+</html>

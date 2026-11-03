@@ -26,6 +26,9 @@ body {
 canvas { display: block; touch-action: none; image-rendering: pixelated; }
 /* 웹앱: 두 번 탭해 확대되지 않게(손가락 탭은 바로 누름으로), iOS 탭 회색 바탕을 없앤다. 버튼은 글자색·글꼴을 물려받는다(iOS 기본 파란 글자 방지) */
 html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+/* 길게 누르거나 끌 때 글자 선택(파란 영역)과 iOS 길게 누르기 메뉴가 화면을 덮지 않게 한다(2026-11-03 F24). 이름 입력 칸만 고를 수 있다 */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
 * { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; font-family: inherit; }
 [hidden] { display: none !important; }
@@ -1502,3 +1505,31 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
   .slot:has(.slot__price) { min-height: 5.25rem; } /* 상점 칸은 값 줄까지 */
   .codex__keys { display: none; }
 }
+
+/* 메뉴 아래 '쉼터로 나가기'(F26)와 확인 창 */
+.modal__panel .menu-panel__quit { justify-self: end; min-height: 40px; padding: 0 var(--space-sm); font-size: var(--text-small); color: var(--color-ink-2); }
+.quit__text { white-space: pre-line; }
+
+/* F27 인벤토리: 잠긴 꾸미기는 설명에서도 실루엣 */
+.inv__detail.is-locked .inv__bigicon svg { filter: brightness(0); opacity: 0.22; }
+/* F27 휴대폰 인벤토리·상점: 설명 패널을 sticky로 붙였더니 스크롤할 때 흔들리고 맨 아래 칸이 패널 뒤에 겹쳤다.
+   시트를 위아래로 나눠, 칸 격자만 스크롤하고 설명 패널은 격자 아래 제자리에 둔다 */
+@media (max-width: 39.99rem) {
+  .menu-panel:has(.inv) { display: flex; flex-direction: column; overflow: hidden; }
+  .menu-panel:has(.inv) > .menu-panel__body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .menu-panel__body > .inv { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-sm); }
+  .inv > .codex__box { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .inv .codex__page { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
+  .inv .codex__page > .slots { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding: 2px 2px var(--space-xs); overscroll-behavior: contain; }
+  .inv__detail { position: static; flex: none; box-shadow: 0 -2px 0 var(--color-paper-3); }
+}
+/* F36 상점·인벤토리 칸: 그림 자리를 같은 높이로 두고, 아래 그늘 띠(4px)를 뺀 칸 안쪽 가운데에 내용을 놓는다 */
+.slot { grid-template-rows: 44px auto auto; align-content: center; padding-bottom: calc(var(--space-xs) + 4px); }
+.slot__icon { align-self: center; }
+/* F37 사기 버튼: 달란트 그림과 값만 */
+.shop__buy { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2xs); }
+.shop__buycoin { width: 20px; height: 20px; }
+.shop__buynum { font-size: var(--text-lede); font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* 1-3 가인이 꾸짖는 말 배너(toast kind say): 아이콘 자리를 비우지 않는다 */
+.toast[data-kind="say"]::before { display: none; }
