@@ -14,6 +14,11 @@
   --color-accent-ink: oklch(47% 0.120 62); /* 금빛 글자: 밝은 바탕 위 작은 글씨도 대비 4.5:1 이상 */
   --color-gold:    oklch(80% 0.130 85);
   --color-leaf:    oklch(58% 0.120 140); /* 열매 성장 배너의 새싹 */
+  /* 도감 그림(codex-art.js) 전용 색: 물·하늘, 살갗, 붉은 것, 짙은 깃털·바위 */
+  --color-px-water: oklch(62% 0.090 235);
+  --color-px-skin:  oklch(76% 0.070 60);
+  --color-px-red:   oklch(55% 0.160 30);
+  --color-px-dark:  oklch(38% 0.015 60);
   --color-focus:   oklch(52% 0.170 45);
   --color-shadow:  oklch(30% 0.045 50 / 0.35);
   --color-scrim:   oklch(30% 0.045 50 / 0.45);

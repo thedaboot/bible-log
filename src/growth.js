@@ -1,6 +1,6 @@
 // 성장 계산: 경험치·레벨, 열매 단계, 관계, 도감 기록. 수치는 data/growth.js에 있다.
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, xpToNext, TITLES, BONDS, BOND_NAMES, slotsAt, CHALLENGE, DEEP_LEVEL } from './data/growth.js';
-import { ITEMS } from './data/items.js';
+import { ITEMS, STYLES, SHOP } from './data/items.js';
 import { josa, SPEAKERS } from './text.js';
 import { LIKENESS, CODEX } from './data/codex.js';
 
@@ -76,6 +76,7 @@ export function codexState(state, entry) {
 // ---------- 손에 드는 물건(data/items.js) ----------
 // 꾸미기는 레벨로 열린 것과 따로 얻은 것(state.items.looks, 상점·예전 저장값)을 합친다.
 export function ownsLook(state, id) {
+  if (STYLES.some((s) => s.id === id)) return state.items.looks.includes(id); // 상점 머리·옷은 사야 갖는다
   const it = ITEMS.find((i) => i.id === id && i.kind === 'look');
   return !!it && (it.level <= levelOf(state.xp).level || state.items.looks.includes(id) || (!!it.stage && state.claimed.includes(`${it.stage}/clear`)));
 }
@@ -113,7 +114,7 @@ export function chooseFruit(state, key, fruit) {
 
 // 상점: 달란트로 꾸미기를 산다. 이미 가졌거나 달란트가 모자라면 false.
 export function buyLook(state, id) {
-  const it = ITEMS.find((i) => i.id === id && i.price);
+  const it = SHOP.find((i) => i.id === id);
   if (!it || ownsLook(state, id) || state.talents < it.price) return false;
   state.talents -= it.price;
   state.items.looks.push(id);

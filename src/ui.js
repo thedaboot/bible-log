@@ -452,11 +452,11 @@ export function setQuest(quest) {
 const CONTROLS = {
   walk: {
     pc: '<div class="keys"><kbd class="key key--w">W</kbd><kbd class="key key--a">A</kbd><kbd class="key key--s">S</kbd><kbd class="key key--d">D</kbd></div><p>키보드로 걷거나,<br>가고 싶은 곳을 클릭하세요</p>',
-    touch: '<span class="gesture gesture--tap" aria-hidden="true"></span><p>탭하면 그곳으로, 드래그하면 그 방향으로 걸어요</p>',
+    touch: '<div class="coach"><p class="coach__row"><span class="gesture gesture--tap" aria-hidden="true"></span><span><b>톡 누르면</b> 그곳으로 걸어가요</span></p><p class="coach__row"><span class="gesture gesture--drag" aria-hidden="true"></span><span><b>누른 채 끌면</b> 그 방향으로 걸어요</span></p></div>',
   },
   look: {
     pc: '<div class="keys keys--row"><kbd class="key key--q">Q</kbd><kbd class="key key--e">E</kbd></div><p>화면을 드래그하거나, Q·E 키를 눌러<br>세상을 둘러보세요</p>',
-    touch: '<span class="gesture gesture--swipe" aria-hidden="true"></span><p>화면을 좌우로 밀어 세상을 둘러보세요</p>',
+    touch: '<div class="coach"><p class="coach__row"><span class="gesture gesture--swipe" aria-hidden="true"></span><span><b>좌우로 밀면</b> 세상을 둘러봐요</span></p></div>',
   },
 };
 export function setControls(kind) {
@@ -475,8 +475,10 @@ export function setGauge(label, p = 0) {
 }
 
 // 도감 카드: 누르거나 2.8초가 지나면 닫힌다.
-export function showCard({ title, text, ref, count }) {
+export function showCard({ title, text, ref, count, pic = '' }) {
   const el = $('dexCard');
+  $('dexPic').innerHTML = pic;
+  $('dexPic').hidden = !pic;
   $('dexTitle').textContent = title;
   $('dexText').textContent = text;
   $('dexRef').textContent = ref ?? '';

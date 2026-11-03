@@ -19,7 +19,8 @@ import { REWARDS, SPIRIT } from './data/growth.js';
 import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook, addTool, useTool, assistOf, deepOpen, codexDone, canHold, stageLooks } from './growth.js';
 import { CHALLENGE, CODEX_TITLES } from './data/growth.js';
 import { WORLDS } from './data/chapters.js';
-import { ITEMS } from './data/items.js';
+import { ITEMS, SHOP, STYLES } from './data/items.js';
+import { CODEX_ART } from './codex-art.js';
 import { ITEM_ICONS, HAIR_ICONS, EMPTY } from './icons.js';
 import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
@@ -596,7 +597,10 @@ const dressWith = (spec) => (look, key) => dressFx(key, look, () => { finishWipe
 // 머리 모양과 소품은 글자 대신 미리보기 그림 칩으로 보인다(S11)
 const earthOptions = () => Object.fromEntries(Object.entries(LOOK.earth).map(([k, list]) => {
   if (['item', 'waist', 'head'].includes(k)) return [k, list.filter((o) => canHold(state, o.id)).map((o) => ({ ...o, icon: ITEM_ICONS[o.id] ?? EMPTY }))];
-  if (k === 'hair') return [k, list.map((o) => ({ ...o, icon: HAIR_ICONS[o.id] }))];
+  // 상점 머리·옷(STYLES)은 산 뒤에만 보인다
+  const sold = (o) => !STYLES.some((s) => s.id === o.id) || state.items.looks.includes(o.id);
+  if (k === 'hair') return [k, list.filter(sold).map((o) => ({ ...o, icon: HAIR_ICONS[o.id] }))];
+  if (k === 'outfit') return [k, list.filter(sold)];
   return [k, list];
 }));
 async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submit = '이 모습으로 내려가기' } = {}) {
@@ -780,7 +784,7 @@ async function runEdenGarden() {
   camFocus = null;
   await questFind({
     title: '아담이 이름 지은 동물',
-    targets: eden.animals.map((an) => ({ name: an.userData.name, pos: an.position, animal: an })),
+    targets: [...eden.animals.map((an) => ({ name: an.userData.name, pos: an.position, animal: an })), { name: '새', pos: eden.perch.ground, animal: eden.perch.bird }],
     text: (a) => `${a.name} 곁에 머물러 이름 듣기`,
     radius: 2.4,
     hold: 1.6,
@@ -793,7 +797,7 @@ async function runEdenGarden() {
       camFocus = null;
       const { kind } = a.animal.userData;
       const entry = CODEX.find((c) => c.id === `creature/${kind}`);
-      await showCard({ title: entry.name, text: entry.fact, ref: entry.ref, count: `${n} / ${total}` });
+      await showCard({ title: entry.name, text: entry.fact, ref: entry.ref, count: `${n} / ${total}`, pic: CODEX_ART[entry.id] });
       a.animal.userData.calm = false;
       reward(`eden/animal/${kind}`, 'animal', `creature/${kind}`);
     },
@@ -1078,7 +1082,10 @@ async function runCain() {
 // spot.tool이 있으면 먼저 F로 도구를 써야 행동할 수 있다(예: 물동이에 물 긷기). 다 끝나면 도구를 하나 쓴다(useTool).
 let ch = null;
 const GRACE_MS = 150; // 도전 판정 여유: 누르기 전 이 시간 안에 표시가 금빛 구간에 있었으면 성공(터치·화면 지연)
-function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, speed = CHALLENGE.speed }) {
+// 난도(2026-11-03 사용자 F18 "갈수록 어렵게"): 성공할 때마다, 그리고 같은 스테이지의 다음 도전(tier)일수록 구간이 좁아지고 표시가 빨라진다.
+// 성공 k번째: 속도 ×(1 + 0.12k), 구간 ×(1 − 0.08k). tier: 속도 ×(1 + 0.15·tier), 구간 ×(1 − 0.1·tier). 구간은 기본의 0.5배, 속도는 1.8배에서 멈춘다.
+const challengeLevel = (k, tier = 0) => ({ speed: Math.min(1.8, (1 + 0.12 * k) * (1 + 0.15 * tier)), zone: Math.max(0.5, (1 - 0.08 * k) * (1 - 0.1 * tier)) });
+function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, speed = CHALLENGE.speed, tier = 0 }) {
   return new Promise((resolve) => {
     const assist = assistOf(state, fruits);
     const left = new Set(spots);
@@ -1088,8 +1095,11 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     $('chActName').textContent = verb;
     $('chTool').hidden = !tool;
     $('chToolName').textContent = toolName;
+    let done = 0; // 이 도전에서 성공한 수(난도가 오른다)
     const newZone = () => {
-      const w = Math.min(0.6, CHALLENGE.zone * (1 + assist));
+      const lvl = challengeLevel(done, tier);
+      ch.speed = speed * lvl.speed;
+      const w = Math.min(0.6, CHALLENGE.zone * lvl.zone * (1 + assist));
       ch.zone = [0.15 + Math.random() * (0.7 - w), 0];
       ch.zone[1] = ch.zone[0] + w;
       $('chZone').style.transform = `translateX(${ch.zone[0] * 100}%) scaleX(${w})`;
@@ -1111,6 +1121,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       label(best <= half * 0.4 ? '딱 맞아요!' : '좋아요!');
       flash('is-hit');
       sp.n++;
+      done++;
       ch.busy = true;
       mode = 'none';
       await onHit?.(sp, sp.n);
@@ -1357,7 +1368,7 @@ async function afterStage(id) {
   const cur = stageInfo(state, id);
   const next = nextStage(id);
   const label = (info) => { const n = WORLDS[0].stages.filter((s) => !stageInfo(state, s).ch.side).indexOf(info.ch.id); return info.ch.side ? '샛길' : `1-${n + 1}`; };
-  const pick = await askClear({ kicker: `${label(cur)} · 마침`, title: cur.ch.title, next: next && `${label(next)} ${next.ch.title}` });
+  const pick = await askClear({ kicker: `${label(cur)} · 완료`, title: cur.ch.title, next: next && `${label(next)} ${next.ch.title}` });
   if (pick === 'next' && next) { await fade(1); startAt(next.open[0].id); return; }
   if (pick === 'map') {
     const pid = await openMap(state);
@@ -1403,12 +1414,15 @@ async function runShelter() {
     { pos: heaven.bookPos, r: 1.4, open: async () => { await openMenu(state, { only: 'codex', stage: chapterOf(state.scene) }); return false; } },
     { pos: heaven.shopPos, r: 1.6, open: async () => {
       await openMenu(state, { only: 'shop', onBuy: (id) => {
-        const it = ITEMS.find((i) => i.id === id);
+        const it = SHOP.find((i) => i.id === id);
         if (!buyLook(state, id)) return false;
+        // 머리·옷은 산 자리에서 지상 모습에 입힌다(다음 땅에 내려가면 보인다). 꾸미기 소품은 인벤토리에서 단다
+        const style = STYLES.includes(it);
+        if (style && state.earthLook) state.earthLook = { ...state.earthLook, [it.kind]: it.id };
         save(state);
         refreshHud();
         popHud({ talent: -it.price });
-        toast(`꾸미기 · ${it.name}`, { gain: true });
+        toast(style ? `${it.kind === 'hair' ? '머리 모양' : '옷'} · ${it.name}` : `꾸미기 · ${it.name}`, { gain: true });
         return true;
       } });
       return false;

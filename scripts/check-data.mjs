@@ -16,8 +16,8 @@ import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
 import { layout } from '../src/map.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL, CHALLENGE } from '../src/data/growth.js';
 import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook, codexDone } from '../src/growth.js';
-import { ITEMS, SLOT_KEY, slotOf } from '../src/data/items.js';
-import { ITEM_ICONS } from '../src/icons.js';
+import { ITEMS, STYLES, SHOP, SLOT_KEY, slotOf } from '../src/data/items.js';
+import { ITEM_ICONS, HAIR_ICONS } from '../src/icons.js';
 import { STAGE_MODS } from '../src/stages/index.js';
 import { pagesOf, MAX_LINES, BOUND, NUMERAL } from '../src/ui.js';
 
@@ -227,6 +227,14 @@ assert.equal(load(null), null);
   assert.ok(a.earthLook.item === 'scroll' && ownsLook(a, 'scroll'), '예전에 고른 꾸미기를 잃음');
   mem.set('bible-rpg/save/v1', JSON.stringify({ name: 'a', scene: 'eden', unlocked: ['prologue'], earthLook: { item: 'horn' } }));
   assert.equal(load(storage).earthLook.item, 'none', '얻지 않은 도구를 손에 듦');
+  // 상점 머리·옷(F06): 지상 모습에 같은 id가 있고, 그림·장절·값이 있고, 사기 전에는 갖지 않으며 사면 갖는다
+  for (const st of STYLES) {
+    assert.ok(LOOK.earth[st.kind].some((o) => o.id === st.id && o.name === st.name), `${st.id}: 지상 ${st.kind}에 없음`);
+    assert.ok((st.kind === 'hair' ? HAIR_ICONS : ITEM_ICONS)[st.id] && REF.test(st.ref) && st.price > 0, `${st.id}: 그림·장절·값 오류`);
+  }
+  for (const o of LOOK.earth.hair) assert.ok(HAIR_ICONS[o.id], `${o.id}: 머리 그림 없음`);
+  { const t = newState(); t.talents = 999; assert.ok(!ownsLook(t, 'locks') && buyLook(t, 'locks') && ownsLook(t, 'locks') && t.talents === 879, '상점 머리 사기 오류'); }
+  assert.ok(SHOP.every((x, i) => !i || SHOP[i - 1].price <= x.price), '상점 진열이 값 순서가 아님');
   console.log(`OK: 손에 드는 물건 점검 통과(도구 ${ITEMS.length - looks.length}개, 꾸미기 ${looks.length}개)`);
 }
 

@@ -237,7 +237,7 @@ export function makeEden(scene) {
     || RIVER_SEGMENTS.some(([a, b]) => p.distanceTo(closestOnSegment(p, a, b)) < 1.4)
     || p.distanceTo(SPLIT) < 2.2 || RIVER_ENDS.some((e) => p.distanceTo(e) < 2.6) || inFrontOfScene(p)
     || colliders.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < 1.6);
-  let placed = 0;
+  let placed = 0, perchTree = null;
   for (let tries = 0; placed < 34 && tries < 800; tries++) {
     const a = rand() * Math.PI * 2, r = 3.5 + rand() * 8.5;
     const p = V(Math.cos(a) * r, Math.sin(a) * r);
@@ -248,8 +248,42 @@ export function makeEden(scene) {
     tree.scale.setScalar(s);
     group.add(tree);
     colliders.push({ x: p.x, z: p.z, r: 0.35 * s });
+    if (!perchTree && placed % 3 && r > 5 && Object.values(STAGES).every((st) => p.distanceTo(st.c) > st.r + 2)) perchTree = tree;
     placed++;
   }
+  // 나무에 앉은 새(2026-11-03 사용자 F10 "나무에 앉은 새에게도 이름을 지을 수 있게"): 카메라 쪽으로 뻗은 가지 끝에 앉는다.
+  // 이름 짓기에서는 나무 밑(카메라 쪽 한 걸음)에 머무르면 된다. 창 2:19~20 "공중의 각종 새"
+  const perch = (() => {
+    const tree = perchTree, s = tree.scale.x, out = V(1, 1).normalize();
+    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.75, 5), mat(PAL.bark));
+    branch.position.set(out.x * 0.3, 0.62, out.z * 0.3);
+    branch.rotation.set(out.z * 1.2, 0, -out.x * 1.2);
+    tree.add(branch);
+    const bird = new THREE.Group();
+    const body = mat(0xc8743a), belly = mat(0xf0d9a8);
+    bird.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 7, 5).scale(1.25, 1, 0.9), body)); // 몸
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 7, 5), body);
+    head.position.set(0.12, 0.1, 0);
+    bird.add(head);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.07, 4), mat(PAL.gold));
+    beak.rotation.z = -Math.PI / 2;
+    beak.position.set(0.22, 0.1, 0);
+    bird.add(beak);
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), belly);
+    chest.position.set(0.07, -0.02, 0);
+    bird.add(chest);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.08), body);
+    tail.position.set(-0.17, 0.03, 0);
+    tail.rotation.z = 0.35;
+    bird.add(tail);
+    const wings = [-1, 1].map((z) => { const w = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.03, 0.1), body); w.position.set(-0.02, 0.04, z * 0.1); bird.add(w); return w; });
+    bird.position.copy(tree.position).add(V(out.x * 0.62 * s, 0, out.z * 0.62 * s)).setY(0.92 * s);
+    bird.rotation.y = -Math.atan2(out.z, out.x) + Math.PI * 0.75; // 가지 끝에서 옆을 보고 앉는다
+    bird.scale.setScalar(1.7); // 동산의 큰 짐승들 사이에서도 보이게
+    bird.userData = { name: '새', kind: 'bird', calm: false, wings, tail, head };
+    group.add(bird);
+    return { bird, ground: tree.position.clone().addScaledVector(out, 1.3 * s) };
+  })();
 
   // 사람: 관찰자와 같은 뼈대(makeFigure). 처음에는 잎사귀와 머리카락으로 가린다.
   // 처음 지음 받은 두 사람은 벌거벗었으나 부끄러워하지 않았다(창 2:25). 로우폴리라 몸의 세부 없이 맨몸으로 둔다.
@@ -669,6 +703,12 @@ export function makeEden(scene) {
       animateFigure(fig, 0, dt, t, NPC_REF);
     }
     if (held) held.fruit.position.copy(handOf(held.fig));
+    { // 앉은 새: 꼬리를 까딱이고 고개를 돌린다. 이름을 들을 때(calm)는 날개를 파닥인다
+      const u = perch.bird.userData;
+      u.tail.rotation.z = 0.35 + Math.max(0, Math.sin(t * 3.1)) * 0.3;
+      u.head.rotation.y = Math.sin(t * 0.9) * 0.6;
+      for (const [i, w] of u.wings.entries()) w.rotation.x = u.calm ? (i ? -1 : 1) * (0.4 + Math.sin(t * 14) * 0.5) : 0;
+    }
     for (const b of birds) {
       const u = b.userData, a = u.a + t * u.speed;
       b.position.set(Math.cos(a) * u.r, u.y + Math.sin(t * 2 + u.a) * 0.3, Math.sin(a) * u.r);
@@ -755,7 +795,7 @@ export function makeEden(scene) {
   }
 
   return {
-    group, sky, adam, eve, animals, fruitTrees, knowledge, acts, update, skipToFall, collide, cherubim, pickDest, stepAside: stepAsideSpots,
+    group, sky, adam, eve, animals, perch, fruitTrees, knowledge, acts, update, skipToFall, collide, cherubim, pickDest, stepAside: stepAsideSpots,
     makeFruit,
     riverEnds: RIVERS.map((r, i) => ({ ...r, pos: RIVER_ENDS[i] })),
     spots: { start: EDEN_START, adam: ADAM_SPOT, eve: EVE_SPOT, knowledge: CENTER_KNOWLEDGE, center: CENTER, hide: HIDE_TREE, gate: EAST_GATE, waste: WASTE },

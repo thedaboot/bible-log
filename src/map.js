@@ -78,7 +78,7 @@ function drawPath(svg, box, stages, cells, marks, COLS, done) {
   svg.innerHTML = `<path class="map__band" d="${d}"/><path class="map__band map__band--spur" d="${spurs}"/><path class="map__gold" d="${gold}"/><path class="map__road" d="${d}"/><path class="map__spur" d="${spurs}"/>`;
 }
 
-const STATUS = { soon: '준비 중', locked: '잠김', open: '', cleared: '마침' }; // 열림은 글자로 적지 않는다(밝은 표지가 열림이다)
+const STATUS = { soon: '준비 중', locked: '잠김', open: '', cleared: '완료' }; // 열림은 글자로 적지 않는다(밝은 표지가 열림이다)
 
 export function openMap(state) {
   const box = $('mapBox');
@@ -108,7 +108,7 @@ export function openMap(state) {
       const view = el('div', 'map__info');
       const head = el('div', 'map__infohead');
       const kicker = el('p', 'quest__label map__kicker', it.label);
-      if (it.status === 'cleared') kicker.append(el('span', 'map__badge map__badge--done', '마침'));
+      if (it.status === 'cleared') kicker.append(el('span', 'map__badge map__badge--done', '완료'));
       if (it.status === 'locked') kicker.append(el('span', 'map__badge map__badge--lock', '잠김'));
       head.append(kicker, el('p', 'map__stage', it.ch.title), el('p', 'map__range', it.ch.range));
       view.append(head);

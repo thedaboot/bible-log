@@ -14,12 +14,20 @@ export const ITEMS = [
   { id: 'horn', kind: 'tool', name: '양각 나팔', ref: '수 6:4', note: '여리고 성을 돌며 제사장들이 분 나팔' },
   { id: 'lamp', kind: 'tool', name: '등잔', ref: '마 25:1', note: '신랑을 맞으러 나간 처녀들의 등잔' },
   { id: 'jar', kind: 'tool', name: '물동이', ref: '창 24:15', note: '리브가가 어깨에 메고 나온 물동이' },
+  { id: 'net', kind: 'tool', name: '그물', ref: '눅 5:4', note: '시몬이 말씀대로 깊은 데로 가서 내린 그물' },
+  { id: 'sickle', kind: 'tool', name: '낫', ref: '막 4:29', note: '곡식이 익으면 곧 대는 낫' },
+  { id: 'torch', kind: 'tool', name: '횃불 항아리', ref: '삿 7:16', note: '기드온의 용사들이 빈 항아리 속에 감춘 횃불' },
   // 레벨로 열리는 꾸미기
   { id: 'staff', kind: 'look', slot: 'hand', level: 2, name: '지팡이', ref: '출 4:2', note: '모세의 손에 들린 지팡이' },
   { id: 'bag', kind: 'look', slot: 'waist', level: 3, name: '목자 가방', ref: '삼상 17:40', note: '돌을 넣어 둔 목자의 주머니' },
+  { id: 'dove', kind: 'look', slot: 'hand', level: 4, name: '비둘기', ref: '마 10:16', note: '비둘기같이 순결하라고 하신 그 새' },
+  { id: 'inkhorn', kind: 'look', slot: 'waist', level: 9, name: '먹 그릇', ref: '겔 9:2', note: '세마포 옷 입은 사람이 허리에 찬 서기관의 먹 그릇' },
+  { id: 'turban', kind: 'look', slot: 'head', level: 12, name: '세마포 관', ref: '출 28:39', note: '가는 베실로 짜서 머리에 두른 관' },
   { id: 'hood', kind: 'look', slot: 'head', level: 6, name: '두건', ref: '출 28:4', note: '머리를 감싸는 천' },
   { id: 'scroll', kind: 'look', slot: 'hand', level: 15, name: '두루마리', ref: '렘 36:2', note: '말씀을 받아 적은 두루마리' },
   { id: 'oil', kind: 'look', slot: 'waist', level: 25, name: '기름 뿔병', ref: '삼상 16:13', note: '사무엘이 다윗에게 부은 기름의 뿔병' },
+  { id: 'helmet', kind: 'look', slot: 'head', level: 30, name: '구원의 투구', ref: '엡 6:17', note: '하나님의 전신 갑주 가운데 머리를 지키는 투구' },
+  { id: 'sword', kind: 'look', slot: 'waist', level: 35, name: '성령의 검', ref: '엡 6:17', note: '하나님의 말씀이라 부른 성령의 검' },
   // 스테이지를 마치면 받는 대표 소품(그 이야기 인물의 물건)
   { id: 'basket', kind: 'look', slot: 'hand', stage: 'eden', name: '열매 바구니', ref: '창 2:16', note: '동산 각종 나무의 열매를 담던 바구니(각색)' },
   { id: 'lamb', kind: 'look', slot: 'hand', stage: 'cain', name: '어린양', ref: '창 4:2', note: '양 치는 자 아벨이 돌보던 어린양' },
@@ -30,6 +38,7 @@ export const ITEMS = [
   { id: 'jstaff', kind: 'look', slot: 'hand', stage: 'jabbok', name: '야곱의 지팡이', ref: '창 32:10', note: '야곱이 이 지팡이만 가지고 요단을 건넜다' },
   { id: 'sheaf', kind: 'look', slot: 'hand', stage: 'joseph', name: '곡식 단', ref: '창 37:7', note: '요셉의 꿈에서 일어선 곡식 단' },
   // 상점 꾸미기(쉼터의 상점 천사). 값은 decisions.md "F(제안)"를 받아 올렸다
+  { id: 'pomegranate', kind: 'look', slot: 'hand', price: 40, name: '석류', ref: '출 28:33', note: '대제사장 옷단에 수놓은 석류' },
   { id: 'timbrel', kind: 'look', slot: 'hand', price: 60, name: '소고', ref: '출 15:20', note: '홍해를 건넌 뒤 미리암이 손에 든 소고' },
   { id: 'pipe', kind: 'look', slot: 'hand', price: 70, name: '피리', ref: '삼상 10:5', note: '선지자 무리가 산당에서 내려오며 분 저' },
   { id: 'palm', kind: 'look', slot: 'hand', price: 90, name: '종려 가지', ref: '요 12:13', note: '예루살렘에 들어오시는 예수님을 맞은 종려 가지' },
@@ -38,5 +47,15 @@ export const ITEMS = [
   { id: 'censer', kind: 'look', slot: 'hand', price: 200, name: '금 향로', ref: '계 8:3', note: '천사가 성도의 기도와 함께 드린 금 향로' },
   { id: 'crown', kind: 'look', slot: 'head', price: 500, name: '생명의 면류관', ref: '계 2:10', note: '죽도록 충성하는 이에게 주시는 면류관' },
 ];
+// 상점에서 파는 머리 모양과 옷(2026-11-03 사용자 F06 "옷이나 머리도 어느 정도는 기본 제공하나, 이쁜 머리는 상점에서").
+// kind는 지상 모습의 키(hair·outfit)다. 사면 state.items.looks에 들고, 지상 모습에 바로 입힌다. props.js LOOK.earth에 같은 id가 있다.
+export const STYLES = [
+  { id: 'longwave', kind: 'hair', price: 100, name: '긴 물결', ref: '아 4:1', note: '길르앗 산기슭에 누운 염소 떼 같은 머리털' },
+  { id: 'locks', kind: 'hair', price: 120, name: '일곱 가닥', ref: '삿 16:13', note: '삼손이 일곱 가닥으로 땋아 내린 머리' },
+  { id: 'crownbraid', kind: 'hair', price: 140, name: '땋은 관', ref: '아 7:5', note: '자줏빛 머리카락을 땋아 머리에 두른 모양' },
+  { id: 'coat', kind: 'outfit', price: 180, name: '채색옷', ref: '창 37:3', note: '야곱이 요셉에게 지어 입힌 여러 빛깔의 옷' },
+];
+// 상점 진열(값 순서): 꾸미기 소품과 머리·옷
+export const SHOP = [...ITEMS.filter((i) => i.price), ...STYLES].sort((a, b) => a.price - b.price);
 // 자리: 도구는 모두 손에 든다
 export const slotOf = (it) => it.slot ?? 'hand';

@@ -6,8 +6,9 @@ import { CODEX, CODEX_TABS } from './data/codex.js';
 import { CHAPTERS } from './data/chapters.js';
 import { josa } from './text.js';
 import { levelOf, stageOf, likeness, codexState, ownsLook } from './growth.js';
-import { TALENT, ITEM_ICONS, CODEX_ICONS } from './icons.js';
-import { ITEMS, SLOTS, SLOT_KEY, slotOf } from './data/items.js';
+import { TALENT, ITEM_ICONS, CODEX_ICONS, HAIR_ICONS } from './icons.js';
+import { CODEX_ART } from './codex-art.js';
+import { ITEMS, SHOP, SLOTS, SLOT_KEY, slotOf } from './data/items.js';
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -21,6 +22,36 @@ const svg = (tag, attrs) => {
   for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
   return e;
 };
+// 설명 패널(인벤토리·상점·도감 공용, 2026-11-03 F03·F04): 머리줄(큰 그림, 이름, 꼬리표) 아래에 설명을 패널 폭 가득 쓴다.
+// 좁은 글 칸에 몰아 쓰던 것을 풀어 줄바꿈을 줄인다. tags: [글자, 종류('slot'|'ok'|'lock')]
+function detailHead(iconSvg, name, tags = [], ref = null) {
+  const head = el('div', 'inv__head');
+  const icon = el('span', 'inv__bigicon');
+  icon.innerHTML = iconSvg ?? '';
+  const t = el('div', 'inv__title');
+  t.append(el('p', 'inv__name', name));
+  const row = el('p', 'inv__tags');
+  for (const [text, kind] of tags) row.append(el('span', `tag tag--${kind}`, text));
+  if (ref) row.append(el('span', 'codex__ref', ref));
+  if (row.childNodes.length) t.append(row);
+  head.append(icon, t);
+  return head;
+}
+// 아무것도 고르지 않았을 때: 얻는 길을 한 줄씩(꼬리표 + 설명)
+function howList(rows, foot) {
+  const box = el('div', 'inv__how');
+  for (const [tag, text] of rows) {
+    const r = el('p', 'inv__howrow');
+    r.append(el('span', 'tag tag--slot', tag), el('span', null, text));
+    box.append(r);
+  }
+  if (foot) box.append(el('p', 'inv__howfoot', foot));
+  return box;
+}
+// 스테이지 번호(1-4, 샛길): 잠긴 대표 소품이 어디서 열리는지 짧게
+const MAIN = CHAPTERS.filter((c) => !c.side && c.id !== 'heaven');
+const stageLabel = (id) => { const c = CHAPTERS.find((x) => x.id === id); return !c ? '' : c.side ? '샛길' : `1-${MAIN.indexOf(c) + 1}`; };
+
 // 내용을 바꿀 때 넘기는 방향(-1 왼쪽, 1 오른쪽)에서 짧게 들어온다.
 function swap(node, view, dir = 0) {
   node.replaceChildren(view);
@@ -149,7 +180,7 @@ function inventoryView(state, ctx) {
   // 소품은 손·허리·머리 세 자리에 하나씩 단다(data/items.js slot). 달면 바뀌므로 그릴 때마다 읽는다
   const keyOf = (it) => SLOT_KEY[slotOf(it)];
   const worn = (it) => (state.earthLook?.[keyOf(it)] ?? 'none') === it.id;
-  const VERB = { hand: ['손에 들기', '손에 든 중'], waist: ['허리에 차기', '허리에 찬 중'], head: ['머리에 쓰기', '머리에 쓴 중'] };
+  const VERB = { hand: ['손에 들기'], waist: ['허리에 차기'], head: ['머리에 쓰기'] };
   const wrap = el('div', 'inv');
   const cats = el('div', 'inv__cats');
   const box = el('div', 'codex__box');
@@ -158,29 +189,26 @@ function inventoryView(state, ctx) {
   const detail = (it) => {
     const d = el('div', 'inv__detail');
     if (!it) {
-      // 안내 문구는 한 문장씩 줄을 바꾼다(dialogue.md 줄바꿈 2판 6항)
-      d.append(el('p', 'inv__hint', ctx.kind === 'tool'
-        ? '도구는 도전이 있는 스테이지에서 얻어요.\n쓸 곳에서 다 쓰면 사라져요.'
-        : '꾸미기는 레벨·스테이지·상점에서 얻어요.\n손·허리·머리에 하나씩, 셋까지 달 수 있어요.'));
+      d.append(ctx.kind === 'tool'
+        ? howList([['도전', '도전이 있는 스테이지에서 받아요'], ['사용', '쓸 곳에서 다 쓰면 사라져요']], `가방 자리는 레벨이 오르면 늘어나요.`)
+        : howList([['레벨', '레벨이 오르면 열려요'], ['완료', '스테이지를 완료하면 받아요'], ['상점', '쉼터 상점에서 달란트로 사요']], '손·허리·머리에 하나씩, 셋까지 함께 달 수 있어요.'));
       return d;
     }
-    const icon = el('span', 'inv__bigicon');
-    icon.innerHTML = ITEM_ICONS[it.id];
-    const text = el('div', 'inv__text');
-    text.append(el('p', 'inv__name', it.name), el('p', 'codex__ref', it.ref), el('p', 'inv__note', it.note));
-    const act = el('div', 'inv__actions');
     const owned = it.kind === 'tool' ? state.items.tools.includes(it.id) : ownsLook(state, it.id);
-    const how = it.level ? `Lv.${it.level}에 열려요` : it.stage ? `${josa(CHAPTERS.find((c) => c.id === it.stage)?.title ?? '', '을', '를')} 마치면 받아요` : `상점 · ${it.price} 달란트`;
+    const how = it.level ? `Lv.${it.level}에 열려요` : it.stage ? `${josa(CHAPTERS.find((c) => c.id === it.stage)?.title ?? '', '을', '를')} 완료하면 받아요` : `상점에서 ${it.price} 달란트`;
+    const tags = [[it.kind === 'tool' ? '도구' : SLOTS[slotOf(it)], 'slot']];
+    if (worn(it)) tags.push(['다는 중', 'ok']);
+    else if (!owned) tags.push(['잠김', 'lock']);
+    const act = el('div', 'inv__actions');
     if (!owned) act.append(el('p', 'inv__lock', how));
     else if (ctx.onHold) {
       const on = worn(it);
-      const [verb, wearing] = VERB[slotOf(it)];
-      const hold = button('btn inv__hold', on ? wearing : verb, () => { ctx.onHold(it.id, keyOf(it)); render(); }, null, 'inv:hold');
-      hold.disabled = on;
-      act.append(hold);
-      if (on) act.append(button('btn btn--quiet inv__hold', '내려놓기', () => { ctx.onHold('none', keyOf(it)); render(); }, null, 'inv:drop'));
+      const [verb] = VERB[slotOf(it)];
+      // 다는 중이면 꼬리표('다는 중')가 상태를 보이고, 버튼은 할 수 있는 일 하나만 둔다
+      if (on) act.append(button('btn inv__hold', '내려놓기', () => { ctx.onHold('none', keyOf(it)); render(); }, null, 'inv:drop'));
+      else act.append(button('btn inv__hold', verb, () => { ctx.onHold(it.id, keyOf(it)); render(); }, null, 'inv:hold'));
     }
-    d.append(icon, text, act);
+    d.append(detailHead(ITEM_ICONS[it.id], it.name, tags, it.ref), el('p', 'inv__note', it.note), act);
     return d;
   };
 
@@ -192,7 +220,7 @@ function inventoryView(state, ctx) {
     const icon = el('span', 'slot__icon');
     icon.innerHTML = ITEM_ICONS[it.id];
     // 잠긴 칸: 여는 길(레벨·스테이지·상점)을 짧게
-    b.append(icon, el('span', 'slot__name', owned ? it.name : it.level ? `Lv.${it.level}` : it.stage ? '스테이지' : '상점'));
+    b.append(icon, el('span', 'slot__name', owned ? it.name : it.level ? `Lv.${it.level}` : it.stage ? `${stageLabel(it.stage)} 완료` : '상점'));
     if (worn(it)) b.append(el('span', 'slot__badge', SLOTS[slotOf(it)]));
     return b;
   };
@@ -203,7 +231,7 @@ function inventoryView(state, ctx) {
     let grid;
     if (ctx.kind === 'tool') {
       const slots = slotsAt(lv);
-      head.append(el('span', 'codex__countname', '도구'), el('span', 'codex__countnum', `${state.items.tools.length} / ${slots}칸`));
+      head.append(el('span', 'codex__countname', '도구'), el('span', 'codex__countnum', `${state.items.tools.length} / ${slots}`));
       grid = el('div', 'slots');
       for (let k = 0; k < slots; k++) {
         const it = ITEMS.find((i) => i.id === state.items.tools[k]);
@@ -248,24 +276,23 @@ function codexCell(state, c, no, picked, onPick) {
   b.dataset.state = st;
   b.setAttribute('aria-pressed', String(picked === c.id));
   const pic = el('span', 'codex__pic');
-  pic.innerHTML = CODEX_ICONS[c.id.split('/')[0]] ?? '';
+  pic.innerHTML = st === 'met' ? artOf(c) : CODEX_ICONS[c.id.split('/')[0]] ?? '';
   b.append(el('span', 'codex__no', String(no).padStart(3, '0')), pic, el('span', 'codex__name', st === 'met' ? c.name : st === 'missed' ? '? ? ?' : '?'));
   if (st !== 'met') b.setAttribute('aria-label', st === 'missed' ? '놓친 항목' : '아직 못 만난 항목');
   li.append(b);
   return li;
 }
-// 고른 칸의 설명: 만난 칸은 이름·사실·장절·메모, 놓친 칸은 다시 찾을 곳, 고른 칸이 없으면 안내 한 줄
+// 항목 그림(codex-art.js, F02). 없으면 분류 그림
+const artOf = (c) => CODEX_ART[c.id] ?? CODEX_ICONS[c.id.split('/')[0]] ?? '';
+// 고른 항목의 설명: 만난 항목은 이름·사실·장절·메모, 놓친 칸은 다시 찾을 곳, 고른 칸이 없으면 안내 한 줄
 function codexDetail(state, c) {
   const d = el('div', 'inv__detail codex__detail');
-  if (!c) { d.append(el('p', 'inv__hint', '칸을 누르면 자세히 볼 수 있어요.')); return d; }
+  if (!c) { d.append(el('p', 'inv__hint', '그림을 누르면 자세히 볼 수 있어요.')); return d; }
   const st = codexState(state, c);
-  const pic = el('span', 'inv__bigicon');
-  pic.innerHTML = CODEX_ICONS[c.id.split('/')[0]] ?? '';
-  const text = el('div', 'inv__text');
-  if (st === 'met') text.append(el('p', 'inv__name', c.name), el('p', 'codex__ref', c.ref), el('p', 'inv__note', c.fact), el('p', 'codex__memo', c.memo));
-  else if (st === 'missed') text.append(el('p', 'inv__name', '? ? ?'), el('p', 'inv__note', `${CHAPTERS.find((ch) => ch.id === c.stage)?.title ?? ''}에서 다시 찾아보세요.`));
-  else text.append(el('p', 'inv__name', '?'), el('p', 'inv__note', '이야기를 걸으며 만나 보세요.'));
-  d.append(pic, text);
+  const pic = st === 'met' ? artOf(c) : CODEX_ICONS[c.id.split('/')[0]];
+  if (st === 'met') d.append(detailHead(pic, c.name, [], c.ref), el('p', 'inv__fact', c.fact), el('p', 'codex__memo', c.memo));
+  else if (st === 'missed') d.append(detailHead(pic, '? ? ?', [['놓침', 'lock']]), el('p', 'inv__note', `${CHAPTERS.find((ch) => ch.id === c.stage)?.title ?? ''}에서 다시 찾아보세요.`));
+  else d.append(detailHead(pic, '?'), el('p', 'inv__note', '이야기를 걸으며 만나 보세요.'));
   return d;
 }
 
@@ -285,31 +312,28 @@ function shopView(state, ctx) {
     purse.querySelector('.stat__num').textContent = state.talents;
     const view = el('div', 'codex__page');
     const grid = el('div', 'slots');
-    for (const it of ITEMS.filter((i) => i.price)) {
+    for (const it of SHOP) {
       const owned = ownsLook(state, it.id);
       const b = button('slot', '', () => { picked = it.id; render(); }, null, `slot:${it.id}`);
       b.dataset.state = owned ? 'owned' : 'sale';
       b.setAttribute('aria-pressed', String(picked === it.id));
       const ic = el('span', 'slot__icon');
-      ic.innerHTML = ITEM_ICONS[it.id];
+      ic.innerHTML = ITEM_ICONS[it.id] ?? HAIR_ICONS[it.id];
       b.append(ic, el('span', 'slot__name', it.name), el('span', 'slot__price', owned ? '가짐' : `${it.price}`));
       grid.append(b);
     }
-    const it = ITEMS.find((i) => i.id === picked);
+    const it = SHOP.find((i) => i.id === picked);
     const d = el('div', 'inv__detail');
-    if (!it) d.append(el('p', 'inv__hint', '산 꾸미기는 인벤토리 꾸미기 칸에서 달아요.'));
+    if (!it) d.append(howList([['고르기', '물건을 누르면 설명과 값이 나와요'], ['달기', '산 소품은 인벤토리에서, 머리·옷은 바로 입어요']]));
     else {
-      const big = el('span', 'inv__bigicon');
-      big.innerHTML = ITEM_ICONS[it.id];
-      const text = el('div', 'inv__text');
-      text.append(el('p', 'inv__name', it.name), el('p', 'codex__ref', it.ref), el('p', 'inv__note', it.note));
       const act = el('div', 'inv__actions');
       const owned = ownsLook(state, it.id);
+      const kind = it.kind === 'hair' ? '머리 모양' : it.kind === 'outfit' ? '옷' : SLOTS[slotOf(it)];
       const buy = button('btn inv__hold', owned ? '가짐' : `${it.price} 달란트로 사기`, () => { if (ctx.onBuy(it.id)) render(); }, null, 'shop:buy');
       buy.disabled = owned || state.talents < it.price;
       act.append(buy);
       if (!owned && state.talents < it.price) act.append(el('p', 'inv__lock', `${it.price - state.talents} 달란트 모자라요`));
-      d.append(big, text, act);
+      d.append(detailHead(ITEM_ICONS[it.id] ?? HAIR_ICONS[it.id], it.name, [[kind, 'slot'], ...(owned ? [['가짐', 'ok']] : [])], it.ref), el('p', 'inv__note', it.note), act);
     }
     view.append(grid, d);
     swap(box, view, 0);

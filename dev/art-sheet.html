@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="/src/tokens.css">
+<link rel="stylesheet" href="/src/style.css">
+<style>
+  body { background: #f3ead6; margin: 8px; overflow: auto; }
+  #g { display: grid; grid-template-columns: repeat(10, 120px); gap: 6px; }
+  figure { margin: 0; text-align: center; font: 12px sans-serif; color: #333; }
+  figure div { width: 96px; height: 96px; margin: 0 auto; background: #fffaf0; }
+</style>
+</head>
+<body>
+<div id="g"></div>
+<script type="module">
+  import { CODEX } from '/src/data/codex.js';
+  import { CODEX_ART } from '/src/codex-art.js';
+  document.getElementById('g').innerHTML = CODEX.map((e) => `<figure><div>${CODEX_ART[e.id] ?? ''}</div>${e.name}</figure>`).join('');
+</script>
+</body>
+</html>

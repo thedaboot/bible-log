@@ -1350,6 +1350,10 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
 
 /* ---------- 꾸미기·인벤토리 다듬기(2026-11-02 S08·S11) ---------- */
 .px-v { fill: var(--color-leaf); }
+.px-w { fill: var(--color-px-water); }
+.px-s { fill: var(--color-px-skin); }
+.px-r { fill: var(--color-px-red); }
+.px-k { fill: var(--color-px-dark); }
 /* 닫기 ✕: 숨긴 '닫기' 글자가 격자 한 줄을 차지해 ✕가 위로 떠 보였다. ✕는 버튼 한가운데에 겹쳐 그린다 */
 .modal__panel .menu-panel__close { position: relative; }
 @media (max-width: 39.99rem) {
@@ -1400,3 +1404,76 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
 /* 조이스틱은 눈에 덜 띄게(2026-11-02 사용자 요청): 바탕은 옅은 테두리 원, 손잡이는 반투명 금빛 */
 .stick { width: 96px; height: 96px; margin: -48px 0 0 -48px; background: none; box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--color-light) 55%, transparent); opacity: 0.7; }
 .stick__knob { width: 36px; height: 36px; margin: -18px 0 0 -18px; background: color-mix(in oklch, var(--color-gold) 70%, transparent); box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-frame) 50%, transparent); }
+
+/* ---------- 피드백 2차(2026-11-03) F07·F08·F09 ---------- */
+/* F09 HUD: 경험치가 오르는 것이 보이게 막대를 넓힌다. 휴대폰은 위쪽 띠를 폭 가득, PC는 26rem */
+@media (min-width: 45rem) { .hud { width: 26rem; } }
+@media (max-width: 44.99rem) {
+  .hud { right: max(var(--space-sm), env(safe-area-inset-right)); grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-sm); }
+  .hud__xptext { display: inline; min-width: 2.4em; }
+}
+.hud__track { height: var(--bar-h); }
+
+/* F08 색 견본: 고른 테를 견본 안쪽에 그린다. 바깥 6px 테가 줄 밖으로 나가 잘렸다 */
+.swatch:has(input:checked) { box-shadow: inset 0 0 0 2px var(--color-frame), inset 0 0 0 5px var(--color-paper), inset 0 0 0 7px var(--color-accent); }
+.swatch:has(input:checked)::after { content: ''; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; background: var(--color-paper); clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 24%, 86% 10%, 38% 72%); filter: drop-shadow(0 0 1px var(--color-frame)); pointer-events: none; }
+.swatch:has(input:focus-visible) { outline-offset: 2px; }
+
+/* F07 조작 안내: 짙은 띠 대신 밝은 패널에 동작 하나씩 한 줄. 손가락 그림이 실제로 누르고 끈다 */
+.controls { color: var(--color-ink); background: var(--color-paper); box-shadow: 0 0 0 var(--px) var(--color-frame), 0 calc(var(--px) * 2) 0 0 var(--color-shadow); animation: coach-in var(--dur-long) var(--ease-out); }
+.controls .key { background: var(--color-paper-2); }
+.controls p b { font-weight: 800; color: var(--color-accent-ink); }
+@keyframes coach-in { from { opacity: 0; transform: translateY(12px); } }
+.coach { display: grid; gap: var(--space-2xs); }
+.coach__row { display: flex; align-items: center; gap: var(--space-xs); margin: 0; font-size: var(--text-small); font-weight: 600; white-space: nowrap; }
+.coach .gesture { width: 40px; height: 32px; background: var(--color-paper-2); box-shadow: inset 0 0 0 1px var(--color-paper-3); }
+/* 탭: 손끝 점이 눌리고 물결이 퍼진다 */
+.coach .gesture--tap::before { inset: 10px 14px; box-shadow: 0 0 0 2px var(--color-frame); animation: coach-press 1.6s var(--ease-out) infinite; }
+.coach .gesture--tap::after { inset: 4px 8px; box-shadow: 0 0 0 2px var(--color-accent); animation: ripple 1.6s var(--ease-out) infinite; }
+@keyframes coach-press { 0%, 100% { transform: scale(1); } 15% { transform: scale(0.7); } 30% { transform: scale(1); } }
+/* 끌기: 점이 눌린 자리(옅은 고리)에서 옆으로 끌려 나간다 */
+.gesture--drag::before { content: ''; position: absolute; top: 9px; left: 6px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-gold); box-shadow: 0 0 0 2px var(--color-frame); animation: coach-drag 1.8s var(--ease-in-out) infinite; }
+.gesture--drag::after { content: ''; position: absolute; top: 6px; left: 3px; width: 20px; height: 20px; border-radius: 50%; box-shadow: 0 0 0 2px var(--color-accent); opacity: 0.5; }
+@keyframes coach-drag { 0%, 15% { transform: none; } 60%, 80% { transform: translateX(16px); } 100% { transform: none; } }
+.coach .gesture--swipe::before { top: 9px; left: 13px; box-shadow: 0 0 0 2px var(--color-frame); }
+.coach .gesture--swipe::after { content: none; }
+@media (prefers-reduced-motion: reduce) { .coach .gesture::before, .coach .gesture::after, .controls { animation: none; } }
+
+/* F03·F04 설명 패널: 머리줄(그림·이름·꼬리표) 아래에 글을 패널 폭 가득. 휴대폰은 시트 아래에 붙어 고르자마자 보인다 */
+.inv__detail, .codex__detail { grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
+.inv__head { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; }
+.inv__head .inv__bigicon { flex: none; padding: 4px; background: var(--color-paper); box-shadow: inset 0 0 0 2px var(--color-paper-3); }
+.inv__title { display: grid; gap: var(--space-3xs); min-width: 0; }
+.inv__title p { margin: 0; }
+.inv__tags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs); }
+.tag { padding: 2px var(--space-2xs); font-size: var(--text-label); font-weight: 700; line-height: 1.35; white-space: nowrap; color: var(--color-ink-2); background: var(--color-paper); box-shadow: inset 0 0 0 1px var(--color-paper-3); }
+.tag--ok { color: var(--color-frame); background: var(--color-gold); box-shadow: none; }
+.tag--lock { background: var(--color-paper-3); box-shadow: none; }
+.inv__detail > .inv__note, .inv__fact { margin: 0; font-size: var(--text-small); line-height: 1.6; text-wrap: pretty; }
+.inv__fact { font-weight: 700; color: var(--color-ink); }
+.codex__detail .codex__memo { margin: 0 !important; padding-top: var(--space-2xs); }
+.inv__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
+.inv__actions:empty { display: none; }
+.modal__panel .inv__actions .inv__hold { flex: 1 1 9rem; min-height: var(--hit); }
+.inv__how { display: grid; gap: var(--space-2xs); }
+.inv__howrow { display: flex; align-items: center; gap: var(--space-xs); margin: 0; font-size: var(--text-small); }
+.inv__howrow .tag { min-width: 3.4em; text-align: center; }
+.inv__howfoot { margin: var(--space-3xs) 0 0; font-size: var(--text-small); color: var(--color-ink-2); }
+@media (max-width: 39.99rem) {
+  .inv__detail { position: sticky; z-index: 1; bottom: calc(-1 * var(--space-md)); box-shadow: 0 -2px 0 var(--color-paper-3); }
+}
+
+/* F02 도감 카드: 이름 위에 그 항목의 그림 */
+.dexcard__pic { display: block; width: 72px; height: 72px; margin: var(--space-2xs) auto 0; }
+.dexcard__pic[hidden] { display: none; }
+/* 낮은 가로 화면(740×360): 지상 꾸미기 패널이 50vw(370px)라 칩 두 열(425px)이 넘쳐 가로로 밀렸다. 패널을 넓히고 칸이 줄어들게 한다.
+   인벤토리·상점 설명은 휴대폰 세로처럼 시트 아래에 붙여, 고르자마자 보이게 한다 */
+.modal--page .look > * { min-width: 0; }
+@media (orientation: landscape) and (max-height: 30rem) {
+  .modal--page .look { width: min(30rem, 60vw); }
+  /* 높이가 모자라 아래에 붙이면 격자를 덮는다. 격자 오른쪽에 설명을 두고 위에 붙인다 */
+  .inv .codex__page { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; align-items: start; column-gap: var(--space-sm); }
+  .inv .codex__page > .codex__count { grid-column: 1 / -1; }
+  .inv .codex__page > .inv__detail { position: sticky; top: 0; grid-column: 2; grid-row: 2; }
+  .inv .codex__page > .slots { grid-column: 1; grid-row: 2; }
+}

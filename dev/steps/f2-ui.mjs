@@ -1,0 +1,38 @@
+import { boot, SAVE } from './_save.mjs';
+// 피드백 2차 UI 묶음: 조작 안내, HUD, 도감 설명, 인벤토리 설명, 꾸미기 색 견본, 상점
+export default async (t) => {
+  const codex = { 'person/builder': 'babel', 'place/shinar': 'babel', 'place/babel': 'babel', 'person/adam': 'eden', 'creature/lion': 'eden', 'object/brick': 'babel', 'person/noah': 'noah', 'object/ark': 'noah' };
+  await boot(t, { ...SAVE, learned: [], xp: 900, talents: 200, codex, claimed: [...SAVE.claimed, 'noah/clear', 'babel/clear'], items: { tools: ['jar'], looks: [] }, earthLook: { ...SAVE.earthLook, item: 'hood' } });
+  await t.wait(800);
+  await t.shot('hint-walk');
+  await t.ev(`import('/src/menu.js').then(m => { m.openMenu(__dev.state, { tab: 'codex', stage: 'babel' }); return 1; })`);
+  await t.wait(900);
+  await t.shot('codex');
+  await t.ev(`document.querySelector('.codex__cell[data-state="met"]')?.click(); 1`);
+  await t.wait(500);
+  await t.shot('codex-detail');
+  await t.ev(`document.getElementById('menuClose').click(); 1`); await t.wait(500);
+  await t.ev(`import('/src/menu.js').then(m => { m.openMenu(__dev.state, { tab: 'inventory', onHold: () => {} }); return 1; })`);
+  await t.wait(800);
+  await t.shot('inv-tools');
+  await t.ev(`document.querySelector('#menuBody .slot[data-state=owned]')?.click(); 1`); await t.wait(400);
+  await t.shot('inv-tools-pick');
+  await t.ev(`[...document.querySelectorAll('#menuBody .chip')].find(b => b.textContent === '꾸미기').click(); 1`);
+  await t.wait(500);
+  await t.shot('inv-looks');
+  await t.ev(`[...document.querySelectorAll('#menuBody .slot')][2]?.click(); 1`); await t.wait(400);
+  await t.shot('inv-looks-pick');
+  await t.ev(`document.getElementById('menuClose').click(); 1`); await t.wait(500);
+  await t.ev(`import('/src/menu.js').then(m => { m.openMenu(__dev.state, { only: 'shop', onBuy: () => false }); return 1; })`);
+  await t.wait(800);
+  await t.shot('shop');
+  await t.ev(`document.getElementById('menuClose').click(); 1`); await t.wait(500);
+  await t.ev(`__dev.state.earthLook = null; __dev.run('babel'); 1`);
+  await t.wait(4000);
+  await t.shot('look-body');
+  await t.ev(`document.querySelectorAll('#lookTabs .tab')[1].click(); 1`); await t.wait(500);
+  await t.shot('look-hair');
+  await t.ev(`document.querySelectorAll('#lookTabs .tab')[2].click(); 1`); await t.wait(500);
+  await t.shot('look-outfit');
+  console.log(await t.ev(`JSON.stringify(__e)`));
+};

@@ -116,10 +116,14 @@ const HAIRS = [
 const EARTH_HAIRS = [
   ...HAIRS, { id: 'crop', name: '짧은 머리' }, { id: 'wavy', name: '물결 머리' }, { id: 'braid', name: '땋은 머리' },
   { id: 'twin', name: '양갈래' }, { id: 'bun', name: '올림머리' }, { id: 'veil', name: '머릿수건' },
+  // 2026-11-03 F06: 기본 셋을 더하고, 상점 머리 셋(data/items.js STYLES)은 산 뒤에만 고를 수 있다(main.js earthOptions)
+  { id: 'fringe', name: '앞머리' }, { id: 'shoulder', name: '어깨 머리' }, { id: 'side', name: '옆머리' },
+  { id: 'longwave', name: '긴 물결' }, { id: 'locks', name: '일곱 가닥' }, { id: 'crownbraid', name: '땋은 관' },
 ];
 const OUTFITS = [
   { id: 'tunic', name: '겉옷' }, { id: 'cape', name: '망토' }, { id: 'robe', name: '두루마기' },
   { id: 'shepherd', name: '목자 옷' }, { id: 'traveler', name: '나그네 옷' },
+  { id: 'girded', name: '띠 띤 옷' }, { id: 'linen', name: '세마포 옷' }, { id: 'coat', name: '채색옷' }, // coat는 상점(F06)
 ];
 // 소품은 성경에 나오는 물건만 쓴다(docs/standards/art-3d.md). 머리띠·목도리는 근거가 약해 뺐다. 목록은 data/items.js.
 const NONE = { id: 'none', name: '없음' };
@@ -238,6 +242,28 @@ export function dressFigure(fig, spec) {
     add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.58), m(spec.outfitColor ?? PAL.robe), 0, 1.32, -0.02);
     add(new THREE.BoxGeometry(0.5, 0.55, 0.06), m(spec.outfitColor ?? PAL.robe), 0, 1.05, -0.26, 0.08);
   }
+  // 2026-11-03 F06 머리
+  if (spec.hair === 'fringe') add(new THREE.BoxGeometry(0.4, 0.1, 0.08), hairM, 0, 1.47, 0.19);
+  if (spec.hair === 'shoulder') {
+    add(new THREE.BoxGeometry(0.5, 0.42, 0.12), hairM, 0, 1.18, -0.18);
+    for (const x of [-0.22, 0.22]) add(new THREE.BoxGeometry(0.1, 0.36, 0.1), hairM, x, 1.2, 0.1);
+  }
+  if (spec.hair === 'side') {
+    add(new THREE.BoxGeometry(0.24, 0.12, 0.1), hairM, -0.09, 1.47, 0.18);
+    add(new THREE.BoxGeometry(0.1, 0.32, 0.12), hairM, -0.24, 1.26, 0.06);
+  }
+  if (spec.hair === 'locks') for (let i = 0; i < 7; i++) { // 일곱 가닥(삿 16:13): 뒤로 땋아 내린 가는 다발 일곱
+    const a = Math.PI * (0.12 + 0.76 * i / 6);
+    add(new THREE.CylinderGeometry(0.04, 0.025, 0.6, 5), hairM, Math.cos(a) * 0.3, 1.06, -Math.sin(a) * 0.3 - 0.02);
+  }
+  if (spec.hair === 'longwave') { // 긴 물결(아 4:1): 허리까지 내려오는 머리와 굽이치는 옆 다발
+    add(new THREE.BoxGeometry(0.5, 0.95, 0.12), hairM, 0, 0.95, -0.2);
+    for (const x of [-0.23, 0.23]) for (let i = 0; i < 5; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, x + Math.sin(i * 1.7) * 0.03, 1.22 - i * 0.14, 0.04);
+  }
+  if (spec.hair === 'crownbraid') for (let i = 0; i < 12; i++) { // 땋은 관(아 7:5): 머리 둘레에 땋아 두른 머리
+    const a = (i / 12) * Math.PI * 2;
+    add(new THREE.IcosahedronGeometry(0.07, 0), hairM, Math.cos(a) * 0.25, 1.47, Math.sin(a) * 0.25 - 0.02);
+  }
   if (spec.beard === 'short') add(new THREE.BoxGeometry(0.3, 0.12, 0.12), hairM, 0, 1.17, 0.19);
   if (spec.beard === 'long') {
     add(new THREE.BoxGeometry(0.3, 0.1, 0.12), hairM, 0, 1.17, 0.19);
@@ -292,6 +318,28 @@ export function dressFigure(fig, spec) {
       addCape(cloth);
       add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth, 0, 1.25, -0.12, -0.5);
       break;
+    case 'girded': { // 띠 띤 옷(왕상 18:46 허리를 동이고): 넓은 허리띠와 어깨에서 허리로 맨 끈
+      add(new THREE.CylinderGeometry(0.31, 0.37, 0.66, 8), cloth, 0, 0.5, 0);
+      shoulders(cloth);
+      add(new THREE.CylinderGeometry(0.33, 0.34, 0.1, 10), m(PAL.bark), 0, 0.66, 0);
+      const strap = add(new THREE.BoxGeometry(0.06, 0.62, 0.04), m(PAL.bark), 0.02, 0.96, 0.27);
+      strap.rotation.z = 0.6;
+      break;
+    }
+    case 'linen': // 세마포 옷(출 28:39): 발목까지 곧게 내려오는 옷과 금빛 목깃
+      add(new THREE.CylinderGeometry(0.31, 0.36, 0.95, 8), cloth, 0, 0.47, 0);
+      shoulders(cloth);
+      add(new THREE.TorusGeometry(0.2, 0.035, 4, 10), m(PAL.gold), 0, 1.08, 0, Math.PI / 2);
+      break;
+    case 'coat': { // 채색옷(창 37:3, 상점): 발목까지 오는 옷에 여러 빛깔 띠
+      add(new THREE.CylinderGeometry(0.31, 0.44, 0.92, 8), cloth, 0, 0.46, 0);
+      shoulders(cloth);
+      [0xb8452f, 0xe0b040, 0x3f5a8a, 0x6b8a3a, 0x6e3f73].forEach((hex, i) => {
+        const y = 0.1 + i * 0.17, r = 0.44 - 0.13 * (y / 0.92) + 0.012;
+        add(new THREE.CylinderGeometry(r - 0.01, r, 0.07, 8, 1, true), m(hex), 0, y, 0);
+      });
+      break;
+    }
     case 'figleaves': add(new THREE.CylinderGeometry(0.33, 0.43, 0.42, 7), m(PAL.fig), 0, 0.48, 0); break;
     case 'skins':
       add(new THREE.CylinderGeometry(0.33, 0.42, 0.78, 7), m(PAL.skins), 0, 0.55, 0);
@@ -397,6 +445,52 @@ export function dressFigure(fig, spec) {
       add(new THREE.BoxGeometry(0.04, 0.75, 0.04), m(PAL.skins), -0.05, 0.95, 0.27, 0.15);
       break;
     // ---- 상점 ----
+    // ---- 2026-11-03 F05 ----
+    case 'net': // 그물(눅 5:4): 손에 든 그물 뭉치와 찌
+      add(new THREE.IcosahedronGeometry(0.2, 1).scale(1, 0.7, 0.6), m(0xb59a6a), 0.42, 0.6, 0.14);
+      for (const z of [0.02, 0.26]) add(new THREE.IcosahedronGeometry(0.04, 0), m(PAL.gold), 0.42, 0.75, z);
+      break;
+    case 'sickle': { // 낫(막 4:29): 짧은 자루와 굽은 날
+      add(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 5), m(PAL.bark), 0.42, 0.7, 0.14);
+      const b = add(new THREE.TorusGeometry(0.15, 0.025, 4, 10, Math.PI * 1.1), m(0xb8b4aa), 0.42, 0.95, 0.14);
+      b.rotation.y = Math.PI / 2;
+      break;
+    }
+    case 'torch': // 횃불 항아리(삿 7:16): 항아리 위로 솟은 횃불
+      add(new THREE.SphereGeometry(0.13, 8, 6), m(PAL.clay), 0.42, 0.62, 0.14);
+      add(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 5), m(PAL.bark), 0.42, 0.8, 0.14);
+      add(new THREE.IcosahedronGeometry(0.08, 0), glowMat(0xffb347, 0.9), 0.42, 0.98, 0.14);
+      break;
+    case 'dove': { // 비둘기(마 10:16): 손 위에 앉은 흰 비둘기
+      add(new THREE.SphereGeometry(0.1, 7, 5).scale(1.3, 0.9, 0.9), m(0xf4f2ee), 0.42, 0.62, 0.18);
+      add(new THREE.SphereGeometry(0.065, 6, 5), m(0xf4f2ee), 0.5, 0.72, 0.2);
+      const beak = add(new THREE.ConeGeometry(0.02, 0.05, 4), m(PAL.gold), 0.56, 0.72, 0.2);
+      beak.rotation.z = -Math.PI / 2;
+      break;
+    }
+    case 'pomegranate': // 석류(출 28:33): 붉은 열매와 꼭지
+      add(new THREE.SphereGeometry(0.11, 8, 6), m(0xb8452f), 0.42, 0.55, 0.16);
+      add(new THREE.CylinderGeometry(0.04, 0.02, 0.06, 6), m(0x7a2a1e), 0.42, 0.67, 0.16);
+      break;
+    case 'inkhorn': { // 먹 그릇(겔 9:2): 허리에 찬 작은 통과 붓
+      add(new THREE.BoxGeometry(0.1, 0.16, 0.08), m(0x3a3530), -0.36, 0.62, 0.14);
+      const pen = add(new THREE.CylinderGeometry(0.012, 0.012, 0.24, 4), m(PAL.bark), -0.36, 0.78, 0.14);
+      pen.rotation.z = 0.3;
+      break;
+    }
+    case 'sword': { // 성령의 검(엡 6:17): 허리에 찬 칼집과 금빛 손잡이
+      const sh = add(new THREE.BoxGeometry(0.06, 0.62, 0.04), m(PAL.skins), -0.36, 0.42, 0.1);
+      sh.rotation.z = -0.35;
+      add(new THREE.BoxGeometry(0.18, 0.04, 0.05), m(PAL.gold), -0.27, 0.72, 0.1);
+      break;
+    }
+    case 'helmet': // 구원의 투구(엡 6:17): 머리를 덮는 쇠 투구와 금빛 볏
+      add(new THREE.SphereGeometry(0.29, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), m(0xb8b4aa), 0, 1.35, -0.01);
+      add(new THREE.BoxGeometry(0.05, 0.12, 0.4), m(PAL.gold), 0, 1.64, -0.02);
+      break;
+    case 'turban': // 세마포 관(출 28:39): 머리를 감아 두른 흰 천
+      for (let i = 0; i < 3; i++) add(new THREE.TorusGeometry(0.25 - i * 0.04, 0.06, 5, 12), m(0xf1ead8), 0, 1.44 + i * 0.07, -0.02, Math.PI / 2);
+      break;
     case 'pipe': { // 피리(삼상 10:5): 입에 대는 가는 관
       const p = add(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 6), m(0xc9a46a), 0.2, 1.08, 0.3);
       p.rotation.set(Math.PI / 2.6, 0, -0.6);
