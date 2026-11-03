@@ -123,12 +123,14 @@ function makeArk() {
   // 세 층 판자. 층 사이의 밝은 띠(wale)가 아래·가운데·위층을 드러내고, 띠마다 판자 이음 줄이 하나씩 있다.
   const ys = [0, FLOORS[0], FLOORS[0] + FLOORS[1], ARK_H];
   const bands = [0, 1, 2].map((k) => hullBand(ys[k], ys[k + 1], k < 2 ? lowM : upM, k === 2));
+  // 이음 줄과 띠는 판자 면에서 충분히 띄운다(0.015면 물에 흔들릴 때 줄이 끊겨 깜박였다). 문 자리는 이음 줄보다 앞, 띠보다 뒤에 둔다.
   bands.forEach((b, k) => {
     const mid = (ys[k] + ys[k + 1]) / 2;
-    box(2 * xOut(mid) - 0.1, 0.035, ARK_W + 0.03, seamM, 0, mid - ys[k], 0, b);
-    if (k) box(2 * xOut(ys[k]) - 0.1, 0.14, ARK_W + 0.06, waleM, 0, 0, 0, b);
+    box(2 * xOut(mid) - 0.1, 0.035, ARK_W + 0.06, seamM, 0, mid - ys[k], 0, b);
+    if (k) box(2 * xOut(ys[k]) - 0.1, 0.14, ARK_W + 0.12, waleM, 0, 0, 0, b);
   });
-  box(2 * FLAT, 0.12, ARK_W + 0.06, waleM, 0, ys[3] - ys[2] - 0.06, 0, bands[2]); // 갑판 가장자리 띠
+  // 갑판 가장자리 띠: 윗면을 갑판보다 조금 낮춘다. 갑판과 같은 높이면 두 면이 번갈아 그려져 물에 흔들릴 때 번쩍인다(2026-11-03 사용자 F3-2)
+  box(2 * FLAT, 0.12, ARK_W + 0.12, waleM, 0, ys[3] - ys[2] - 0.09, 0, bands[2]);
   // 갑판 위 집채: 벽 → 창(창 6:16 "위에서부터 한 규빗", 지붕 바로 아래를 빙 둘러 트인 띠) → 낮은 맞배지붕(처마를 줄여 옆면을 가리지 않게)
   const HL = 10, HW = ARK_W - 0.8, WALL = 0.7, WIN = Math.max(0.3, CUBIT * 4);
   const houseFrame = new THREE.Group(), houseWalls = new THREE.Group();
@@ -141,15 +143,16 @@ function makeArk() {
   houseFrame.add(posts);
   box(HL, 0.08, HW, frameM, 0, WALL + WIN - 0.04, 0, houseFrame);
   box(HL - 0.05, WALL, HW - 0.04, upM, 0, WALL / 2, 0, houseWalls);
-  box(HL - 0.1, WIN, HW - 0.1, darkM, 0, WALL + WIN / 2, 0, houseWalls);
+  box(HL - 0.1, WIN - 0.04, HW - 0.1, darkM, 0, WALL + (WIN - 0.04) / 2, 0, houseWalls); // 윗면이 뼈대 윗면과 겹치지 않게 낮춘다
   const pitchA = 0.3, ridge = (HW / 2) * Math.tan(pitchA);
   for (const z of [-1, 1]) {
-    const slab = box(HL + 0.3, 0.08, HW / 2 + 0.12, roofM, 0, WALL + WIN + ridge / 2, (z * HW) / 4, houseWalls);
+    // 처마 끝이 뼈대 윗면을 뚫지 않게 조금 띄운다
+    const slab = box(HL + 0.3, 0.08, HW / 2 + 0.12, roofM, 0, WALL + WIN + ridge / 2 + 0.06, (z * HW) / 4, houseWalls);
     slab.rotation.x = z * pitchA;
   }
   // 옆문(창 6:16): 아래층에 사자·말이 지나갈 만큼 크게 낸다. 아래 경첩으로 열려 땅까지 닿는 발판이 되고(안쪽 면의 디딤목이 위로 온다),
   // 여호와께서 닫으신다(창 7:16).
-  const doorway = box(DOOR_W, DOOR_H, 0.02, darkM, 0, SILL + DOOR_H / 2, ARK_W / 2 + 0.012, g);
+  const doorway = box(DOOR_W, DOOR_H, 0.02, darkM, 0, SILL + DOOR_H / 2, ARK_W / 2 + 0.035, g);
   const door = new THREE.Group();
   door.position.set(0, SILL, ARK_W / 2 + 0.04);
   box(DOOR_W, DOOR_H, 0.07, lowM, 0, DOOR_H / 2, 0, door);
@@ -329,7 +332,8 @@ export default {
     F.group.add(ark.g);
     for (let k = -ARK_L / 2 + 0.9; k <= ARK_L / 2 - 0.9; k += 0.8) F.block(ARK.clone().addScaledVector(ALONG, k), ARK_W / 2 - 0.1);
     // 고페르 나무 더미와 역청 통(창 6:14)
-    for (const k of [-6.6, 6.6]) F.put(makeLogs(6, 0x9a7048), ARK.clone().addScaledVector(FRONT, ARK_W / 2 + 1).addScaledVector(ALONG, k), 0.5, Math.PI / 4);
+    // 첫 도전에서 노아가 서는 자리(WORK[0] 왼쪽 1.1)와 겹치지 않게 방주 양 끝 가까이 둔다(6.6이면 노아가 더미에 걸렸다, 사용자 F3-1)
+    for (const k of [-7.9, 7.9]) F.put(makeLogs(6, 0x9a7048), ARK.clone().addScaledVector(FRONT, ARK_W / 2 + 1).addScaledVector(ALONG, k), 0.5, Math.PI / 4);
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.32, 7), mat(0x2b231c));
     pot.position.y = 0.16;
     const potG = new THREE.Group().add(pot);
@@ -357,7 +361,8 @@ export default {
     const noah = F.person('noah', { hair: 'short', hairColor: 0x9a9590, beard: 'long', outfit: 'robe', outfitColor: 0xd8c3a0 }, NOAH);
     const wife = F.person('wife', { hair: 'long', hairColor: 0x6b6460, outfit: 'robe', outfitColor: 0x7f8a4a }, DOOR.clone().addScaledVector(FRONT, 1).addScaledVector(ALONG, 1.6));
     const shem = F.person('shem', { hair: 'short', hairColor: PAL.hairDark, beard: 'short', outfit: 'tunic', outfitColor: 0x9a6b45 }, WORK[3].clone().addScaledVector(FRONT, 1.4).addScaledVector(ALONG, 1));
-    F.keep.push(...WORK, ...PAIRS.map((p) => p.home), BIRD_HOME, FOOT, out0());
+    // 도전 자리 앞(카메라 쪽)도 비워 둔다: 나무가 서면 다가가는 길을 막고 일하는 모습을 가린다(사용자 F3-1)
+    F.keep.push(...WORK, ...WORK.map((w) => w.clone().addScaledVector(FRONT, 1.8)), ...PAIRS.map((p) => p.home), BIRD_HOME, FOOT, out0());
     // 짐승 한 쌍씩
     const pairs = PAIRS.map((p) => ({ ...p, animals: [0, 1].map((i) => {
       const an = F.animal(p.kind === 'lizard' ? 'generic' : p.kind, p.color, p.size * (i ? 0.92 : 1), p.home.clone().add(V(i * 1.1, i * -0.4)), { roam: 1.6 });
@@ -384,12 +389,14 @@ export default {
     leaf.position.x = 0.25;
     leaf.visible = false;
     doves[0].add(leaf);
-    // 홍수: 물결치는 물(가운데에서 바깥까지 고리 6겹)과 들 가장자리의 물 벽
+    // 홍수: 물결치는 물(가운데에서 바깥까지 고리 6겹)과 들 가장자리의 물 벽.
+    // 들판 바닥(field.js)은 위 반지름 RADIUS+0.5에서 아래(y=-2) RADIUS+2로 벌어지므로, 물 벽은 그보다 넓게 바닥 아래까지 덮는다(사용자 F3-3)
     const water = new THREE.Group();
     const waterM = mat(PAL.water, { transparent: true, opacity: 0.86 });
-    const surfGeo = new THREE.RingGeometry(0, RADIUS + 0.7, 40, 6).rotateX(-Math.PI / 2);
+    const WATER_R = RADIUS + 2.3, WATER_BOTTOM = 2.1;
+    const surfGeo = new THREE.RingGeometry(0, WATER_R, 40, 6).rotateX(-Math.PI / 2);
     const surface = new THREE.Mesh(surfGeo, waterM);
-    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(RADIUS + 0.7, RADIUS + 0.7, 1, 40, 1, true), waterM);
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(WATER_R, WATER_R, 1, 40, 1, true), waterM);
     water.add(surface, skirt);
     water.position.y = -0.2;
     water.visible = false;
@@ -437,8 +444,8 @@ export default {
       if (water.visible) {
         for (let i = 0; i < wavePos.count; i++) { const x = wavePos.getX(i), z = wavePos.getZ(i); wavePos.setY(i, Math.sin(x * 0.9 + t * 1.7) * 0.06 + Math.sin(z * 1.3 - t * 1.3) * 0.05); }
         wavePos.needsUpdate = true;
-        skirt.scale.y = Math.max(0.01, lvl);
-        skirt.position.y = -lvl / 2;
+        skirt.scale.y = Math.max(0.01, lvl + WATER_BOTTOM);
+        skirt.position.y = -(lvl + WATER_BOTTOM) / 2;
       }
       const c = ark.g.position;
       if (rain.visible) {
@@ -520,22 +527,38 @@ export default {
     // 한 단계에 두 번 힘을 모으고, 그때마다 방주가 실제로 지어져 간다(창 6:14~16). 뒤 단계일수록 어렵다(tier). 오래 걸리는 일이라 인내와 신실이 돕는다.
     const removeGreet = g.greet(shem, data.greetings.shem, 'shem');
     let hits = 0;
+    // 망치질 세 단계는 박자(rhythm, 세 번 이어 치면 한 번 박힘), 역청은 붓질 한 번이라 타이밍(time)으로 한다(사용자 F3-5)
     const steps = [
-      ['갈빗대', '용골 위에 갈빗대 세우기', 'buildFrame'],
-      ['층 바닥', '세 층 바닥 깔기', 'buildFloor'],
-      ['판자', '판자로 옆 막고 지붕 얹기', 'buildPlank'],
-      ['역청', '안팎에 역청 칠하기', 'buildPitch'],
+      ['갈빗대', '용골 위에 갈빗대 세우기', 'buildFrame', '망치질', 'rhythm'],
+      ['층 바닥', '세 층 바닥 깔기', 'buildFloor', '나무못 박기', 'rhythm'],
+      ['판자', '판자로 옆 막고 지붕 얹기', 'buildPlank', '판자 박기', 'rhythm'],
+      ['역청', '안팎에 역청 칠하기', 'buildPitch', '역청 바르기', 'time'],
     ];
-    for (const [i, [name, text, say]] of steps.entries()) {
+    // 성공할 때마다 노아와 관찰자가 함께 팔을 내리친다(망치질). 역청은 팔을 앞으로 밀었다 당기는 붓질이다.
+    const swing = async (figs, brush) => {
+      const was = figs.map((f) => f.userData.armPose);
+      for (let k = 0; k < 2; k++) {
+        figs.forEach((f) => (f.userData.armPose = brush ? 'carry' : 'raise'));
+        await wait(brush ? 220 : 160);
+        figs.forEach((f) => (f.userData.armPose = 'grip'));
+        await wait(brush ? 220 : 120);
+      }
+      figs.forEach((f, j) => (f.userData.armPose = was[j] ?? null));
+    };
+    // 판자가 박히는 반응: 방주가 짧게 들썩인다
+    const thud = () => tween(240, (p) => (ark.g.position.y = Math.sin(p * Math.PI * 3) * 0.05 * (1 - p)));
+    for (const [i, [name, text, say, verb, kind]] of steps.entries()) {
       g.cam(WORK[i].clone().lerp(ARK, 0.4).setY(1.5), 15);
       await g.talk(data.lines[say]);
       g.cam(null, 13);
       await g.challenge({
-        title: `방주 짓기 ${i + 1}/${steps.length}: ${name}`, spots: [{ pos: WORK[i], text: `함께 ${text}`, hits: 2 }], verb: '힘 모으기', fruits: ['patience', 'faith'], tier: i,
+        title: `방주 짓기 ${i + 1}/${steps.length}: ${name}`, spots: [{ pos: WORK[i], text: `함께 ${text}`, hits: 2 }], verb, kind, fruits: ['patience', 'faith'], tier: i,
         onHit: async (sp) => {
           await F.acts.walkTo(noah, sp.pos.clone().addScaledVector(ALONG, -1.1), 2.4); // 대천사는 관찰자의 화면 오른쪽(+ALONG)에 서므로 노아는 왼쪽에 선다
           F.acts.face(noah, ARK);
           F.acts.speak('noah');
+          await swing([noah, g.player], i === 3);
+          if (i < 3) await thud();
           g.cam(ARK.clone().addScaledVector(ALONG, (i - 1.5) * 2).setY(2.2), 17, true);
           await ark.progress(++hits);
           g.reward(`build/${hits}`, 'step');
@@ -602,7 +625,11 @@ export default {
     F.rain.visible = F.ripples.visible = true;
     F.water.visible = true;
     ark.floating = true;
-    g.cam(ark.g.position, 19, true);
+    // 카메라는 떠 있는 방주를 따라가되 바라보는 점을 물 위로 올린다. 카메라가 낮으면 화면 아래쪽 물이 카메라 앞면(near)에 잘려
+    // 물 밑 들판이 드러났다(세로 화면, 사용자 F3-3)
+    const floodCam = new THREE.Vector3();
+    F.onUpdate(() => floodCam.copy(ark.g.position).setY(ark.g.position.y + 3));
+    g.cam(floodCam, 19, true);
     // 기다림이 3초를 넘지 않게 물이 차오르는 동안 대사를 함께 띄운다. 물은 들 → 언덕과 나무 → 산 순서로 잠근다.
     const rise = (to, ms) => { const from = F.water.position.y; return tween(ms, (p) => (F.water.position.y = from + (to - from) * easeOut(p))); };
     let r = rise(1.4, 4200);
@@ -677,9 +704,11 @@ export default {
       fly(b, perch, 2400, 2.5).then(() => land(b, perch));
     });
     await g.talk(data.lines.out.slice(1, 2));
-    await Promise.all([F.acts.walkTo(noah, ALTAR.clone().addScaledVector(FRONT, 0.9)), F.acts.walkTo(wife, FOOT.clone().addScaledVector(ALONG, 0.6)), F.acts.walkTo(shem, FOOT.clone().addScaledVector(ALONG, 1.4))]);
+    // 번제(창 8:20): 노아는 제단 왼쪽에 서서 옆모습으로 제단을 본다(앞에 서면 등이 제단을 가린다). 카메라는 노아와 제단 사이를 가까이 비춘다(사용자 F3-4).
+    await Promise.all([F.acts.walkTo(noah, ALTAR.clone().addScaledVector(ALONG, -0.95).addScaledVector(FRONT, 0.2)), F.acts.walkTo(wife, FOOT.clone().addScaledVector(ALONG, 0.6)), F.acts.walkTo(shem, FOOT.clone().addScaledVector(ALONG, 1.4))]);
     F.altar.visible = true;
     F.acts.face(noah, ALTAR);
+    g.cam(ALTAR.clone().addScaledVector(ALONG, -0.45).setY(0.6), 10);
     await g.talk(data.lines.out.slice(2, 3));
     await F.acts.bow(noah, 0.4);
     await F.acts.pillar(ALTAR);
