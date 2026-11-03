@@ -1136,7 +1136,7 @@ const GRACE_MS = 150; // 도전 판정 여유: 누르기 전 이 시간 안에 �
 // 난도(2026-11-03 사용자 F18 "갈수록 어렵게"): 성공할 때마다, 그리고 같은 스테이지의 다음 도전(tier)일수록 구간이 좁아지고 표시가 빨라진다.
 // 성공 k번째: 속도 ×(1 + 0.12k), 구간 ×(1 − 0.08k). tier: 속도 ×(1 + 0.15·tier), 구간 ×(1 − 0.1·tier). 구간은 기본의 0.5배, 속도는 1.8배에서 멈춘다.
 const challengeLevel = (k, tier = 0) => ({ speed: Math.min(1.8, (1 + 0.12 * k) * (1 + 0.15 * tier)), zone: Math.max(0.5, (1 - 0.08 * k) * (1 - 0.1 * tier)) });
-function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, onMiss, missText = '다시 해 보세요', speed = CHALLENGE.speed, tier = 0, kind = 'time' }) {
+function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, onMiss, missText = '다시 해 보세요', speed = CHALLENGE.speed, tier = 0, kind = 'time', hitText = '살살, 잘 뺐어요!', lowText = '조금 더 당겨요', onHold }) {
   return new Promise((resolve) => {
     const assist = assistOf(state, fruits);
     const left = new Set(spots);
@@ -1198,8 +1198,8 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       const m = ch.m;
       ch.m = 0;
       if (!sp || ch.busy) return;
-      if (inZone(m)) succeed(sp, '살살, 잘 뺐어요!');
-      else if (m < ch.zone[0]) { label('조금 더 당겨요'); flash('is-miss'); } // 덜 당긴 것은 실패 반응(onMiss) 없이 다시
+      if (inZone(m)) succeed(sp, hitText);
+      else if (m < ch.zone[0]) { label(lowText); flash('is-miss'); } // 덜 당긴 것은 실패 반응(onMiss) 없이 다시
       else miss(sp);
     };
     const succeed = async (sp, text) => {
@@ -1242,7 +1242,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     };
     const onKeyUp = (e) => { if (e.code === 'Space') release(); };
     ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, onKeyUp, panel, busy: false, msg: '', msgT: 0, toolName, hist: [],
-      kind, beats: BEATS, combo: 0, beatPressed: false, holding: false, release: () => release(), miss: (sp, text) => miss(sp, text),
+      kind, onHold, beats: BEATS, combo: 0, beatPressed: false, holding: false, release: () => release(), miss: (sp, text) => miss(sp, text),
       auto: () => { if (ch.near) succeed(ch.near, '좋아요!'); } }; // auto: 개발용 자동 플레이(한 번 성공)
     newZone();
     panel.dataset.kind = kind;
@@ -1294,6 +1294,7 @@ function challengeTick(dt) {
       ch.m += ch.speed * dt * (0.45 + ch.m);
       if (ch.m >= 1) { ch.holding = false; ch.m = 0; ch.miss(near); }
     }
+    ch.onHold?.(ch.holding ? ch.m : 0); // 꾹 누르는 진행(0~1). 장면이 물높이 등에 쓴다
   } else {
     ch.m += ch.dir * ch.speed * dt;
     if (ch.m > 1) { ch.m = 1; ch.dir = -1; }

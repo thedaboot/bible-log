@@ -37,6 +37,21 @@ export default async (t) => {
       if (await vis('challenge')) {
         seen.add('도전');
         if ((await t.ev(`document.getElementById('chLabel').textContent`)).includes('쓰기')) { seen.add('도구 F'); await press('KeyF', 'f', 700); }
+        if ((await t.ev(`document.getElementById('challenge').dataset.kind`)) === 'hold') {
+          // 꾹 누르기: Space를 누른 채 표시가 금빛 구간에 들면 뗀다(느린 창이라 게임 시간 배속을 잠시 끈다)
+          seen.add('꾹 누르기');
+          await t.ev(`__dev.speed = 1; 1`);
+          await t.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'Space', key: ' ', windowsVirtualKeyCode: 32, text: ' ' });
+          for (let j = 0; j < 200; j++) {
+            const inz = await t.ev(`(() => { const tr = document.getElementById('chTrack').clientWidth || 1; const m = (parseFloat(document.getElementById('chMark').style.transform.slice(11)) || 0) / tr; const zs = document.getElementById('chZone').style.transform; const a = parseFloat(zs.split('translateX(')[1]) / 100, w = parseFloat(zs.split('scaleX(')[1]); if (!(w > 0)) return false; return m >= a + w * 0.2 && m <= a + w * 0.8; })()`);
+            if (inz) break;
+            await t.wait(15);
+          }
+          await t.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'Space', key: ' ', windowsVirtualKeyCode: 32 });
+          await t.ev(`__dev.speed = 4; 1`);
+          await t.wait(400);
+          continue;
+        }
         await press('Space', ' ', 50);
         continue;
       }
