@@ -7,6 +7,7 @@ import { EDEN, FALL, RIVERS, ANIMALS, FRUITS, QUIZ, INTERLUDE, EVE_GREETING } fr
 import { CODEX, CODEX_TABS, LIKENESS } from '../src/data/codex.js';
 import { CAIN, CAIN_QUIZ, CAIN_INTERLUDE, CAIN_GREETING, FLOCK } from '../src/data/cain.js';
 import { SPEAKERS, vocative, fill, withRa } from '../src/text.js';
+import { readFileSync, readdirSync } from 'node:fs';
 import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, STAGES, inFrontOfScene, stepAsideSpots, crossesRiver } from '../src/eden.js';
 import { load, save, reach, newState, openNext } from '../src/save.js';
 import { makeCain, collide as cainCollide, stepAsideSpots as cainAside, STAGES as CAIN_STAGES } from '../src/cain.js';
@@ -618,3 +619,16 @@ for (const mod of MODS) {
   }
 }
 console.log(`OK: 스테이지 점검 통과(${MODS.map((m) => m.id).join(', ') || '없음'})`);
+
+// 장면 인물 이름표(2026-11-03 F16): F.person·g.greet에 쓴 id는 모두 SPEAKERS에 이름이 있어야 한다. 없으면 관계 알림에 "shem과 만남"처럼 영어 id가 뜬다.
+{
+  const ids = new Set();
+  for (const f of readdirSync(new URL('../src/stages/', import.meta.url))) {
+    const src = readFileSync(new URL(`../src/stages/${f}`, import.meta.url), 'utf8');
+    for (const m of src.matchAll(/F\.person\(\s*'([a-z]+)'/g)) ids.add(m[1]);
+    for (const m of src.matchAll(/g\.greet\([^)]*?'([a-z]+)'\)/g)) ids.add(m[1]);
+  }
+  const missing = [...ids].filter((i) => !(i in SPEAKERS));
+  assert.deepEqual(missing, [], `이름표 없는 인물: ${missing}`);
+  console.log(`OK: 장면 인물 이름표 점검 통과(${ids.size}명)`);
+}
