@@ -9,6 +9,8 @@ export async function boot({ ev, open, wait }, save = SAVE) {
   await ev(`localStorage.setItem('bible-rpg/save/v1', ${JSON.stringify(JSON.stringify(save))})`);
   await open(base);
   await wait(1200);
+  // 크롬을 여럿 띄우면 첫 화면 메뉴가 늦게 뜬다. 이어하기가 보일 때까지 기다린다(최대 15초)
+  for (let k = 0; k < 60 && !(await ev(`[...document.querySelectorAll('.menu__item')].some(b => b.textContent === '이어하기')`)); k++) await wait(250);
   await ev(`window.__e=[];addEventListener('error',e=>__e.push(e.message));addEventListener('unhandledrejection',e=>__e.push(String(e.reason?.stack||e.reason)))`);
   await ev(`[...document.querySelectorAll('.menu__item')].find(b => b.textContent === '이어하기').click()`);
   await wait(3000);

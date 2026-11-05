@@ -1261,6 +1261,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       flash('is-hit');
       sp.n++;
       done++;
+      panel.dataset.done = done; // 이 도전에서 해낸 수(점검 스크립트가 읽는다)
       ch.busy = true;
       mode = 'none';
       await onHit?.(sp, sp.n);
@@ -1301,6 +1302,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       auto: () => { if (ch.near) succeed(ch.near, '좋아요!'); } }; // auto: 개발용 자동 플레이(한 번 성공)
     newZone();
     panel.dataset.kind = kind;
+    panel.dataset.done = 0;
     addEventListener('keydown', onKey);
     addEventListener('keyup', onKeyUp);
     // 버튼은 손이 닿는 순간(pointerdown)에 판정한다. click은 손을 뗀 뒤에 와서 늦다. 키보드(Enter)로 누른 click만 따로 받는다.

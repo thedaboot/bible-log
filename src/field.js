@@ -197,19 +197,20 @@ export function makeField(cfg) {
       await tween(1400, (k) => pillar.scale.set(Math.max(0.01, easeOut(k)), 1, Math.max(0.01, easeOut(k))));
     },
     // 하늘빛: to(색), dim(0 밝음 ~ 1 어둠), warm(노을빛 섞기)
-    sky: (to, dim = 0, warm = 0, ms = 1800) => {
+    sky: (to, dim = 0, warm = 0, ms = 1800, cool = 0) => {
       const from = cfg.scene.background.clone(), target = new THREE.Color(to);
       const h0 = hemi.intensity, s0 = sun.intensity;
       return tween(ms, (p) => {
         cfg.scene.background.lerpColors(from, target, p);
         hemi.intensity = h0 + (1.1 - 0.6 * dim - h0) * p;
         sun.intensity = s0 + (1.3 - 1.0 * dim - s0) * p;
-        sun.color.setHex(0xfff1d0).lerp(new THREE.Color(0xff9a5a), warm * p);
+        sun.color.setHex(0xfff1d0).lerp(new THREE.Color(0xff9a5a), warm * p).lerp(new THREE.Color(0x8ea6ff), cool * p);
       });
     },
     day: () => acts.sky(sky, 0, 0),
     dusk: () => acts.sky(0xe8a878, 0.4, 1),
-    night: () => acts.sky(0x1c2340, 0.75, 0),
+    // 밤: 하늘보다 땅이 화면을 많이 차지해서 땅빛을 더 낮추고 푸르게 한다(2026-11-05 1-11 점검: 밤이 어둡게 보이지 않았다)
+    night: () => acts.sky(0x141a30, 0.95, 0, 1800, 0.7),
     // 땅에 엎드림(창 18:2, 24:26이 아닌 '땅에 굽혀' 장면: 33:3, 42:6, 50:18): 무릎을 꿇고 상체와 이마를 땅에 대며 팔을 앞으로 뻗는다.
     // 고개만 숙이는 bow와 나눈다(quests-and-staging.md). toward가 있으면 내려가며 그쪽으로 돈다. k는 걸리는 시간 배수(일곱 번 엎드림은 짧게).
     // 끝은 엎드린 채로 두고, 일어날 때는 rise를 부른다. 2026-11-03 R5에 1-7(mamre.js)에서 옮겼다.
