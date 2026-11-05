@@ -167,8 +167,12 @@ function statusView(state) {
   const like = likeness(state);
   const box = el('section', 'likeness');
   box.append(el('p', 'quest__label', '닮은 인물'));
-  if (like) box.append(el('p', 'likeness__name', CODEX.find((c) => c.id === `person/${like.who}`).name), el('p', 'likeness__text', like.text));
-  else box.append(el('p', 'likeness__text', '열매가 자라면 닮은 성경 인물을 알려 드릴게요.'));
+  // F44: 그림·이름·두 열매 꼬리표 머리줄 아래에 그 인물이 한 일(장절)과 닮은 점을 한 줄씩
+  if (like) {
+    const id = `person/${like.who}`;
+    const tags = like.fruits.map((f) => [SPIRIT.find((s) => s.id === f).name, 'slot']);
+    box.append(detailHead(CODEX_ART[id], CODEX.find((c) => c.id === id).name, tags, like.ref), el('p', 'inv__fact', like.deed), el('p', 'likeness__text', like.text));
+  } else box.append(el('p', 'likeness__text', '열매가 자라면 닮은 성경 인물을 알려 드릴게요.'));
   wrap.append(box);
   return wrap;
 }
@@ -190,8 +194,8 @@ function inventoryView(state, ctx) {
     const d = el('div', 'inv__detail');
     if (!it) {
       d.append(ctx.kind === 'tool'
-        ? howList([['도전', '도전이 있는 스테이지에서 받아요'], ['사용', '쓸 곳에서 다 쓰면 사라져요']], `가방 자리는 레벨이 오르면 늘어나요.`)
-        : howList([['레벨', '레벨이 오르면 열려요'], ['완료', '스테이지를 완료하면 받아요'], ['상점', '쉼터 상점에서 달란트로 사요']], '손·허리·머리에 하나씩, 셋까지 함께 달 수 있어요.'));
+        ? howList([['도전', '도전 과제가 있는 스테이지에서 받을 수 있어요'], ['사용', '사용할 곳에서 다 사용되면 사라져요']], '인벤토리는 레벨이 오르면 늘어나요.')
+        : howList([['레벨', '레벨을 달성하면 받아요'], ['완료', '스테이지를 완료하면 받아요'], ['상점', '쉼터의 상점에서 달란트로 살 수 있어요']]));
       return d;
     }
     const owned = it.kind === 'tool' ? state.items.tools.includes(it.id) : ownsLook(state, it.id);
@@ -286,10 +290,9 @@ function codexCell(state, c, no, picked, onPick) {
 }
 // 항목 그림(codex-art.js, F02). 없으면 분류 그림
 const artOf = (c) => CODEX_ART[c.id] ?? CODEX_ICONS[c.id.split('/')[0]] ?? '';
-// 고른 항목의 설명: 만난 항목은 이름·사실·장절·메모, 놓친 칸은 다시 찾을 곳, 고른 칸이 없으면 안내 한 줄
+// 고른 항목의 설명: 만난 항목은 이름·사실·장절·메모, 놓친 칸은 다시 찾을 곳
 function codexDetail(state, c) {
   const d = el('div', 'inv__detail codex__detail');
-  if (!c) { d.append(el('p', 'inv__hint', '그림을 누르면 자세히 볼 수 있어요.')); return d; }
   const st = codexState(state, c);
   const pic = st === 'met' ? artOf(c) : CODEX_ICONS[c.id.split('/')[0]];
   if (st === 'met') d.append(detailHead(pic, c.name, [], c.ref), el('p', 'inv__fact', c.fact), el('p', 'codex__memo', c.memo));
@@ -399,7 +402,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
       const first = page * PAGE;
       const onPick = (id) => { dexPick = id; codexBody(0); };
       entries.slice(first, first + PAGE).forEach((c, i) => grid.append(codexCell(state, c, first + i + 1, dexPick, onPick)));
-      view.append(grid, codexDetail(state, entries.find((c) => c.id === dexPick)));
+      view.append(grid);
     }
     if (pages > 1) {
       const pager = el('div', 'pager pager--page');
@@ -414,6 +417,9 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
       pager.append(prev, dots, next);
       view.append(pager);
     }
+    // F45: 고른 칸이 있을 때만 설명 패널을 페이지 넘기기 아래에 둔다(안내 문구 칸은 없앴다). 고르면 페이지 넘기기가 밀려 내려가지 않는다
+    const c = entries.slice(page * PAGE, page * PAGE + PAGE).find((x) => x.id === dexPick);
+    if (c) view.append(codexDetail(state, c));
     swap(codexBox, view, dir);
   };
 

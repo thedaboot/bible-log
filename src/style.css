@@ -838,9 +838,8 @@ body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
 .fruit-list__name { font-size: var(--text-small); font-weight: 800; color: var(--color-frame); white-space: nowrap; }
 .fruit-list__stage { justify-self: end; font-size: var(--text-label); font-weight: 700; color: var(--color-accent-ink); white-space: nowrap; }
 .fruit-list__old { grid-column: 1 / -1; font-size: var(--text-label); color: var(--color-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.likeness { display: grid; gap: var(--space-3xs); padding: var(--space-sm) var(--space-md); background: var(--color-paper-2); }
-.likeness__name { margin: 0; font-size: var(--text-ui); font-weight: 800; color: var(--color-frame); }
-.likeness__text { margin: 0; font-size: var(--text-small); line-height: 1.6; color: var(--color-ink); word-break: keep-all; text-wrap: balance; }
+.likeness { display: grid; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); background: var(--color-paper-2); }
+.likeness__text { margin: 0; font-size: var(--text-small); line-height: 1.6; color: var(--color-ink); word-break: keep-all; text-wrap: pretty; }
 
 /* 넘기기: 이전·다음 버튼(CSS 삼각형)과 가운데 이름 또는 점 */
 .pager { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: var(--space-xs); }
@@ -1461,6 +1460,7 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
 .inv__how { display: grid; gap: var(--space-2xs); }
 .inv__howrow { display: flex; align-items: center; gap: var(--space-xs); margin: 0; font-size: var(--text-small); }
 .inv__howrow .tag { min-width: 3.4em; text-align: center; }
+.inv__howrow > span:last-child { text-wrap: balance; } /* F41: 휴대폰 폭에서 '있어요'만 다음 줄로 떨어지지 않게 */
 .inv__howfoot { margin: var(--space-3xs) 0 0; font-size: var(--text-small); color: var(--color-ink-2); }
 @media (max-width: 39.99rem) {
   .inv__detail { position: sticky; z-index: 1; bottom: calc(-1 * var(--space-md)); box-shadow: 0 -2px 0 var(--color-paper-3); }
@@ -1524,8 +1524,10 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
   .inv__detail { position: static; flex: none; box-shadow: 0 -2px 0 var(--color-paper-3); }
 }
 /* F36 상점·인벤토리 칸: 그림 자리를 같은 높이로 두고, 아래 그늘 띠(4px)를 뺀 칸 안쪽 가운데에 내용을 놓는다 */
-.slot { grid-template-rows: 44px auto auto; align-content: center; padding-bottom: calc(var(--space-xs) + 4px); }
+.slot { grid-template-rows: 44px; align-content: center; padding-bottom: calc(var(--space-xs) + 4px); }
 .slot__icon { align-self: center; }
+/* F43: 빈 줄을 미리 잡아 두면 줄 사이 간격만큼 내용이 위로 올라갔다. 빈 도구 칸의 네모도 첫 줄 위쪽에 붙었다 */
+.slot--empty { grid-template-rows: none; place-items: center; }
 /* F37 사기 버튼: 달란트 그림과 값만 */
 .shop__buy { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2xs); }
 .shop__buycoin { width: 20px; height: 20px; }

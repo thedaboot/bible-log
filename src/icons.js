@@ -2,11 +2,15 @@
 const CLS = { o: 'px-o', g: 'px-g', l: 'px-l', d: 'px-d', b: 'px-b', v: 'px-v', w: 'px-w', s: 'px-s', r: 'px-r', k: 'px-k' }; // v: 잎(--color-leaf), w·s·r·k: 물·살갗·붉은색·짙은색(--color-px-*)
 export function pixel(rows, label) {
   const w = rows[0].length, h = rows.length;
-  let rects = '';
+  let rects = '', x0 = w, y0 = h, x1 = 0, y1 = 0;
   rows.forEach((row, y) => [...row].forEach((c, x) => {
-    if (CLS[c]) rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" class="${CLS[c]}"/>`;
+    if (!CLS[c]) return;
+    rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" class="${CLS[c]}"/>`;
+    x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x + 1); y1 = Math.max(y1, y + 1);
   }));
-  return `<svg class="px-icon" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" role="img" aria-label="${label}">${rects}</svg>`;
+  // 그림이 격자 한쪽에 치우쳐 있어도 칸 가운데에 오게, 그린 부분의 가운데로 viewBox를 옮긴다(2026-11-05 F43)
+  const ox = x1 > x0 ? (x0 + x1 - w) / 2 : 0, oy = y1 > y0 ? (y0 + y1 - h) / 2 : 0;
+  return `<svg class="px-icon" viewBox="${ox} ${oy} ${w} ${h}" shape-rendering="crispEdges" role="img" aria-label="${label}">${rects}</svg>`;
 }
 
 // 달란트: 고대의 달란트는 둥글넓적한 금속 덩어리(무게 단위)였다. 손잡이 홈이 있는 둥근 덩어리로 그린다(마 25:15).

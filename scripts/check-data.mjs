@@ -416,6 +416,7 @@ assert.equal(old.earthLook.skin, DEFAULT_EARTH.skin);
     assert.equal(l.fruits.length, 2, `LIKENESS.${who}: 열매 두 가지`);
     assert.ok(l.fruits.every((f) => SPIRIT.some((s) => s.id === f)), `LIKENESS.${who}: 없는 열매`);
     assert.ok(!l.text.includes('\n'), `LIKENESS.${who}: 줄바꿈 기호 없이 쓴다(상태 창 폭에 맞춰 나뉜다)`);
+    assert.ok(l.deed && l.ref && !l.deed.includes('\n'), `LIKENESS.${who}: 한 일(deed)과 장절(ref)이 필요함`);
   }
   // 닮은 인물: 만난 인물만, 열매가 없으면 없음, 점수 합이 큰 인물
   const s = newState();
