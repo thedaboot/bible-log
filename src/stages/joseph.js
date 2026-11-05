@@ -165,14 +165,13 @@ export default {
     g.cam(null, 13);
     await g.talk(data.lines.pharaoh.slice(4));
 
-    // 도전: 꿈 풀기. 꿈의 장면마다 다가가 금빛 구간에 맞추면 요셉이 풀이를 말한다.
+    // 도전: 꿈 풀기. 꿈의 장면마다 다가가 꿈에 나온 것(암소·이삭·나일 강·동풍, 창 41:1~6)이 빛나는 순서를 기억해 누르면 요셉이 풀이를 말한다(순서 기억, F58).
     // 꿈을 푸는 이는 하나님이시라는 요셉의 고백(창 41:16)에 기대어 신실과 화평이 돕는다.
     const names = ['살진 일곱 암소', '알이 꽉 찬 일곱 이삭', '뼈만 남은 일곱 암소', '마른 일곱 이삭']; // 요셉의 풀이 대사(data/joseph.js)와 같은 말
     await g.challenge({
       title: '바로의 꿈', spots: DREAMS.map((p, i) => ({ pos: p.clone().add(V(1.2, 1.2)), text: `${names[i]} 풀기`, i })),
-      verb: '풀기', hits: 2, fruits: ['faith', 'peace'],
-      onHit: async (sp, n) => {
-        if (n < 2) return;
+      verb: '풀기', hits: 1, kind: 'sequence', symbols: ['암소', '이삭', '나일', '동풍'], fruits: ['faith', 'peace'],
+      onHit: async (sp) => {
         await F.acts.walkTo(joseph, DREAMS[sp.i].clone().add(V(1.2, 1.2)).addScaledVector(ALONG, -1.4), 2.4);
         F.acts.face(joseph, DREAMS[sp.i]);
         await g.talk([data.lines.dreams[sp.i]]);

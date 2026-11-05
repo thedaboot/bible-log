@@ -26,6 +26,7 @@ import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
 import { openMap, stageInfo } from './map.js';
 import { tween, easeOut, setInstant } from './anim.js';
+import { makeGame, isPadKind } from './minigames.js';
 import {
   $, isTouch, say, askName, askLook, askClear, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, popHud, askQuit } from './ui.js';
 
@@ -197,8 +198,10 @@ function movePlayer(dt, t) {
   if (mode === 'auto') autoLeft -= dt;
   if (mode === 'auto' && (!target || autoLeft <= 0)) { target = null; mode = 'none'; }
   if (mode === 'walk' || mode === 'auto') {
-    let f = mode === 'walk' ? held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown') : 0;
-    let r = mode === 'walk' ? held('KeyD', 'ArrowRight') - held('KeyA', 'ArrowLeft') : 0;
+    // 방향키를 쓰는 놀이판(따라 긋기·받기) 곁에서는 키보드로 걷지 않는다(F58)
+    const keysWalk = mode === 'walk' && !(ch?.near && ch.game?.arrows);
+    let f = keysWalk ? held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown') : 0;
+    let r = keysWalk ? held('KeyD', 'ArrowRight') - held('KeyA', 'ArrowLeft') : 0;
     // 조이스틱: 화면에서 끈 방향(위쪽이 앞)을 키보드와 같은 앞·옆 값으로 바꾼다. 조금 끌면 천천히 걷는다
     if (stick.on && mode === 'walk') {
       const len = Math.hypot(stick.dx, stick.dy), k = Math.min(1, len / STICK_MAX) / (len || 1);
@@ -1153,7 +1156,7 @@ const GRACE_MS = 150; // 도전 판정 여유: 누르기 전 이 시간 안에 �
 // 난도(2026-11-03 사용자 F18 "갈수록 어렵게"): 성공할 때마다, 그리고 같은 스테이지의 다음 도전(tier)일수록 구간이 좁아지고 표시가 빨라진다.
 // 성공 k번째: 속도 ×(1 + 0.12k), 구간 ×(1 − 0.08k). tier: 속도 ×(1 + 0.15·tier), 구간 ×(1 − 0.1·tier). 구간은 기본의 0.5배, 속도는 1.8배에서 멈춘다.
 const challengeLevel = (k, tier = 0) => ({ speed: Math.min(1.8, (1 + 0.12 * k) * (1 + 0.15 * tier)), zone: Math.max(0.5, (1 - 0.08 * k) * (1 - 0.1 * tier)) });
-function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, onMiss, missText = '다시 해 보세요', speed = CHALLENGE.speed, tier = 0, kind = 'time', hitText = '살살, 잘 뺐어요!', lowText = '조금 더 당겨요', onHold }) {
+function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, onMiss, missText = '다시 해 보세요', speed = CHALLENGE.speed, tier = 0, kind = 'time', hitText = '살살, 잘 뺐어요!', lowText = '조금 더 당겨요', onHold, symbols }) {
   milestone(true);
   questDepth++;
   return new Promise((res) => {
@@ -1166,9 +1169,23 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     $('chActName').textContent = verb;
     $('chTool').hidden = !tool;
     $('chToolName').textContent = toolName;
+    // 놀이판으로 하는 놀이(따라 긋기·순서·받기)는 행동 버튼 없이 놀이판을 누른다(F58)
+    $('chAct').hidden = isPadKind(kind) && kind !== 'mash' && kind !== 'balance';
     let done = 0; // 이 도전에서 성공한 수(난도가 오른다)
     const newZone = () => {
       const lvl = challengeLevel(done, tier);
+      if (isPadKind(kind)) {
+        // 놀이 다섯 가지(minigames.js): 한 번 해낼 때마다 새 판을 깔고, 난도는 같은 challengeLevel을 쓴다
+        ch.game?.destroy();
+        ch.game = makeGame(kind, { pad: $('chPad'), d: lvl.speed, assist, symbols, hooks: {
+          hit: (text) => { if (ch?.near && !ch.busy) succeed(ch.near, text); },
+          miss: (text) => { if (ch?.near) miss(ch.near, text); },
+        } });
+        $('chPad').toggleAttribute('hidden', !ch.game.pad);
+        label(ch.game.hint(isTouch()));
+        ch.msgT = 2.6;
+        return;
+      }
       ch.speed = speed * lvl.speed;
       const w = Math.min(0.6, CHALLENGE.zone * lvl.zone * (1 + assist) * (kind === 'time' ? 1 : 1.4));
       // 박자(rhythm)는 끝 가까이 고정, 꾹 누르기(hold)는 뒤쪽 절반 어딘가, 타이밍(time)은 아무 데나
@@ -1190,6 +1207,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       const sp = ch?.near;
       if (!sp || mode !== 'walk' || ch.busy) return;
       if (!sp.ready) { label(`${isTouch() ? '' : 'F 키로 '}${toolName} 먼저 쓰기`); flash('is-miss'); return; }
+      if (ch.game) { ch.game.act(true); return; }
       if (kind === 'hold') { ch.holding = true; ch.m = 0; return; }
       // 판정(2026-11-02 S20 "구간에 들어왔는데 안 될 때가 많다"): 눈에 보인 표시는 몇 프레임 전 자리이고, 터치는 손을 댄 뒤
       // 조금 늦게 온다. 표시는 0.1초에 구간 폭(0.12)만큼 움직여서 그 사이에 구간을 벗어났다. 최근 GRACE_MS 안에 구간에 있었으면 성공이다.
@@ -1212,6 +1230,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     };
     // 꾹 누르기: 손을 떼는 순간 판정한다
     const release = () => {
+      if (ch?.game) { ch.game.act(false); return; }
       if (kind !== 'hold' || !ch?.holding) return;
       ch.holding = false;
       const sp = ch.near;
@@ -1257,10 +1276,11 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     };
     const onKey = (e) => {
       if (mode !== 'walk' || e.repeat) return;
+      if (ch.game && ch.near?.ready && ch.game.key(e.code, true)) { e.preventDefault(); return; }
       if (e.code === 'Space') { e.preventDefault(); act(); }
       if (e.code === 'KeyF') { e.preventDefault(); useIt(); }
     };
-    const onKeyUp = (e) => { if (e.code === 'Space') release(); };
+    const onKeyUp = (e) => { if (ch?.game?.key(e.code, false)) return; if (e.code === 'Space') release(); };
     ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, onKeyUp, panel, busy: false, msg: '', msgT: 0, toolName, hist: [],
       kind, onHold, beats: BEATS, combo: 0, beatPressed: false, holding: false, release: () => release(), miss: (sp, text) => miss(sp, text),
       auto: () => { if (ch.near) succeed(ch.near, '좋아요!'); } }; // auto: 개발용 자동 플레이(한 번 성공)
@@ -1289,6 +1309,10 @@ function endChallenge() {
   removeEventListener('keydown', ch.onKey);
   removeEventListener('keyup', ch.onKeyUp);
   $('chAct').onpointerup = $('chAct').onpointercancel = $('chAct').onpointerleave = null;
+  ch.game?.destroy();
+  $('chPad').toggleAttribute('hidden', true);
+  $('chAct').hidden = false;
+  $('chTrack').style.removeProperty('--fill');
   ch.panel.hidden = true;
   ch = null;
 }
@@ -1300,6 +1324,18 @@ function challengeTick(dt) {
   ch.near = near;
   ch.panel.hidden = !near || mode !== 'walk';
   if (!near) return;
+  if (ch.game) {
+    if (ch.busy || mode !== 'walk' || !near.ready) return;
+    const b = ch.game.tick(dt);
+    ch.zone = b.zone;
+    $('chZone').style.transform = `translateX(${b.zone[0] * 100}%) scaleX(${b.zone[1] - b.zone[0]})`;
+    $('chMark').style.transform = `translateX(${b.m * $('chTrack').clientWidth}px)`;
+    $('chTrack').style.setProperty('--fill', b.fill ? Math.max(0, Math.min(1, b.m)) : 0);
+    ch.panel.classList.toggle('is-gold', b.m >= b.zone[0] && b.m <= b.zone[1]);
+    ch.msgT -= dt;
+    $('chLabel').textContent = ch.msgT > 0 ? ch.msg : `${ch.verb} ${near.n} / ${near.hits ?? ch.hits}${b.label ? ` · ${b.label}` : ''}`;
+    return;
+  }
   if (ch.kind === 'rhythm') {
     // 한쪽으로 흘러가고 끝에서 처음으로 돌아온다(한 바퀴가 한 박자). 박자를 그냥 보내면 이어 친 수가 끊긴다
     ch.m += ch.speed * dt;
@@ -1772,7 +1808,7 @@ function tick() {
 
 // 개발 서버에서만: 브라우저 점검용으로 캐릭터와 세계에 접근한다(배포 빌드에는 빠진다).
 // run은 쉼터의 걸어서 닿는 자리를 지우고 시작한다(지도에서 들어갈 때와 같다).
-if (import.meta.env.DEV) globalThis.__dev = { player, get heaven() { return heaven; }, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => { stopWalk(); $('title').hidden = true; refreshHud(); showHud(true); titleView = false; viewShift = null; resize(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`), goNext: () => { if (mode !== 'walk') return; if (holdQuest?.cur) holdQuest.p = 1; else if (aimPos) { player.position.copy(aimPos).add(new THREE.Vector3(0.6, 0, 0.6)); land()?.collide(player.position, 0.35); } } }; // goNext: 키보드 점검(R3)에서 걷는 거리만 건너뛴다
+if (import.meta.env.DEV) globalThis.__dev = { player, get heaven() { return heaven; }, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => { stopWalk(); $('title').hidden = true; refreshHud(); showHud(true); titleView = false; viewShift = null; resize(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`), challenge: (o) => runChallenge(o), stop: () => stopWalk(), goNext: () => { if (mode !== 'walk') return; if (holdQuest?.cur) holdQuest.p = 1; else if (aimPos) { player.position.copy(aimPos).add(new THREE.Vector3(0.6, 0, 0.6)); land()?.collide(player.position, 0.35); } } }; // goNext: 키보드 점검(R3)에서 걷는 거리만 건너뛴다
 
 scene.background = new THREE.Color(0xfdf3d8);
 player.position.set(0, 0, -3);

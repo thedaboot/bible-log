@@ -527,12 +527,12 @@ export default {
     // 한 단계에 두 번 힘을 모으고, 그때마다 방주가 실제로 지어져 간다(창 6:14~16). 뒤 단계일수록 어렵다(tier). 오래 걸리는 일이라 인내와 신실이 돕는다.
     const removeGreet = g.greet(shem, data.greetings.shem, 'shem');
     let hits = 0;
-    // 망치질 세 단계는 박자(rhythm, 세 번 이어 치면 한 번 박힘), 역청은 붓질 한 번이라 타이밍(time)으로 한다(사용자 F3-5)
+    // 갈빗대는 힘껏 들어 세우는 연타(mash), 바닥·판자는 박자 망치질(rhythm), 역청은 솔로 따라 긋기(trace)(2026-11-05 F58)
     const steps = [
-      ['갈빗대', '용골 위에 갈빗대 세우기', 'buildFrame', '망치질', 'rhythm'],
+      ['갈빗대', '용골 위에 갈빗대 세우기', 'buildFrame', '들어 세우기', 'mash'],
       ['층 바닥', '세 층 바닥 깔기', 'buildFloor', '나무못 박기', 'rhythm'],
       ['판자', '판자로 옆 막고 지붕 얹기', 'buildPlank', '판자 박기', 'rhythm'],
-      ['역청', '안팎에 역청 칠하기', 'buildPitch', '역청 바르기', 'time'],
+      ['역청', '안팎에 역청 칠하기', 'buildPitch', '역청 바르기', 'trace'],
     ];
     // 성공할 때마다 노아와 관찰자가 함께 팔을 내리친다(망치질). 역청은 팔을 앞으로 밀었다 당기는 붓질이다.
     const swing = async (figs, brush) => {

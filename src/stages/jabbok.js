@@ -132,8 +132,8 @@ export default {
     };
     F.onUpdate(sway);
     await g.challenge({
-      title: '밤새 씨름', spots: [{ pos: WRESTLE.clone().addScaledVector(ALONG, -2.6).addScaledVector(FRONT, 0.4), text: '야곱 곁에서 끝까지 버티기', hits: 5 }],
-      verb: '버티기', fruits: ['patience', 'control'], radius: 2.2,
+      title: '밤새 씨름', spots: [{ pos: WRESTLE.clone().addScaledVector(ALONG, -2.6).addScaledVector(FRONT, 0.4), text: '야곱 곁에서 끝까지 버티기', hits: 4 }],
+      verb: '버티기', kind: 'mash', fruits: ['patience', 'control'], radius: 2.2,
       onHit: async (sp, n) => {
         F.acts.speak('jacob');
         shove = 1;
