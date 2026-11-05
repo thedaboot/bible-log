@@ -357,6 +357,8 @@ export default {
     enoch.userData.pose = 'rise';
     enoch.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; } });
     const focus = TOP.clone();
+    // 낮은 가로 화면(740×360)은 HUD와 대사 창 사이가 좁아 구름이 위 가장자리에 걸렸다(U5). 그 화면에서는 카메라가 에녹을 더 따라 오른다
+    const follow = innerWidth > innerHeight && innerHeight <= 480 ? 1.25 : 0.85;
     g.cam(focus, 12);
     F.acts.presence(TOP.clone().setY(clouds.position.y - 1), 3000);
     const ss = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
@@ -381,7 +383,7 @@ export default {
       const t = p * T3, h = lift(t);
       rig.position.y = h;
       rig.rotation.z = Math.sin(t * 1.6) * 0.03 * (1 - p);
-      focus.y = h * 0.85;
+      focus.y = h * follow;
       setArms(enoch, 'raise', 0.03);
       gather(ss(2.6, 5.8, t));
       glow.intensity = 6 * ss(2.6, 5.8, t);

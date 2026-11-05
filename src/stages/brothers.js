@@ -1,4 +1,4 @@
-// 1-13 요셉과 형제들(창 42~45, 50장): 곡식 창고 앞에서 형들이 엎드림 → 곡식 자루 채워 싣기(퀘스트) → 깊은 대화(요셉, 조건)
+// 1-13 요셉과 형제들(창 42~45, 50장): 곡식 창고 앞에서 형들이 엎드림 → 곡식 자루 채워 싣기(도전, 받기) → 깊은 대화(요셉, 조건)
 // → 형들이 가나안으로 돌아가고 저녁 막간(유다) → 베냐민과 다시 내려옴 → 은잔 찾기(퀘스트: 맏형부터 막내까지 자루 살피기)
 // → 유다의 간청 → "나는 요셉입니다"(창 45:3~5) → 창 50:19~20 → 퀴즈(창 50:20). 창세기의 마지막 스테이지다.
 import * as THREE from 'three';
@@ -82,21 +82,19 @@ export default {
     g.cam(null, 13);
     await g.talk(data.lines.arrive.slice(5));
 
-    // 퀘스트 1: 곡식 자루. 자루 곁에 머무르면 곡식이 차오르고, 자루가 나귀 등으로 실린다.
-    await g.quest({
-      title: '곡식 자루',
-      targets: SACKS.map((p, i) => ({ pos: p, i })),
-      text: (t) => `${['첫째', '둘째', '셋째', '넷째'][t.i]} 자루 곁에 머물러 곡식 채우기`,
-      radius: 1.8, hold: 1.2, holdLabel: () => '곡식을 채우는 중',
-      onFound: async (t) => {
-        const s = sacks[t.i], from = s.position.clone(), to = donkeys[t.i].position.clone().setY(0.75);
+    // 도전: 곡식 받기(창 42:25 곡식을 그들의 그릇에 채우고, F58 받기). 자루마다 쏟아지는 곡식을 받으면 자루가 차올라 나귀 등으로 실린다.
+    // 각색: 본문에서는 요셉의 사람들이 채운다. 관찰자가 자루를 받쳐 거드는 것은 각색이다.
+    await g.challenge({
+      title: '곡식 자루', spots: SACKS.map((p, i) => ({ pos: p, text: `${['첫째', '둘째', '셋째', '넷째'][i]} 자루에 곡식 받기`, i })),
+      verb: '받기', hits: 1, kind: 'catch', hint: '자루를 옮겨 곡식 받기', radius: 1.8, fruits: ['goodness', 'patience'],
+      onHit: async (sp) => {
+        const s = sacks[sp.i], from = s.position.clone(), to = donkeys[sp.i].position.clone().setY(0.75);
         await tween(400, (p) => s.scale.setScalar(0.6 + 0.4 * easeOut(p)));
         await tween(600, (p) => { s.position.lerpVectors(from, to, easeOut(p)); s.position.y += Math.sin(p * Math.PI) * 0.6; });
-        g.reward(`sack/${t.i}`, 'step');
+        g.reward(`sack/${sp.i}`, 'step');
       },
     });
-    // 굶주린 형들의 자루를 채움(선함, 창 42:25 곡식을 채우고 돈을 돌려줌)
-    g.reward('sacks-done', 'questDone', null, 'goodness');
+    g.reward('sacks-done', 'challenge', null, 'goodness');
     g.note('item/grain-handful');
 
     // 깊은 대화(요셉): 형들이 떠나기 전, 창고 곁의 요셉에게 가면 열린다(조건이 맞을 때).

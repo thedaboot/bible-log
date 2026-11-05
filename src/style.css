@@ -421,6 +421,10 @@ body:has(#dialog:not([hidden])) .controls, body:has(.modal:not([hidden])) .contr
 .challenge__track::before { content: ''; position: absolute; inset: 2px; background: var(--color-accent); opacity: 0.45; transform-origin: left; transform: scaleX(var(--fill, 0)); }
 .challenge__pad { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; max-height: 10rem; background: var(--color-paper-2); box-shadow: inset 0 0 0 2px var(--color-paper-3); touch-action: none; user-select: none; }
 .challenge__pad[hidden] { display: none; }
+.challenge.is-arrows .challenge__keys > span:first-child { display: none; }
+/* PC: 놀이판이 화면 가운데까지 올라와 도전 소품을 덮었다. 높이를 줄이고 패널을 아래로 붙인다 */
+@media (min-width: 40rem) and (min-height: 30.01rem) { .challenge__pad { max-height: 7.5rem; } .challenge:has(.challenge__pad:not([hidden])) { bottom: var(--space-md); } }
+@media (orientation: landscape) and (max-height: 30rem) { .challenge__pad { max-height: 6.5rem; } } /* 낮은 가로 화면에서 놀이판이 장면을 가렸다 */
 .pad__guide { fill: none; stroke: var(--color-ink-2); stroke-opacity: 0.45; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 10; }
 .pad__done { fill: none; stroke: var(--color-frame); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
 .pad__target { fill: none; stroke: var(--color-accent); stroke-width: 3; }

@@ -1,4 +1,4 @@
-// 1-7 세 손님과 약속(창 18장): 세 손님을 맞음 → 손님 대접하기(퀘스트: 물, 떡, 엉긴 젖을 나무 아래로)
+// 1-7 세 손님과 약속(창 18장): 세 손님을 맞음 → 손님 대접하기(퀘스트: 물, 떡, 엉긴 젖을 나무 아래로) → 손님상 차리기(도전, 순서 기억)
 // → 상을 받는 동안 막간(아브라함) → 아들의 약속과 사라의 웃음(창 18:9~15) → 소돔을 위한 간구(짧게) → 퀴즈(창 18:14)
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
@@ -17,6 +17,7 @@ const DOOR = TENT.clone().add(V(2.0, -1.0)); // 아브라함이 앉아 있던 �
 const OAK = V(-3.2, -3.2); // 마므레 상수리나무
 const ALONG = V(1, -1).normalize();
 const TABLE = OAK.clone().add(V(2.2, 2.2)); // 나무 그늘 앞의 손님상(낮은 깔개)
+const SERVE = TABLE.clone().addScaledVector(ALONG, 1.3); // 손님상 차리기 도전에서 관찰자가 서는 자리(상 오른쪽, 아브라함은 왼쪽)
 // 세 손님은 나무와 상 사이에 화면 가로로 나란히 앉는다(서로, 나무와 겹치지 않게)
 const GUESTS = [-1.3, 0, 1.3].map((k) => OAK.clone().add(V(1.1, 1.1)).addScaledVector(ALONG, k));
 const SOURCES = [
@@ -90,8 +91,15 @@ export default {
       F.group.add(d);
       return d;
     });
-    Object.assign(F, { guests, abraham, sarah, servant, dishes, calf, cows });
-    F.spots = { start: START, table: TABLE, door: DOOR, hide: HIDE, deny: DENY, into: INTO, oak: OAK, ...Object.fromEntries(SOURCES.map((s) => [s.id, s.pos])) };
+    // 창 18:8 우유와 송아지 요리: 손님상 차리기 도전에서 상에 오른다
+    const feast = [0xfaf6ea, 0x9a5a34].map((c) => {
+      const d = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.14, 0.12, 8), mat(c));
+      d.visible = false;
+      F.group.add(d);
+      return d;
+    });
+    Object.assign(F, { guests, abraham, sarah, servant, dishes, feast, calf, cows });
+    F.spots = { start: START, table: TABLE, serve: SERVE, door: DOOR, hide: HIDE, deny: DENY, into: INTO, oak: OAK, ...Object.fromEntries(SOURCES.map((s) => [s.id, s.pos])) };
     F.solid = ['oak'];
     F.plant();
     return F;
@@ -145,6 +153,27 @@ export default {
     // 나그네를 대접함(히 13:2, 롬 12:13 손 대접하기를 힘씀 → 선함)
     g.reward('serve-done', 'questDone', null, 'goodness');
     g.note('item/cake');
+
+    // 도전: 손님상 차리기(창 18:8 엉긴 젖과 우유와 송아지 요리를 차려 놓음). 아브라함이 부르는 차례(빛)를 기억했다
+    // 그대로 상에 올린다(순서 기억, F58). 아브라함이 차례를 불러 주는 것은 각색이다.
+    F.acts.walkTo(abraham, TABLE.clone().addScaledVector(ALONG, -1.8), 2);
+    // PC 화면에서는 놀이판이 화면 가운데를 덮으므로 상이 화면 위쪽에 오게 카메라를 앞으로 당긴다
+    g.cam(TABLE.clone().add(V(1.3, 1.3)), 12);
+    await g.talk(data.lines.table);
+    await g.challenge({
+      title: '손님상 차리기', spots: [{ pos: SERVE, text: '아브라함이 부르는 차례대로 상 차리기', hits: 2 }],
+      verb: '상 차리기', kind: 'sequence', symbols: ['떡', '엉긴젖', '우유', '고기'], fruits: ['goodness', 'kindness'], radius: 1.4,
+      onHit: async (sp, n) => {
+        F.acts.speak('abraham');
+        const d = F.feast[n - 1];
+        d.position.copy(TABLE).add(V(-0.35, -0.35)).addScaledVector(ALONG, (n - 1.5) * 0.6).setY(0.1);
+        d.visible = true;
+        await tween(400, (p) => d.scale.setScalar(Math.max(0.01, easeOut(p))));
+        g.reward(`table/${n}`, 'step');
+      },
+    });
+    // 손님이 먹는 동안 곁에 서서 시중듦(창 18:8, 친절)
+    g.reward('table-done', 'challenge', null, 'kindness');
 
     // 떡을 내준 사라는 장막으로 들어가 입구 천 뒤에 선다. 장막을 가로지르지 않게 둘레의 길목을 돌아 든다.
     F.acts.walkTo(sarah, INTO, 1.4).then(() => F.acts.walkTo(sarah, HIDE, 0.9)).then(() => F.acts.face(sarah, PEEK));

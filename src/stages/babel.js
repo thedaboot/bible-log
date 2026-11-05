@@ -1,4 +1,4 @@
-// 1-5 바벨탑(창 11:1~9): 일꾼들의 말 듣기(퀘스트) → 가마 앞 막간(벽돌 굽는 이) → 여호와께서 내려오심
+// 1-5 바벨탑(창 11:1~9): 일꾼들의 말 듣기(퀘스트) → 벽돌 나르기(도전, 균형) → 가마 앞 막간(벽돌 굽는 이) → 여호와께서 내려오심
 // → 흩어지는 말 듣기(퀘스트, 들은 일꾼은 제 길로 떠난다) → 바벨이라 부름 → 퀴즈(창 11:9)
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
@@ -8,6 +8,7 @@ import data from '../data/babel.js';
 
 const START = V(6, 5);
 const TOWER = V(-3.5, -3.5);
+const SCAFFOLD = TOWER.clone().add(V(3.2, 0.2)); // 비계 곁(벽돌 나르기 도전 자리)
 const KILN = V(3.2, -2.2); // 벽돌 가마(창 11:3)
 const BUILDER = KILN.clone().add(V(0.4, 1.4));
 const WORKERS = [V(-0.8, -1.2), V(-4.8, 0.2), V(0.4, -5.6), V(2.6, 2.8)];
@@ -121,6 +122,30 @@ export default {
     });
     // 한 마음으로 일하는 사람들 곁에 머물며 끝까지 듣는다(인내)
     g.reward('listen-done', 'questDone', null, 'patience');
+
+    // 도전: 벽돌 나르기(창 11:3~4 벽돌로 탑을 쌓음, F58 균형). 관찰자가 벽돌을 들고 비계를 오르면 벽돌이 3층 위에 한 장씩 놓인다.
+    // 각색: 관찰자가 일손을 거드는 것은 본문에 없다(벽돌 나르는 일꾼의 "벽돌 더!"에 기댐). 탑은 이름을 내려는 일이라 마친 뒤 열매는 주지 않는다.
+    const load = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.16), mat(0xb8683c));
+    F.group.add(load);
+    F.acts.carry(load, g.player);
+    await g.talk(data.lines.bricks);
+    const top = tiers[3].position.y + 0.45; // 3층 윗면(탑 안 좌표)
+    await g.challenge({
+      title: '벽돌 나르기', spots: [{ pos: SCAFFOLD, text: '벽돌 들고 비계 오르기' }], verb: '오르기', hits: 3, kind: 'balance', fruits: ['patience', 'kindness'],
+      onHit: async (sp, n) => {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.16), mat(n % 2 ? 0xa85d34 : 0xb8683c));
+        b.scale.setScalar(1.6); // 멀리서도 보이게(4층이 오르면 그 안에 묻힌다)
+        tower.add(b);
+        const from = g.player.position.clone().sub(TOWER).setY(1.2), to = new THREE.Vector3((n - 2) * 0.5, top + 0.1, 0.55);
+        g.cam(TOWER.clone().lerp(SCAFFOLD, 0.5).setY(2.4), 13, true);
+        await tween(700, (p) => { b.position.lerpVectors(from, to, easeOut(p)); b.position.y += Math.sin(p * Math.PI) * 1.2; });
+        g.reward(`brick/${n}`, 'step');
+        g.cam(null, 13);
+      },
+    });
+    F.acts.carry(load, null);
+    load.visible = false;
+    g.reward('bricks-done', 'challenge');
     tiers[4].visible = true;
     await tween(800, (p) => tiers[4].scale.setScalar(Math.max(0.01, easeBack(p))));
 

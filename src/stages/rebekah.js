@@ -174,6 +174,8 @@ export default {
         onFound: async () => { jarWater(true); g.reward(`draw/${i}`, 'step'); },
       });
       F.acts.walkTo(rebekah, TROUGHS[i].clone().add(V(-0.75, -0.75)), 2.6).then(() => F.acts.face(rebekah, c.top));
+      // 붓는 동안은 구유 가까이 비춘다. 휴대폰 폭에서 구유가 작아 물이 차오르는 것이 잘 안 보였다(U4)
+      g.cam(TROUGHS[i].clone().lerp(POURS[i], 0.45), 8);
       cur = c;
       const last = i === camels.length - 1;
       const done = g.challenge({

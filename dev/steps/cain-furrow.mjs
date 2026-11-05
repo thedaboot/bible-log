@@ -29,6 +29,19 @@ export default async (t) => {
   await tp(2.4, -5.6); // 밭 먼 구석을 다시 밟는다
   await t.wait(700);
   await log('chase');
+  if (process.env.U6) {
+    // U6: 꾸짖는 중에 대사(연출)가 시작되면 그만두고, 대사 동안은 걸어 나가지 않다가 끝난 뒤 제자리로 간다
+    await t.ev(`import('/src/ui.js').then(m => { window.__say = m.say([{ who: 'narr', text: '시험 대사' }], __dev.state); return 1; })`);
+    await t.wait(800);
+    await log('u6-talking');
+    const p1 = await t.ev(`JSON.stringify(__dev.cain.people.cain.position)`); await t.wait(1200); const p2 = await t.ev(`JSON.stringify(__dev.cain.people.cain.position)`);
+    console.log('u6 moved during talk', p1 !== p2);
+    await t.shot('u6-talking');
+    for (let k = 0; k < 6 && !(await t.ev(`document.getElementById('dialog').hidden`)); k++) { await t.ev(`document.getElementById('dialog').click()`); await t.wait(300); }
+    await t.wait(2500);
+    await log('u6-after');
+    return;
+  }
   await t.shot('1-chase');
   await t.wait(500);
   await log('angry');

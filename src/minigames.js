@@ -5,7 +5,7 @@
 //   trace    놀이판의 선을 손가락이나 방향키로 따라 긋기(바르기·긋기: 역청, 밭고랑, 벽돌 틀)
 //   sequence 빛나는 순서를 기억했다 그대로 누르기(꿈 풀이, 순서 있는 일)
 //   catch    떨어지는 것을 바구니로 받기(곡식 받기, 짐 나르기)
-// makeGame(kind, { pad, d, assist, hooks, symbols }) → { pad, arrows, hint(touch), act(down), key(code, down), tick(dt), destroy() }
+// makeGame(kind, { pad, d, assist, hooks, symbols, hint }) → { pad, arrows, hint(touch), act(down), key(code, down), tick(dt), destroy() }
 //   d: 난도(1~1.8, 성공할수록 오른다), assist: 열매 보조(0~0.32), hooks: { hit(text), miss(text) }
 //   tick은 막대에 그릴 값 { m, zone, label }을 돌려준다. 놀이판(pad)이 있으면 그 SVG에 직접 그린다.
 const NS = 'http://www.w3.org/2000/svg';
@@ -37,13 +37,14 @@ function mash({ d, assist, hooks }) {
 }
 
 function balance({ d, assist, hooks }) {
-  let m = 0.5, v = 0, held = false, inT = 0;
+  let m = 0.5, v = 0, held = false, inT = 0, started = false; // 처음 누르기 전에는 움직이지 않는다(누르기도 전에 실패하지 않게)
   const need = 2.4, w = Math.min(0.4, (0.28 / d) * (1 + assist));
   const zone = [0.5 - w / 2, 0.5 + w / 2];
   return {
     hint: (touch) => `${touch ? '꾹 누르면' : 'Space를 누르면'} 오르고 떼면 내려가요. 금빛에 머물기`,
-    act(down) { held = down; },
+    act(down) { held = down; if (down) started = true; },
     tick(dt) {
+      if (!started) return { m, zone, label: '누르면 시작해요' };
       v += ((held ? 1.5 : -1.1) * d + (Math.random() - 0.5) * 1.6 * d) * dt;
       v *= Math.pow(0.35, dt);
       m += v * dt;
@@ -214,7 +215,7 @@ function catchGame({ pad, d, assist, hooks }) {
   place();
   return {
     pad: true, arrows: true,
-    hint: (touch) => (touch ? '바구니를 끌어서 받기' : '←·→ 키로 바구니를 옮겨 받기'),
+    hint: (touch) => (touch ? '끌어서 옮겨 받기' : '←·→ 키로 옮겨 받기'),
     act() {},
     key(code, isDown) {
       const dir = ARROW[code];
@@ -242,7 +243,7 @@ function catchGame({ pad, d, assist, hooks }) {
       }
       if (lost > allow) { got = 0; lost = 0; items.splice(0).forEach((it) => it.e.remove()); hooks.miss('많이 놓쳤어요. 다시 받아요'); }
       if (got >= need) { got = 0; lost = 0; items.splice(0).forEach((it) => it.e.remove()); hooks.hit('다 받았어요'); }
-      return { m: got / need, zone: [1, 1], fill: true, label: `받기 ${got} / ${need} · 놓침 ${lost} / ${allow + 1}` };
+      return { m: got / need, zone: [1, 1], fill: true, label: `${got} / ${need} · 놓침 ${lost} / ${allow + 1}` };
     },
     destroy() { pad.removeEventListener('pointerdown', down); pad.removeEventListener('pointermove', follow); },
   };
@@ -252,5 +253,6 @@ const GAMES = { mash, balance, trace, sequence, catch: catchGame };
 export const isPadKind = (kind) => kind in GAMES;
 export function makeGame(kind, opts) {
   const g = GAMES[kind](opts);
+  if (opts.hint) g.hint = () => opts.hint; // 장면 말로 안내를 바꾼다(예: '자루를 끌어서 곡식 받기')
   return { pad: false, arrows: false, key: () => false, destroy() {}, ...g };
 }

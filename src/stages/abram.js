@@ -1,4 +1,4 @@
-// 1-6 아브람의 부르심(창 12, 15장): 길 떠나기(퀘스트: 하란 → 세겜 모레 상수리나무 → 벧엘 동쪽 산)
+// 1-6 아브람의 부르심(창 12, 15장): 길 떠나기(퀘스트: 하란 → 세겜 모레 상수리나무, 제단 쌓기 도전 → 벧엘 동쪽 산)
 // → 장막 저녁 막간(사래) → 밤의 환상(창 15:1~5) → 별 세기(퀘스트) → 창 15:6 → 퀴즈(창 12:2, 15:6)
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
@@ -12,6 +12,9 @@ const OAK = V(0.8, 0.2); // 모레 상수리나무(창 12:6)
 const SHECHEM_ALTAR = OAK.clone().add(V(1.4, -1.3));
 const CAMP = V(-5, -3.5); // 벧엘 동쪽 산의 장막(창 12:8)
 const BETHEL_ALTAR = CAMP.clone().add(V(1.8, -1.6));
+// 제단 쌓기 도전: 아브람은 제단 앞 왼쪽, 관찰자는 제단 뒤에 선다. 쌓이는 돌이 사람에게 가리지 않는다.
+const ALTAR_ABRAM = SHECHEM_ALTAR.clone().addScaledVector(V(1, -1).normalize(), -0.9).add(V(0.5, 0.5));
+const ALTAR_WORK = SHECHEM_ALTAR.clone().addScaledVector(V(1, -1).normalize(), 0.4).add(V(-0.9, -0.9));
 const HILLS = [V(-9, 1.5), V(-2.5, -8.5), V(3, -6.5), V(-8.5, -6)]; // 별을 세는 언덕
 const ALONG = V(1, -1).normalize();
 
@@ -25,7 +28,7 @@ export default {
     const F = makeField({
       scene, seed: 1215, start: START, sky: 0xd8e4ea, ground: 0xa8a462,
       stages: { oak: { c: toCam(SHECHEM_ALTAR, 1.6), r: 2.2 }, camp: { c: toCam(CAMP, 2.4), r: 2.4 } },
-      trees: 12, keep: [...HILLS],
+      trees: 12, keep: [...HILLS, ALTAR_WORK],
     });
     // 하란의 집: 흙벽돌 집 셋
     for (const [dx, dz, s] of [[0, 0, 1], [1.6, -1.8, 0.8], [-0.4, -2.6, 0.9]]) {
@@ -68,7 +71,7 @@ export default {
     }
     F.group.add(stars);
     Object.assign(F, { abram, sarai, lot, herd, stars, altar1, altar2, oak });
-    F.spots = { start: START, oak: OAK, shechem: SHECHEM_ALTAR, camp: CAMP, bethel: BETHEL_ALTAR, ...Object.fromEntries(HILLS.map((h, i) => [`hill${i}`, h])) };
+    F.spots = { start: START, oak: OAK, shechem: SHECHEM_ALTAR, altarAbram: ALTAR_ABRAM, altarWork: ALTAR_WORK, camp: CAMP, bethel: BETHEL_ALTAR, ...Object.fromEntries(HILLS.map((h, i) => [`hill${i}`, h])) };
     F.solid = ['oak', 'shechem', 'bethel'];
     F.plant();
     return F;
@@ -107,11 +110,29 @@ export default {
     await F.acts.presence(abram);
     await g.talk(data.lines.shechem.slice(1, 2));
     F.acts.presence(null);
-    await F.acts.walkTo(abram, SHECHEM_ALTAR.clone().add(V(0.9, 0.9)));
+    await F.acts.walkTo(abram, ALTAR_ABRAM);
     F.acts.face(abram, SHECHEM_ALTAR);
+    // 도전: 세겜의 제단 쌓기(창 12:7). 흔들리는 돌을 금빛에 머물게 해 하나씩 얹는다(균형, F58).
+    // 관찰자가 돌을 함께 얹고, 한 번 해낼 때마다 돌 둘이 떨어져 앉는 모습은 각색이다.
+    const stones = F.altar1.children;
+    stones.forEach((s) => (s.visible = false));
     F.altar1.visible = true;
-    await tween(700, (p) => F.altar1.scale.setScalar(Math.max(0.01, easeBack(p))));
-    await g.talk(data.lines.shechem.slice(2));
+    await g.talk(data.lines.shechem.slice(2, 3));
+    await g.challenge({
+      title: '세겜의 제단', spots: [{ pos: ALTAR_WORK, text: '아브람과 함께 제단 돌 얹기', hits: 3 }],
+      verb: '돌 얹기', kind: 'balance', fruits: ['faith', 'patience'], radius: 1.6,
+      onHit: async (sp, n) => {
+        F.acts.speak('abram');
+        const pair = stones.slice((n - 1) * 2, n * 2);
+        const ys = pair.map((s) => s.position.y);
+        pair.forEach((s) => (s.visible = true));
+        await tween(450, (p) => pair.forEach((s, k) => (s.position.y = ys[k] + 0.7 * (1 - easeOut(p)))));
+        g.reward(`altar/${n}`, 'step');
+      },
+    });
+    // 자기에게 나타나신 여호와께 예배함(창 12:7, 사랑)
+    g.reward('altar-done', 'challenge', null, 'love');
+    await g.talk(data.lines.shechem.slice(3));
     g.stage(null);
     g.cam(null, 13);
     const going2 = caravan(CAMP.clone().add(V(1.4, 1.4)));

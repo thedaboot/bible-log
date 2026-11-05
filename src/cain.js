@@ -448,7 +448,7 @@ export function makeCain(scene) {
   // 관찰자가 밭을 벗어나면 멈춰 제자리로 돌아가고, 한 번 꾸짖은 뒤 4초는 쉰다. 연출(stage)·대사 중에는 반응하지 않고, 걷기를 막지 않는다.
   const SIDE = V(1, -1).normalize(); // 화면 가로 방향(카메라가 (+x, +z)에서 본다)
   const onSoil = (p) => Math.abs(p.x - FIELD.x) < 2.2 && Math.abs(p.z - FIELD.z) < 1.6;
-  const furrow = { warned: false, armed: false, from: null, t: 0, rest: 0, line: 0 };
+  const furrow = { warned: false, armed: false, from: null, t: 0, rest: 0, line: 0, away: false };
   function calm() {
     const { rig } = cain.userData;
     rig.position.y = rig.rotation.x = rig.rotation.z = 0;
@@ -467,6 +467,8 @@ export function makeCain(scene) {
     }
     if (!mine) {
       if (talking) return;
+      // 대사·연출로 꾸짖기를 그만둔 뒤에는 그것이 끝나고 나서 제자리로 돌아간다(U6: 연출 중에 걸어 나가 장면을 어지럽히지 않게)
+      if (furrow.away) { if (stage) return; furrow.away = false; if (!movers.has(cain) && cain.position.distanceTo(CAIN_SPOT) > 0.3) walkTo(cain, CAIN_SPOT, 1.4).then(() => face(cain, CAIN_SPOT.clone().add(V(1, 1)))); return; }
       furrow.from ??= pp.clone();
       // 경고 뒤 밭을 한 번 벗어났거나 밭 위를 더 걸었으면 "다시 밟은" 것으로 본다
       if (!on || pp.distanceTo(furrow.from) > 1.2) furrow.armed = true;
@@ -481,8 +483,9 @@ export function makeCain(scene) {
     // 밭을 벗어났거나 다 꾸짖었으면 제자리로 돌아간다. 연출·대사가 시작되어도 그만둔다(연출이 가인을 옮기면 그쪽을 따른다).
     if (!on || furrow.t > 2.6 || stage || talking || !cain.visible) {
       calm();
-      Object.assign(furrow, { rest: 4, armed: false, from: pp.clone() });
-      if (!movers.has(cain)) walkTo(cain, CAIN_SPOT, 1.4).then(() => face(cain, CAIN_SPOT.clone().add(V(1, 1))));
+      const scene = stage || talking || !cain.visible;
+      Object.assign(furrow, { rest: 4, armed: false, from: pp.clone(), away: scene });
+      if (!scene && !movers.has(cain)) walkTo(cain, CAIN_SPOT, 1.4).then(() => face(cain, CAIN_SPOT.clone().add(V(1, 1))));
       return;
     }
     // 관찰자 쪽으로 성큼 다가간다. 화면에서 겹치지 않게 관찰자의 화면 가로 옆(SIDE, 가인이 오던 쪽) 한 걸음에 서고, 제자리에서 3.2 넘게는 가지 않는다.

@@ -1,7 +1,7 @@
 import { boot, SAVE } from './_save.mjs';
 // F46·F47 에덴: 이름 짓기를 마친 뒤 카메라가 아담과 관찰자를 비추는지, 잠들러 가는 아담이 막히지 않는지.
 // 대사는 Space, 걷는 거리는 __dev.goNext로 건너뛴다. 정해 둔 대사가 나오면 캡처한다.
-const SHOTS = [['모든 가축과 새와', 'done'], ['해가 기울 무렵', 'interlude'], ['깊이 잠들게', 'sleep'], ['내 뼈에서 온 뼈', 'eve']];
+const SHOTS = process.env.SHOTS ? JSON.parse(process.env.SHOTS) : [['모든 가축과 새와', 'done'], ['해가 기울 무렵', 'interlude'], ['깊이 잠들게', 'sleep'], ['내 뼈에서 온 뼈', 'eve']];
 export default async (t) => {
   const vis = (id) => t.ev(`(() => { const e = document.getElementById('${id}'); return !!e && !e.hidden && getComputedStyle(e).display !== 'none'; })()`);
   await boot(t, { ...SAVE, xp: 3000 });
