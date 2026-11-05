@@ -1076,7 +1076,9 @@ body:has(#choices:not([hidden])) .dialog__next { visibility: hidden; }
 
 /* ---------- 상점: 가진 달란트, 값이 붙은 칸 ---------- */
 .shop__purse { display: flex; align-items: center; gap: var(--space-2xs); margin: 0; padding: var(--space-xs) var(--space-md); white-space: nowrap; background: var(--color-paper-2); }
-.shop__greet { flex: 1; font-size: var(--text-small); color: var(--color-ink-2); white-space: normal; word-break: keep-all; }
+.shop__greet { flex: 1; min-width: 0; font-size: var(--text-small); color: var(--color-ink-2); white-space: nowrap; } /* F50: 한 줄로 */
+/* 휴대폰 폭에서는 안내 한 줄이 가진 달란트와 한 줄에 들어가지 않는다. 안내를 위 줄에 두고 달란트는 그 아래 오른쪽 */
+@media (max-width: 39.99rem) { .shop__purse { flex-wrap: wrap; row-gap: var(--space-3xs); } .shop__greet { flex-basis: 100%; } .shop__coin { margin-left: auto; } }
 .shop__coin { width: 24px; height: 24px; }
 .slot__price { font-size: var(--text-label); font-weight: 800; color: var(--color-accent-ink); font-variant-numeric: tabular-nums; }
 .slot[data-state="owned"] .slot__price { color: var(--color-ink-2); }
@@ -1520,7 +1522,7 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
   .menu-panel__body > .inv { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-sm); }
   .inv > .codex__box { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .inv .codex__page { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
-  .inv .codex__page > .slots { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding: 2px 2px var(--space-xs); overscroll-behavior: contain; }
+  .inv .codex__page > .slots { flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding: 10px 2px var(--space-xs); overscroll-behavior: contain; }
   .inv__detail { position: static; flex: none; box-shadow: 0 -2px 0 var(--color-paper-3); }
 }
 /* F36 상점·인벤토리 칸: 그림 자리를 같은 높이로 두고, 아래 그늘 띠(4px)를 뺀 칸 안쪽 가운데에 내용을 놓는다 */
@@ -1528,6 +1530,13 @@ body:has(#dialog:not([hidden])) .edge-arrow, body:has(.modal:not([hidden])) .edg
 .slot__icon { align-self: center; }
 /* F43: 빈 줄을 미리 잡아 두면 줄 사이 간격만큼 내용이 위로 올라갔다. 빈 도구 칸의 네모도 첫 줄 위쪽에 붙었다 */
 .slot--empty { grid-template-rows: none; place-items: center; }
+/* F48: 착용 꼬리표(손·허리·머리)가 칸 위로 8px 나와서, 스크롤하는 칸 목록 맨 윗줄에서 잘렸다. 목록 위에 그만큼 여백을 둔다 */
+.slots { padding-top: 10px; }
+/* F51: 낮은 가로 화면의 상점 칸은 정사각형이면 그림·이름·값이 칸보다 커서 위로 넘쳤다. 높이를 내용만큼 두고 그림을 줄인다 */
+@media (orientation: landscape) and (max-height: 30rem) {
+  .slot:has(.slot__price) { aspect-ratio: auto; grid-template-rows: 32px; min-height: 0; padding-top: var(--space-2xs); }
+  .slot:has(.slot__price) .slot__icon { width: 32px; height: 32px; }
+}
 /* F37 사기 버튼: 달란트 그림과 값만 */
 .shop__buy { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2xs); }
 .shop__buycoin { width: 20px; height: 20px; }

@@ -54,7 +54,12 @@ const stageLabel = (id) => { const c = CHAPTERS.find((x) => x.id === id); return
 
 // 내용을 바꿀 때 넘기는 방향(-1 왼쪽, 1 오른쪽)에서 짧게 들어온다.
 function swap(node, view, dir = 0) {
+  // 같은 화면을 다시 그릴 때(칸을 고를 때)는 칸 목록의 스크롤 자리를 지킨다(2026-11-05 F54: 아래 칸을 누르면 맨 위로 돌아갔다)
+  const keep = dir ? 0 : node.querySelector('.slots')?.scrollTop ?? 0;
   node.replaceChildren(view);
+  if (keep) { const g = view.querySelector('.slots'); if (g) g.scrollTop = keep; }
+  // 고른 칸이 설명 패널이 커지며 목록 아래로 가려지면 보이는 데까지만 올린다
+  if (!dir) view.querySelector('.slots .slot[aria-pressed="true"]')?.scrollIntoView({ block: 'nearest' });
   if (!dir) return;
   view.dataset.dir = dir;
   view.classList.add('is-entering');
@@ -201,14 +206,14 @@ function inventoryView(state, ctx) {
     const owned = it.kind === 'tool' ? state.items.tools.includes(it.id) : ownsLook(state, it.id);
     const how = it.level ? `Lv.${it.level}에 열려요` : it.stage ? `${josa(CHAPTERS.find((c) => c.id === it.stage)?.title ?? '', '을', '를')} 완료하면 받아요` : `상점에서 ${it.price} 달란트`;
     const tags = [[it.kind === 'tool' ? '도구' : SLOTS[slotOf(it)], 'slot']];
-    if (worn(it)) tags.push(['다는 중', 'ok']);
+    if (worn(it)) tags.push(['착용 중', 'ok']);
     else if (!owned) tags.push(['잠김', 'lock']);
     const act = el('div', 'inv__actions');
     if (!owned) act.append(el('p', 'inv__lock', how));
     else if (ctx.onHold) {
       const on = worn(it);
       const [verb] = VERB[slotOf(it)];
-      // 다는 중이면 꼬리표('다는 중')가 상태를 보이고, 버튼은 할 수 있는 일 하나만 둔다
+      // 착용 중이면 꼬리표('착용 중')가 상태를 보이고, 버튼은 할 수 있는 일 하나만 둔다
       if (on) act.append(button('btn inv__hold', '내려놓기', () => { ctx.onHold('none', keyOf(it)); render(); }, null, 'inv:drop'));
       else act.append(button('btn inv__hold', verb, () => { ctx.onHold(it.id, keyOf(it)); render(); }, null, 'inv:hold'));
     }
@@ -310,7 +315,7 @@ function shopView(state, ctx) {
   const purse = el('p', 'shop__purse');
   const icon = el('span', 'shop__coin');
   icon.innerHTML = TALENT;
-  purse.append(el('span', 'shop__greet', '하늘의 달란트로 꾸미기를 살 수 있어요.'), icon, el('span', 'stat__num', state.talents), el('span', 'stat__unit', '달란트'));
+  purse.append(el('span', 'shop__greet', '달란트로 꾸미기 용품을 살 수 있어요'), icon, el('span', 'stat__num', state.talents), el('span', 'stat__unit', '달란트'));
   const box = el('div', 'codex__box');
   let picked = null;
   const render = () => {
@@ -329,7 +334,7 @@ function shopView(state, ctx) {
     }
     const it = SHOP.find((i) => i.id === picked);
     const d = el('div', 'inv__detail');
-    if (!it) d.append(howList([['고르기', '물건을 누르면 설명과 값이 나와요'], ['달기', '산 소품은 인벤토리에서, 머리·옷은 바로 입어요']]));
+    if (!it) d.append(howList([['착용', '구매한 소품을 바로 입을 수 있어요']]));
     else {
       const act = el('div', 'inv__actions');
       const owned = ownsLook(state, it.id);
@@ -339,7 +344,6 @@ function shopView(state, ctx) {
       if (!owned) { const coin = el('span', 'shop__buycoin'); coin.innerHTML = TALENT; buy.append(coin, el('span', 'shop__buynum', it.price), el('span', 'stat__unit', '달란트')); }
       buy.disabled = owned || state.talents < it.price;
       act.append(buy);
-      if (!owned && state.talents < it.price) act.append(el('p', 'inv__lock', `${it.price - state.talents} 달란트 모자라요`));
       d.append(detailHead(ITEM_ICONS[it.id] ?? HAIR_ICONS[it.id], it.name, [[kind, 'slot'], ...(owned ? [['가짐', 'ok']] : [])], it.ref), el('p', 'inv__note', it.note), act);
     }
     view.append(grid, d);
@@ -366,7 +370,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
   // 탭 막대는 한 번만 만들고, 고른 탭과 밑줄 막대만 옮긴다(막대가 미끄러져 옮겨 간다).
   tabsEl.hidden = !TABS.length;
   $('menuTitle').hidden = !only;
-  $('menuTitle').textContent = only === 'shop' ? '하늘 상점' : '바이블로그 도감';
+  $('menuTitle').textContent = only === 'shop' ? '천국 상점' : '바이블로그 도감';
   if (TABS.length) {
     tabsEl.replaceChildren(...TABS.map((t) => {
       const b = button('tab', t.name, () => setTab(t.id));

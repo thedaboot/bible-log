@@ -19,7 +19,7 @@ import { REWARDS, SPIRIT } from './data/growth.js';
 import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook, addTool, useTool, assistOf, deepOpen, codexDone, canHold, stageLooks } from './growth.js';
 import { CHALLENGE, CODEX_TITLES } from './data/growth.js';
 import { WORLDS } from './data/chapters.js';
-import { ITEMS, SHOP, STYLES } from './data/items.js';
+import { ITEMS, SHOP, STYLES, SLOT_KEY, slotOf } from './data/items.js';
 import { CODEX_ART } from './codex-art.js';
 import { ITEM_ICONS, HAIR_ICONS, EMPTY } from './icons.js';
 import { CODEX } from './data/codex.js';
@@ -1539,9 +1539,9 @@ async function runShelter() {
       await openMenu(state, { only: 'shop', onBuy: (id) => {
         const it = SHOP.find((i) => i.id === id);
         if (!buyLook(state, id)) return false;
-        // 머리·옷은 산 자리에서 지상 모습에 입힌다(다음 땅에 내려가면 보인다). 꾸미기 소품은 인벤토리에서 단다
+        // 산 것은 바로 지상 모습에 입힌다(다음 땅에 내려가면 보인다). 소품은 그 자리(손·허리·머리)에 단다(2026-11-05 F52 "구매한 소품을 바로 입을 수 있어요")
         const style = STYLES.includes(it);
-        if (style && state.earthLook) state.earthLook = { ...state.earthLook, [it.kind]: it.id };
+        if (state.earthLook) state.earthLook = { ...state.earthLook, [style ? it.kind : SLOT_KEY[slotOf(it)]]: it.id };
         save(state);
         refreshHud();
         popHud({ talent: -it.price });
