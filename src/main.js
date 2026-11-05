@@ -47,6 +47,7 @@ const camTarget = new THREE.Vector3();
 const camTmp = new THREE.Vector3();
 let camFollow = ORIGIN; // 카메라가 따라가는 점(보통은 내 캐릭터)
 let camFocus = null; // 연출 중에 잠시 바라보는 점
+let camPair = null; // 두 인물 사이를 따라 비춘다(camFocus가 없을 때). [a, b]
 let camAngle = 0;
 let viewSize = 14;
 let creation = null; // 창조의 일곱 날 장면(있으면 세로 화면도 전체 폭을 본다, resize)
@@ -189,6 +190,7 @@ const held = (...codes) => (codes.some((c) => keys.has(c) || tapped.has(c)) ? 1 
 // 걷기: 속도를 부드럽게 올리고 줄여서 출발과 멈춤이 자연스럽다. 흔들림과 기울기는 animateFigure가 맡는다.
 const vel = new THREE.Vector3();
 const want = new THREE.Vector3();
+const pairPoint = new THREE.Vector3();
 function movePlayer(dt, t) {
   want.set(0, 0, 0);
   // 'auto': 연출 중에 관찰자가 장면 앞을 비켜 걸어 나간다(키 입력은 받지 않는다). 게임 시간 4초 안에 못 닿으면 그 자리에 선다.
@@ -374,7 +376,7 @@ function placeCompanions(at) {
   player.visible = angel.visible = true;
   angelFollow = true;
   camFollow = player.position;
-  camFocus = null;
+  camFocus = null; camPair = null;
 }
 
 // ---------- 장면: 천국 ----------
@@ -443,7 +445,7 @@ async function runCreation(fromDay = 1) {
   setView(24);
   camAngle = 0;
   camFollow = ORIGIN;
-  camFocus = null;
+  camFocus = null; camPair = null;
   mode = 'none';
 
   // 이어하기로 중간 날부터 볼 때는 앞 날의 연출을 순식간에 끝내 둔다
@@ -619,7 +621,7 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
   player.position.set(0, 0, 0);
   player.rotation.y = Math.PI / 4;
   camFollow = new THREE.Vector3(0, 0.75, 0); // 발밑이 아니라 몸 가운데를 본다
-  camFocus = null;
+  camFocus = null; camPair = null;
   camAngle = 0;
   camTarget.copy(camFollow);
   camOffset = ROOM_OFFSET;
@@ -726,7 +728,7 @@ async function showMenu() {
     stopWalk();
     setQuest(null);
     speaker = speakerFrame = null;
-    camFocus = null;
+    camFocus = null; camPair = null;
     await fade(1);
     runShelter();
     return;
@@ -855,8 +857,9 @@ async function runEdenGarden() {
   });
   reward('eden/animals-done', 'animalsDone');
   eden.acts.follow(null);
-  camFocus = eden.spots.adam;
-  setStage('adam');
+  // 이름 짓기를 마친 뒤로는 아담과 관찰자 사이를 비춘다(2026-11-05 F47). 아담의 처음 자리를 비추면 두 사람이 화면 밖이었다
+  camFocus = null;
+  camPair = [eden.adam, player];
   await talk(EDEN.animalsDone.slice(0, 1), state);
   // 막간(창 2:20 뒤, 창 2:21 앞): 아담이 관찰자를 알아보고 끝까지 대화한다. 사건의 흐름은 바뀌지 않는다.
   eden.acts.face(eden.adam, player.position);
@@ -865,11 +868,21 @@ async function runEdenGarden() {
   reward('eden/interlude', 'interlude');
   meet('adam', 'talked');
   // 창 2:21~22 화면 전환 없이: 아담이 잠들고, 옆구리에서 나온 빛이 하와가 된다.
-  await eden.acts.sleep();
+  // 아담이 처음 자리로 돌아가 잠드는 동안 관찰자도 다리를 건너 곁을 따라간다(F47: 멀리 남으면 두 사람이 한 화면에 안 들어온다).
+  // 잠든 뒤에는 하와가 지어지는 자리(무대)를 비켜 선다
+  setStage('adam');
+  playerFace = null;
+  eden.acts.follow(player, eden.adam.position);
+  // 걸어가는 몇 초를 대사 없이 기다리지 않게 창 2:21 서술과 함께 간다(대기 3초 규칙)
+  const sleeping = eden.acts.sleep();
   await talk(EDEN.animalsDone.slice(1), state);
+  await sleeping;
+  eden.acts.follow(null);
+  setStage('adam');
   await eden.acts.formEve();
   await talk(EDEN.eveAfter, state);
   camFocus = null;
+  camPair = null;
 
   // 퀘스트 3: 먹어도 되는 열매. 따면 열매가 관찰자의 바구니로 날아가 담긴다.
   // 선악을 알게 하는 나무에 다가가면 대천사가 한 번 알려 준다.
@@ -1694,7 +1707,7 @@ function tick() {
     if (dragX !== null || held('KeyQ', 'KeyE')) practiced('look', dt);
   }
   tapped.clear();
-  camTarget.lerp(speakerFocus() ?? camFocus ?? camFollow, Math.min(1, dt * 4));
+  camTarget.lerp(speakerFocus() ?? camFocus ?? (camPair && pairPoint.copy(camPair[0].position).lerp(camPair[1].position, 0.5).setY(0)) ?? camFollow, Math.min(1, dt * 4));
   camera.position.copy(camTarget).add(camTmp.copy(camOffset).applyAxisAngle(Y_AXIS, camAngle));
   camera.lookAt(camTarget);
   composer.render();

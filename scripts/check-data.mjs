@@ -566,6 +566,35 @@ console.log('OK: 동물이 고르는 자리 점검 통과(자기 구역 유지)'
   console.log('OK: 아담 따라오기 점검 통과(다리로 건넘)');
 }
 
+// 아담이 장애물(나무·바위)에 걸려 제자리에서 계속 뛰지 않는다(2026-11-05 F46): 돌아가거나, 가까우면 서서 기다린다
+{
+  const e5 = makeEden({ background: new THREE.Color() });
+  e5.adam.visible = true;
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let worst = 0, pairs = 0;
+  for (let k = 0; pairs < 60 && k < 2000; k++) {
+    const a = new THREE.Vector3((rnd() - 0.5) * 2 * EDEN_RADIUS * 0.8, 0, (rnd() - 0.5) * 2 * EDEN_RADIUS * 0.8);
+    const b = a.clone().add(new THREE.Vector3((rnd() - 0.5) * 8, 0, (rnd() - 0.5) * 8));
+    if (a.length() > EDEN_RADIUS - 2 || b.length() > EDEN_RADIUS - 2 || crossesRiver(a, b)) continue;
+    const a2 = a.clone(); if (collide(a2, 0.3) || collide(b.clone(), 0.35)) continue;
+    pairs++;
+    e5.adam.position.copy(a);
+    e5.acts.follow(e5.adam, b);
+    let tt = 0, inPlace = 0;
+    for (let i = 0; i < 300; i++) {
+      tt += 0.05;
+      const p0 = e5.adam.position.clone(), ph = e5.adam.userData.phase ?? 0;
+      e5.update(0.05, tt, b);
+      if ((e5.adam.userData.phase ?? 0) - ph > 0.05 && e5.adam.position.distanceTo(p0) < 0.01) inPlace += 0.05;
+    }
+    worst = Math.max(worst, inPlace);
+  }
+  e5.acts.follow(null);
+  assert.ok(worst < 1.6, `아담이 막힌 채 ${worst.toFixed(1)}초 제자리에서 뜀`);
+  console.log(`OK: 아담 막힘 점검 통과(${pairs}쌍, 제자리 뜀 최대 ${worst.toFixed(1)}초)`);
+}
+
 // 관찰자 비키기: 무대마다 무대 안의 여러 시작점에서 고른 첫 자리가 설 수 있고(장애물·물 아님), 무대 밖이며,
 // 곧게 걸어 막힘없이(장애물·강 없이) 닿는지 본다
 {

@@ -107,6 +107,23 @@ export function collide(p, r = 0.35) {
   }
   return hit;
 }
+// 앞길을 막는 원형 장애물(나무·바위)이 있으면 그 옆을 도는 경유점을, 없으면 aim을 돌려준다.
+// 막힌 채 목표 쪽으로만 밀면 충돌에 되밀려 제자리에서 계속 뛰었다(2026-11-05 F46). 매 프레임 다시 구해 둘레를 미끄러져 돈다
+export function avoidAim(p, aim, r = 0.3) {
+  const dx = aim.x - p.x, dz = aim.z - p.z, len = Math.hypot(dx, dz);
+  if (len < 1e-3) return aim;
+  const ux = dx / len, uz = dz / len;
+  let best = null, bestT = Infinity;
+  for (const c of colliders) {
+    const cx = c.x - p.x, cz = c.z - p.z, t = cx * ux + cz * uz, min = c.r + r + 0.1;
+    if (t <= 0 || t > len + min) continue;
+    const side = cx * uz - cz * ux; // 길 오른쪽(+)·왼쪽(-)으로 얼마나 비켜 있나
+    if (Math.abs(side) < min && t < bestT) { best = { c, side }; bestT = t; }
+  }
+  if (!best) return aim;
+  const { c, side } = best, k = side >= 0 ? -1 : 1, m = c.r + r + 0.5; // 장애물 중심의 반대쪽으로 돈다
+  return new THREE.Vector3(c.x + k * uz * m, 0, c.z - k * ux * m);
+}
 
 // a에서 b로 곧게 가는 길이 강(샘 포함, 다리도 강으로 본다)을 건너는지. 동물은 자기 터가 있는 강 이쪽에서만 돌아다닌다.
 export function crossesRiver(a, b) {
@@ -662,7 +679,8 @@ export function makeEden(scene) {
   function update(dt, t, playerPos = null) {
     if (pillar.visible) pillar.userData.pulse(t);
     for (const [fig, m] of movers) {
-      const d = stepToward(fig, m.to, m.speed, dt, 0.3);
+      stepToward(fig, avoidAim(fig.position, m.to), m.speed, dt, 0.3);
+      const d = Math.hypot(m.to.x - fig.position.x, m.to.z - fig.position.z);
       if (d < m.best - 0.02) { m.best = d; m.stuck = 0; } else m.stuck += dt;
       if (d < 0.05 || m.stuck > 1.5) {
         if (m.stuck > 1.5) fig.position.copy(m.to); // 장애물에 막혀 못 가면 목표에 둔다(연출이 멈추지 않게)
@@ -682,14 +700,17 @@ export function makeEden(scene) {
       if (crossesRiver(fig.position, goal)) {
         if (!follow.route?.length || crossesRiver(follow.route.at(-1), goal)) follow.route = routeTo(fig.position, goal).slice(0, -1);
       } else follow.route = null;
-      const aim = follow.route?.[0] ?? goal;
+      const aim = avoidAim(fig.position, follow.route?.[0] ?? goal);
       const d = aim.distanceTo(fig.position), dGoal = goal.distanceTo(fig.position);
-      if (follow.route && d < 0.6) follow.route.shift();
-      follow.stuck = dGoal > 2 && d > (follow.last ?? Infinity) - 0.01 ? (follow.stuck ?? 0) + dt : 0;
+      if (follow.route?.length && follow.route[0].distanceTo(fig.position) < 0.6) follow.route.shift();
+      follow.stuck = dGoal > 0.6 && d > (follow.last ?? Infinity) - 0.01 ? (follow.stuck ?? 0) + dt : 0;
       follow.last = d;
-      // 안전장치: 아주 멀어지거나 5초 넘게 다가가지 못하면 관찰자 곁으로 옮긴다
-      if (dGoal > 16 || follow.stuck > 5) { fig.position.copy(goal); collide(fig.position, 0.3); follow.stuck = 0; follow.route = null; }
-      if (dGoal > 0.6) {
+      // 가까이(2.5 안)에서 막히면 그 자리에 서서 기다린다. 관찰자가 1 넘게 움직이면 다시 따라간다(F46: 막힌 채 계속 뛰지 않게)
+      if (follow.stuck > 1 && dGoal < 2.5) { follow.rest = goal.clone(); follow.stuck = 0; }
+      if (follow.rest && follow.rest.distanceTo(goal) > 1) follow.rest = null;
+      // 안전장치: 아주 멀어지거나 3초 넘게 다가가지 못하면 관찰자 곁으로 옮긴다
+      if (dGoal > 16 || follow.stuck > 3) { fig.position.copy(goal); collide(fig.position, 0.3); follow.stuck = 0; follow.route = null; }
+      if (dGoal > 0.6 && !follow.rest) {
         const speed = Math.min(4, Math.max(1.4, dGoal * 1.5));
         stepToward(follow.fig, aim, speed, dt, 0.3);
         turnFigure(follow.fig, Math.atan2(tmp.x, tmp.z), dt);
