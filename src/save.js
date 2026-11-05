@@ -70,12 +70,20 @@ export function load(storage = store()) {
       scene: CHECKPOINTS.includes(scene) ? scene : unlocked.at(-1),
       unlocked: CHECKPOINTS.filter((id) => unlocked.includes(id)),
       ...cleanGrowth(s),
+      resume: cleanResume(s.resume),
     };
     holdMigrate(out);
     return out;
   } catch {
     return null;
   }
+}
+
+// 스테이지 이어하기(2026-11-05 F56·F57): 들어간 지점, 지나온 순번(퀘스트 시작·퀘스트 밖 대사 묶음), 퀘스트 중이면 관찰자 자리
+export function cleanResume(r) {
+  if (!r || typeof r !== 'object' || !CHECKPOINTS.includes(r.id) || r.id === 'prologue') return null;
+  const pos = Array.isArray(r.pos) && r.pos.length === 2 && r.pos.every(Number.isFinite) ? r.pos : null;
+  return { id: r.id, n: nat(r.n), quest: !!r.quest, pos };
 }
 
 // 손에 든 물건 옮기기(소품 → 인벤토리): 예전에 고른 꾸미기는 레벨과 상관없이 갖게 하고,

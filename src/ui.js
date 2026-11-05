@@ -2,6 +2,7 @@ import { TALENT, SPROUT } from './icons.js';
 import { SPEAKERS, fill } from './text.js';
 import { LOOK_LABELS } from './props.js';
 import { BOND_LINES } from './growth.js';
+import { isInstant } from './anim.js';
 
 export const $ = (id) => document.getElementById(id);
 // ↑·↓로 묶음 안의 버튼 포커스를 옮긴다(막간 선택지, 퀴즈 보기, 지도 지점)
@@ -648,6 +649,7 @@ if (typeof document !== 'undefined' && typeof ResizeObserver !== 'undefined') {
 }
 
 export function fade(to) {
+  if (isInstant()) return Promise.resolve(); // 이어하기로 빠르게 지나가는 동안은 덮은 화면 그대로 둔다
   $('fade').style.opacity = String(to);
   return new Promise((r) => setTimeout(r, reducedMotion() ? 160 : 1250));
 }

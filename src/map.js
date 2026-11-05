@@ -92,6 +92,9 @@ export function openMap(state) {
   $('mapTitle').textContent = world.title;
   $('mapProgress').textContent = `말씀 ${words.filter((w) => state.codex[w.id]).length} / ${words.length}`;
   let sel = Math.max(0, infos.findLastIndex((i) => i.status === 'open' || i.status === 'cleared'));
+  // 중간에 나온 스테이지가 있으면 그 표지를 먼저 고른다(이어하기가 바로 보이게, F56)
+  const midIdx = state.resume ? infos.findIndex((i) => i.ch.points.some((p) => p.id === state.resume.id)) : -1;
+  if (midIdx >= 0) sel = midIdx;
 
   return new Promise((resolve) => {
     const nodes = $('mapNodes');
@@ -127,15 +130,14 @@ export function openMap(state) {
       if (it.status === 'soon') go.append(el('p', 'map__note', '아직 만드는 중이에요.'));
       else if (it.status === 'locked') go.append(el('p', 'map__note', '앞 이야기를 마치면 열려요.'));
       else {
-        // 스테이지 안의 중간 지점(예: 타락과 추방)도 여기서 함께 고른다
-        for (const p of it.open) {
-          // 지점이 하나면 '입장' 한 버튼, 여럿이면 '○○부터'로 어디서 시작하는지 적는다
-          const b = el('button', 'btn map__point', it.open.length === 1 ? '입장' : `${p.title}부터`);
-          b.setAttribute('aria-label', `${p.title}에서 시작`);
-          b.type = 'button';
-          b.onclick = () => close(p.id);
-          go.append(b);
-        }
+        // 버튼(2026-11-05 F55·F56): 중간에 나왔으면 '이어하기'와 '처음부터', 완료한 스테이지는 '처음부터', 처음이면 '입장'.
+        // 창조의 날, 에덴의 '타락과 추방' 같은 중간 지점 버튼은 두지 않는다(언제나 첫 지점부터, 이어하기가 나간 자리를 맡는다)
+        const first = it.ch.points[0].id;
+        const btn = (text, id, label) => { const b = el('button', 'btn map__point', text); b.type = 'button'; b.setAttribute('aria-label', label); b.onclick = () => close(id); go.append(b); };
+        const midway = state.resume && it.ch.points.some((p) => p.id === state.resume.id);
+        if (midway) btn('이어하기', 'resume', `${it.ch.title} 나간 자리부터 이어하기`);
+        if (midway || it.status === 'cleared') btn('처음부터', `restart:${first}`, `${it.ch.title} 처음부터`);
+        else btn('입장', first, `${it.ch.title} 입장`);
       }
       view.append(go);
       detail.replaceChildren(view);
@@ -186,7 +188,7 @@ export function openMap(state) {
         e.preventDefault();
         sel = marks.indexOf(document.activeElement);
         paint();
-        if (infos[sel].open.length && infos[sel].status !== 'locked') close(infos[sel].open[0].id);
+        if (infos[sel].open.length && infos[sel].status !== 'locked') detail.querySelector('.map__point')?.click(); // 첫 버튼(이어하기 또는 입장·처음부터)
       }
       if (e.code === 'ArrowDown' && points.length) { e.preventDefault(); (points[points.indexOf(document.activeElement) + 1] ?? points[0]).focus({ preventScroll: true }); }
       if (e.code === 'ArrowUp' && !onMark) {

@@ -319,6 +319,8 @@ function holdTick(dt) {
   if (q.p >= 1) { q.cur = null; q.p = 0; setGauge(null); q.found(near); }
 }
 function questFind({ title, targets, text, radius = 1.6, onFound, hold = 0, holdLabel }) {
+  milestone(true);
+  questDepth++;
   return new Promise((resolve) => {
     const left = new Set(targets);
     const render = () => setQuest({ title, items: targets.map((x) => ({ text: text(x), done: !left.has(x) })) });
@@ -332,7 +334,7 @@ function questFind({ title, targets, text, radius = 1.6, onFound, hold = 0, hold
       left.delete(x);
       render();
       if (onFound) { mode = 'none'; target = null; await onFound(x, targets.length - left.size, targets.length); }
-      if (left.size === 0) { stopWalk(); resolve(); return; }
+      if (left.size === 0) { stopWalk(); questDepth--; resolve(); return; }
       mode = 'walk';
     };
     render();
@@ -460,6 +462,7 @@ async function runCreation(fromDay = 1) {
   if (fromDay === 1) await say(CREATION.start, state);
   for (let day = fromDay; day <= 7; day++) {
     reach(state, `creation-${day}`);
+    if (state.resume) { state.resume.id = `creation-${day}`; save(state); } // 창조는 그날부터 이어 본다
     showDayTitle(DAY_NAMES[day]);
     for (const step of CREATION.days[day]) {
       if (step.say) await say(step.say, state);
@@ -718,13 +721,11 @@ async function showMenu() {
   } : null;
   // 스테이지 중(지상 장면)에만 '쉼터로 나가기'. 쉼터에서는 보이지 않는다
   let quitting = false;
-  const onQuit = land() && stageSnap ? () => { quitting = true; } : null;
+  const onQuit = land() && state.resume ? () => { quitting = true; } : null;
   await openMenu(state, { stage: chapterOf(state.scene), onHold, onQuit });
   if (quitting && await askQuit()) {
-    // 이 이야기에 들어설 때의 저장값으로 되돌리고 쉼터로 간다. 걷던 퀘스트·도전의 기다림은 stopWalk가 풀어 이전 진행은 그 자리에서 멈춘다
-    for (const k of Object.keys(state)) if (!(k in stageSnap)) delete state[k];
-    Object.assign(state, JSON.parse(JSON.stringify(stageSnap)));
-    save(state);
+    // 지금 자리까지 남기고 쉼터로 간다(F56: 지도·첫 화면의 이어하기로 돌아온다). 걷던 퀘스트·도전의 기다림은 stopWalk가 풀어 그 자리에서 멈춘다
+    keepSpot();
     stopWalk();
     setQuest(null);
     speaker = speakerFrame = null;
@@ -741,6 +742,9 @@ addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat && !menu
 
 // 에덴의 대사: 말하는 인물이 고개를 끄덕이며 들썩인다(eden.acts.speak).
 function talk(lines, ctx, opts = {}) {
+  if (!questDepth) milestone(false);
+  // 이어하기로 빠르게 지나가는 중: 대사 창 없이 줄마다의 연출(onLine)만 차례로 하고 첫 선택지를 고른 것으로 한다
+  if (ff) { lines.forEach((l, i) => { land()?.acts.speak?.(l.who); opts.onLine?.(l, i); }); return Promise.resolve(0); }
   return say(lines, ctx, { choices: opts.choices, onLine: (l, i) => { land()?.acts.speak(l.who); speaker = figOf(l.who); speakerFrame = null; opts.onLine?.(l, i); } })
     .finally(() => { speaker = speakerFrame = null; });
 }
@@ -1150,7 +1154,10 @@ const GRACE_MS = 150; // 도전 판정 여유: 누르기 전 이 시간 안에 �
 // 성공 k번째: 속도 ×(1 + 0.12k), 구간 ×(1 − 0.08k). tier: 속도 ×(1 + 0.15·tier), 구간 ×(1 − 0.1·tier). 구간은 기본의 0.5배, 속도는 1.8배에서 멈춘다.
 const challengeLevel = (k, tier = 0) => ({ speed: Math.min(1.8, (1 + 0.12 * k) * (1 + 0.15 * tier)), zone: Math.max(0.5, (1 - 0.08 * k) * (1 - 0.1 * tier)) });
 function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], tool = null, toolName = '', radius = 2, onHit, onTool, onMiss, missText = '다시 해 보세요', speed = CHALLENGE.speed, tier = 0, kind = 'time', hitText = '살살, 잘 뺐어요!', lowText = '조금 더 당겨요', onHold }) {
-  return new Promise((resolve) => {
+  milestone(true);
+  questDepth++;
+  return new Promise((res) => {
+    const resolve = (v) => { questDepth--; res(v); };
     const assist = assistOf(state, fruits);
     const left = new Set(spots);
     for (const sp of spots) { sp.n = 0; sp.ready = !sp.tool; }
@@ -1446,13 +1453,13 @@ function codexReward() {
 // 대사를 넘기고, 첫 선택지와 퀴즈 정답을 고르고, 퀘스트 목표로 순간 이동하고, 도전을 성공시킨다.
 let autoT = 0;
 function autoTick(dt) {
-  if (!globalThis.__dev?.auto) return;
+  if (!ff && !globalThis.__dev?.auto) return;
   autoT += dt;
-  if (autoT < 0.15) return;
+  if (!ff && autoT < 0.15) return;
   autoT = 0;
   const vis = (id) => !$(id).hidden;
   // __dev.pauseAt: 이 글이 대사 창에 나오면 자동 플레이를 멈춘다(화면을 캡처해 볼 때)
-  const stop = globalThis.__dev.pauseAt;
+  const stop = globalThis.__dev?.pauseAt;
   if (stop && vis('dialog') && $('line').textContent.includes(stop)) { globalThis.__dev.auto = false; globalThis.__dev.pauseAt = null; return; }
   if (vis('choices')) { $('choices').querySelector('button')?.click(); return; }
   if (vis('dialog')) { $('dialog').click(); return; }
@@ -1486,13 +1493,14 @@ function nextStage(id) {
 }
 async function afterStage(id) {
   stopWalk();
+  state.resume = null; // 완료하면 이어하기를 지운다(다시 들어가면 처음부터)
   openNext(state);
   save(state);
   const cur = stageInfo(state, id);
   const next = nextStage(id);
   const label = (info) => { const n = WORLDS[0].stages.filter((s) => !stageInfo(state, s).ch.side).indexOf(info.ch.id); return info.ch.side ? '샛길' : `1-${n + 1}`; };
   const pick = await askClear({ kicker: `${label(cur)} · 완료`, title: cur.ch.title, next: next && `${label(next)} ${next.ch.title}` });
-  if (pick === 'next' && next) { await fade(1); startAt(next.open[0].id); return; }
+  if (pick === 'next' && next) { await fade(1); startAt(next.ch.points[0].id); return; }
   if (pick === 'map') {
     const pid = await openMap(state);
     if (pid) { await fade(1); startAt(pid); return; }
@@ -1574,11 +1582,58 @@ async function runShelter() {
   startWalk();
 }
 
+// ---------- 이어하기(2026-11-05 F56·F57) ----------
+// 스테이지 안에서 '퀘스트 시작'과 '퀘스트 밖의 대사 묶음'마다 순번(mark)을 세어 저장한다(state.resume.n).
+// 다시 들어오면 화면을 덮은 채 그 순번까지 빠르게 지나간다: 대사는 창 없이 연출만, 연출(tween·wait)은 바로 끝, 게임 시간은 FF_SPEED배,
+// 퀘스트·도전은 자동 플레이(autoTick)가 끝낸다. 받은 보상은 저장값에 남아 있어 두 번 받지 않는다. 퀘스트 중이었으면 관찰자를 나간 자리에 세운다.
+let ff = null; // { n, quest, pos }
+let mark = 0, questDepth = 0;
+const FF_SPEED = 8;
+function milestone(quest) {
+  if (!state.resume || !land()) return;
+  mark++;
+  if (ff) { if (mark >= ff.n) endResume(quest); return; }
+  Object.assign(state.resume, { n: mark, quest, pos: null });
+  save(state);
+}
+// 나갈 때(메뉴의 쉼터로 나가기, 브라우저 닫기·숨기기) 퀘스트 중이면 관찰자 자리를 남긴다
+function keepSpot() {
+  if (!state?.resume || ff || !land()) return;
+  if (state.resume.quest && questDepth) state.resume.pos = [player.position.x, player.position.z];
+  save(state);
+}
+addEventListener('pagehide', keepSpot);
+document.addEventListener('visibilitychange', () => { if (document.hidden) keepSpot(); });
+function endResume(quest) {
+  const at = ff;
+  ff = null;
+  setInstant(false);
+  $('fade').classList.remove('is-resuming');
+  if (quest && at.pos) { player.position.set(at.pos[0], 0, at.pos[1]); land()?.collide(player.position, 0.35); camTarget.copy(player.position); }
+  fade(0);
+}
+function resumeStage() {
+  const r = state.resume;
+  if (!r) return runShelter();
+  // 창조는 그날부터 다시 본다(앞 날의 연출은 runCreation이 순식간에 끝낸다)
+  if (r.id.startsWith('creation-') || r.n <= 1) { const id = r.id; state.resume = null; return startAt(id); }
+  ff = { n: r.n, quest: r.quest, pos: r.pos };
+  $('fade').style.opacity = '1';
+  $('fade').classList.add('is-resuming');
+  setInstant(true);
+  return r.id === 'cain' ? runCain() : STAGE_MODS[r.id] ? runStage(r.id) : runEden(r.id);
+}
+
 // ---------- 첫 화면 ----------
 // 쉼터로 나가기(F26)에서 되돌릴 저장값: 스테이지에 들어설 때 떠 둔다
 let stageSnap = null;
 function startAt(id) {
   stageSnap = id === 'prologue' ? null : JSON.parse(JSON.stringify(state));
+  mark = 0;
+  questDepth = 0;
+  if (id === 'resume') return resumeStage();
+  if (id.startsWith('restart:')) { id = id.slice(8); state.resume = null; } // 지도의 '처음부터'
+  if (id !== 'prologue' && !ff) { state.resume = { id, n: 0, quest: false, pos: null }; save(state); }
   if (id === 'prologue') return runPrologue();
   if (id.startsWith('creation-')) return runCreation(Number(id.split('-')[1]));
   if (id === 'cain') return runCain();
@@ -1620,7 +1675,8 @@ function showTitle() {
     menu.classList.remove('menu--list');
     // 첫 화면은 고를 것만: 저장이 있으면 가장 자주 누르는 '이어하기'를 맨 위에 둔다
     menu.replaceChildren();
-    if (saved) menu.append(button('이어하기', begin(() => { state = saved; runShelter(); }))); // 이어하기는 쉼터에서 시작한다
+    // 이어하기: 스테이지 중간에 나갔으면 그 자리부터(F57), 아니면 쉼터에서 시작한다
+    if (saved) menu.append(button('이어하기', begin(() => { state = saved; if (saved.resume) startAt('resume'); else runShelter(); })));
     menu.append(button('처음부터', begin(() => { state = newState(saved); dressFigure(player, lookSpec(state.look)); runPrologue(); })));
     if (saved?.name) menu.append(button('모습 바꾸기', showLooks)); // 천국 꾸미기를 마친 사용자만
     if (saved) menu.append(button('도감', () => openMenu(saved, { only: 'codex', stage: chapterOf(saved.scene) }).then(() => menu.querySelector('button').focus({ preventScroll: true }))));
@@ -1682,7 +1738,7 @@ const clock = new THREE.Clock();
 let menuMode = null;
 function tick() {
   // 개발 서버에서만: __dev.speed로 게임 시간을 앞당긴다(자동화 창은 초당 2프레임 안팎이라 걷기가 매우 느리다)
-  const dt = Math.min(clock.getDelta(), 0.05) * (import.meta.env.DEV ? globalThis.__dev?.speed ?? 1 : 1);
+  const dt = Math.min(clock.getDelta(), 0.05) * (ff ? FF_SPEED : import.meta.env.DEV ? globalThis.__dev?.speed ?? 1 : 1);
   const canMenu = mode === 'walk' && !$('hud').hidden;
   if (canMenu !== menuMode) { menuMode = canMenu; $('menuBtn').hidden = !canMenu; } // 메뉴 버튼은 걷는 중에만 보인다
   const t = clock.elapsedTime;
@@ -1698,7 +1754,7 @@ function tick() {
   cain?.update(dt, t, player.position);
   field?.update(dt, t, player.position);
   challengeTick(dt);
-  if (import.meta.env.DEV) autoTick(dt);
+  if (ff || import.meta.env.DEV) autoTick(dt);
   holdTick(dt);
   if (heaven.group.visible) heaven.pillar.userData.pulse(t);
   if (titleView) camAngle += dt * 0.06;

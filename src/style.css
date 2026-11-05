@@ -718,6 +718,10 @@ body:has(#dexCard:not([hidden])) .toast { top: calc(22% + 14rem); }
   transition: opacity var(--dur-fade) var(--ease-in-out);
 }
 
+/* 이어하기(F56): 나간 자리까지 빠르게 지나가는 동안 빛 화면 가운데에 안내 한 줄. 막지 않게 pointer-events는 그대로 없다 */
+.fade.is-resuming { display: grid; place-items: center; }
+.fade.is-resuming::after { content: '이어서 들어가는 중이에요'; font-size: var(--text-small); font-weight: 700; color: var(--color-ink-2); }
+
 /* ---------- 픽셀 아이콘(icons.js) ---------- */
 .px-icon { display: block; width: 100%; height: 100%; }
 .px-o { fill: var(--color-frame); }

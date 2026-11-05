@@ -9,7 +9,7 @@ import { CAIN, CAIN_QUIZ, CAIN_INTERLUDE, CAIN_GREETING, FLOCK } from '../src/da
 import { SPEAKERS, vocative, fill, withRa } from '../src/text.js';
 import { readFileSync, readdirSync } from 'node:fs';
 import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, STAGES, inFrontOfScene, stepAsideSpots, crossesRiver } from '../src/eden.js';
-import { load, save, reach, newState, openNext } from '../src/save.js';
+import { load, save, reach, newState, openNext, cleanResume } from '../src/save.js';
 import { makeCain, collide as cainCollide, stepAsideSpots as cainAside, STAGES as CAIN_STAGES } from '../src/cain.js';
 import { makeCreation, skyState } from '../src/creation.js';
 import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
@@ -668,4 +668,13 @@ console.log(`OK: 스테이지 점검 통과(${MODS.map((m) => m.id).join(', ') |
   const missing = [...ids].filter((i) => !(i in SPEAKERS));
   assert.deepEqual(missing, [], `이름표 없는 인물: ${missing}`);
   console.log(`OK: 장면 인물 이름표 점검 통과(${ids.size}명)`);
+}
+
+// 이어하기 저장값(2026-11-05 F56): 모르는 지점·프롤로그·깨진 자리는 버린다
+{
+  assert.deepEqual(cleanResume({ id: 'noah', n: 8, quest: true, pos: [1, 2] }), { id: 'noah', n: 8, quest: true, pos: [1, 2] });
+  assert.equal(cleanResume({ id: 'nowhere', n: 3 }), null);
+  assert.equal(cleanResume({ id: 'prologue', n: 3 }), null);
+  assert.deepEqual(cleanResume({ id: 'eden', n: -2, pos: [1, 'x'] }), { id: 'eden', n: 0, quest: false, pos: null });
+  console.log('OK: 이어하기 저장값 점검 통과');
 }
