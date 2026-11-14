@@ -13,13 +13,14 @@ export const PAL = {
   goldGlow: 0xc9a24a,
   light: 0xfff2b0,
   holy: 0xffe08a,
-  grass: 0x6fae4a,
+  // 2026-11-14 6B: 원색을 걷고 같은 세계의 차분한 빛으로 맞췄다(마른 풀빛, 올리브 잎, 깊은 물빛, 리넨, 토기)
+  grass: 0x8f9a5c,
   soil: 0x8b6b45,
-  water: 0x2f6fb5,
+  water: 0x4a7896,
   bark: 0x7a5230,
-  leafDark: 0x2f7d3a,
-  leafLight: 0x7cc35a,
-  fig: 0x3f8a3a,
+  leafDark: 0x4c6a3e,
+  leafLight: 0x86a05a,
+  fig: 0x577a44,
   skins: 0x8a5a3a,
   fruit: 0xe8603a,
   lifeFruit: 0xffd25a,
@@ -27,16 +28,113 @@ export const PAL = {
   hairDark: 0x4a3426,
   hairBrown: 0x7a4a2a,
   eye: 0x2b2340,
-  robe: 0xfffdf4,
+  robe: 0xf3ecdc, // 리넨(새하얗지 않다: 강한 빛에서 하얗게 타지 않게)
   horn: 0xe2d2a8, // 양각 나팔, 기름 뿔병
-  clay: 0xb8683c, // 물동이
+  clay: 0xb07a55, // 물동이
   wicker: 0xc49a5a, // 바구니
   plank: 0x9a7048, // 다리 판자
   waste: 0x8f7a5a, // 동산 밖 거친 땅
   thorn: 0x5a4632, // 가시덤불
 };
 
-export const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, ...extra });
+// 표면(2026-11-14 새 공용 3D): 같은 색표 안에서 빛을 받는 방식으로 재질을 가른다. 물은 매끈하게 빛나고, 쇠붙이는 반짝임이 맺히고,
+// 토기와 살갗은 조금 매끈하고, 잎은 덜 거칠고, 흙·나무껍질·천은 빛을 고르게 흩는다. 모든 물체가 같은 무광으로 보이지 않게 mat()가 색으로 고른다.
+const SURFACE = new Map([
+  [PAL.water, { roughness: 0.22, metalness: 0.08 }],
+  [PAL.gold, { roughness: 0.42, metalness: 0.25 }], [PAL.goldGlow, { roughness: 0.42, metalness: 0.25 }],
+  [PAL.clay, { roughness: 0.72 }], [PAL.skin, { roughness: 0.7 }], [PAL.horn, { roughness: 0.6 }],
+  [PAL.leafDark, { roughness: 0.82 }], [PAL.leafLight, { roughness: 0.82 }], [PAL.fig, { roughness: 0.84 }], [PAL.grass, { roughness: 0.9 }],
+  [0x9a9488, { roughness: 0.86 }], [0xb8b4aa, { roughness: 0.5, metalness: 0.3 }], // 돌, 쇠
+]);
+export const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.95, ...SURFACE.get(color), ...extra });
+// 표면의 결(2026-11-14 6B): 흙과 석회암의 타일 텍스처 두 장(public/assets/earth-v1.webp, limestone-v1.webp. 이 게임을 위해 생성한 albedo,
+// 출처와 쓰는 곳은 docs/standards/art-3d.md "에셋"). 브라우저에서 한 번만 불러 모든 장면과 미리보기가 함께 쓴다(공유 텍스처라 장면을 떠날 때
+// dispose하지 않는다: disposeTree는 도형과 재질만 내린다). Node 점검(document 없음)과 파일이 아직 오지 않은 동안에는 색만으로 그린다.
+// 텍스처가 이미 흙빛·돌빛을 담고 있으므로 재질의 색을 그대로 곱하면 탁해진다. 그래서 "원하는 색 ÷ 텍스처의 평균색"을 재질의 색으로 준다
+// (결과의 평균이 원하는 색이 된다). 가장자리가 이어지지 않아도 드러나지 않게 거울 반복으로 깐다.
+const TILE = { earth: { avg: 0xbea07d }, limestone: { avg: 0xbeb7aa } };
+function tiled(name, color, extra = {}) {
+  const m = mat(color, extra);
+  if (typeof document === 'undefined') return m;
+  const t = TILE[name];
+  if (!t.tex) {
+    t.waiting = [];
+    t.tex = new THREE.TextureLoader().load(new URL(`./assets/${name}-v1.webp`, document.baseURI).href, () => { t.ready = true; t.waiting.forEach((fn) => fn()); t.waiting = null; });
+    t.tex.colorSpace = THREE.SRGBColorSpace;
+    t.tex.wrapS = t.tex.wrapT = THREE.MirroredRepeatWrapping;
+    t.tex.anisotropy = 4;
+  }
+  const apply = () => {
+    const a = new THREE.Color(t.avg);
+    m.color.setRGB(Math.min(1.6, m.color.r / a.r), Math.min(1.6, m.color.g / a.g), Math.min(1.6, m.color.b / a.b));
+    m.map = t.tex;
+    m.needsUpdate = true;
+  };
+  if (t.ready) apply(); else t.waiting.push(apply);
+  return m;
+}
+export const earthMat = (color, extra) => tiled('earth', color, { roughness: 1, ...extra }); // 흙: 땅
+export const stoneMat = (color, extra) => tiled('limestone', color, { roughness: 0.9, ...extra }); // 석회암: 우물, 집, 구유, 제단
+// 도형의 UV를 k배로 늘려 텍스처가 그만큼 되풀이되게 한다(텍스처는 함께 쓰므로 되풀이 횟수는 도형이 정한다)
+export function tileUV(geo, k) {
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * k, uv.getY(i) * k);
+  return geo;
+}
+// 땅(2026-11-14 6B): 걸을 수 있는 땅과 그 바깥이 한 장으로 이어진다(둥근 판의 끝이 보이지 않는다). 걷는 범위 안은 평평하고(높이 0),
+// 바깥은 멀어질수록 완만하게 솟아 먼 언덕이 된다. 화면 뒤쪽(카메라에서 먼 쪽)이 높고 앞쪽은 낮아 장면을 가리지 않는다.
+// 땅빛은 꼭짓점마다 조금씩 달라 넓은 얼룩이 부드럽게 번지고(다각형 조각을 얹지 않는다), 길(paths: [[시작, 끝], ...])과
+// 사람이 모이는 자리(clear: [{ x, z, r }, ...])는 밟혀서 밝다. 흙의 결은 타일 텍스처다(earthMat, 타일 하나가 5m).
+// 돌려주는 무리의 userData.height(x, z)로 그 자리의 땅 높이를 안다(바깥에 나무나 바위를 세울 때).
+export function makeLand({ radius, color, seed = 1, paths = [], clear = [], far = 46 }) {
+  const g = new THREE.Group();
+  const R1 = radius + 2, R2 = radius + far;
+  const s1 = seed * 0.37, s2 = seed * 0.73, s3 = seed * 1.31;
+  const noise = (x, z) => Math.sin(x * 0.21 + s1) * Math.sin(z * 0.17 + s2) * 0.5 + Math.sin(x * 0.07 + z * 0.11 + s3) * 0.5; // -1 ~ 1, 부드럽게 변한다
+  const smooth = (a, b, v) => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const height = (x, z) => {
+    const d = Math.hypot(x, z) - R1;
+    if (d <= 0) return 0;
+    const back = Math.min(1, Math.max(0, -(x + z) / (radius * 2)));
+    return smooth(0, 22, d) * (0.3 + 3.4 * back) * (0.65 + 0.35 * noise(x * 1.7, z * 1.7));
+  };
+  const toSeg = (x, z, a, b) => { // 점에서 선분까지의 거리
+    const dx = b.x - a.x, dz = b.z - a.z, t = Math.min(1, Math.max(0, ((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz || 1)));
+    return Math.hypot(x - a.x - dx * t, z - a.z - dz * t);
+  };
+  const tint = (x, z) => {
+    let trod = 0;
+    for (const [a, b] of paths) trod = Math.max(trod, 1 - smooth(0.4, 1.4, toSeg(x, z, a, b)));
+    for (const c of clear) trod = Math.max(trod, 1 - smooth(c.r, c.r + 1.4, Math.hypot(x - c.x, z - c.z)));
+    return 1 + 0.07 * noise(x, z) + 0.04 * noise(x * 2.9 + 5, z * 2.9) + 0.1 * trod - 0.14 * smooth(6, 40, Math.hypot(x, z) - R1); // 멀수록 조금 가라앉는다
+  };
+  const land = earthMat(color, { flatShading: false, vertexColors: true });
+  const sheet = (r0, r1, rings) => {
+    const geo = new THREE.RingGeometry(r0, r1, 72, rings).rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position, uv = geo.attributes.uv, col = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i), k = tint(x, z);
+      pos.setY(i, height(x, z));
+      col.set([k, k, k * (1 - 0.04 * noise(x * 0.6, z * 0.6))], i * 3); // 밝은 곳은 조금 누렇고 어두운 곳은 조금 붉다
+      uv.setXY(i, x / 5, z / 5);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.computeVertexNormals();
+    g.add(new THREE.Mesh(geo, land));
+  };
+  sheet(0.001, R1, 30);
+  if (far > 2) sheet(R1, R2, 18);
+  g.userData.height = height;
+  return g;
+}
+// 옷감의 색: 스테이지와 꾸미기가 주는 색을 자연 염료의 차분한 빛으로 누른다(채도를 낮추고, 아주 어둡거나 아주 밝은 색을 가운데로 모은다).
+// 붉은 옷은 벽돌빛으로, 자주는 흐린 자줏빛으로, 짙은 갈색은 덩어리로 뭉개지지 않는 중간 갈색으로, 흰 리넨은 타지 않는 밝기로 간다.
+const _hsl = { h: 0, s: 0, l: 0 };
+export function dye(hex) {
+  const c = new THREE.Color(hex);
+  c.getHSL(_hsl);
+  return c.setHSL(_hsl.h, _hsl.s * 0.6, 0.18 + _hsl.l * 0.68);
+}
 
 // 무리 안의 메시를 재질별로 하나씩 합친다(그리는 횟수를 줄인다). 움직이지 않는 장식 부품에만 쓴다.
 export function bake(group) {
@@ -199,25 +297,47 @@ const HAIR_R = {
   ring: { none: 0.26, crop: 0.27, curly: 0.34, crownbraid: 0.335, veil: 0.3, wavy: 0.29, longwave: 0.29 },
 };
 const hairR = (hair, kind) => HAIR_R[kind][hair] ?? 0.28;
-// 옷의 몸통 반지름(앞쪽 절반, 높이 y에서). [위 반지름, 아래 반지름, 위 y, 아래 y]. 허리·손 소품이 옷 안에 파묻히지 않게 이 값만큼 밀어낸다.
-const OUTFIT_BODY = {
-  tunic: [0.31, 0.38, 0.84, 0.22], traveler: [0.31, 0.38, 0.84, 0.22], cape: [0.31, 0.36, 0.85, 0.35], robe: [0.31, 0.46, 0.92, 0],
-  shepherd: [0.31, 0.4, 0.85, 0.15], girded: [0.31, 0.37, 0.83, 0.17], linen: [0.31, 0.36, 0.945, 0], coat: [0.31, 0.44, 0.92, 0],
-  figleaves: [0.33, 0.43, 0.69, 0.27], skins: [0.33, 0.42, 0.94, 0.16],
+// ---------- 몸(2026-11-14 새 공용 3D, docs/standards/art-3d.md "인물") ----------
+// 어른의 비례(일곱 등신에 가깝게, 2026-11-14 6B: 다섯 등신은 머리가 컸다): 머리·목·어깨·몸통·골반·다리·발이 따로 있다.
+// 예전 몸(큰 공 머리, 캡슐 몸통, 다리 없음)을 늘인 것이 아니고, 키를 키워 등신을 맞춘 것도 아니다(키는 그대로 1.68).
+// 치수는 인물 좌표(발밑이 0, 키 배수 1일 때). 걷기·앉기·절은 이 관절에서 움직인다(animateFigure, poseFigure).
+export const BODY = {
+  top: 1.68, // 정수리(머리카락 포함)
+  neckY: 1.37, shoulderY: 1.36, shoulderX: 0.21, // 팔의 축
+  waistY: 1.03, hipY: 0.86, hipX: 0.085, // 다리의 축
+  thigh: 0.42, shin: 0.44, // 넓적다리, 정강이와 발
+  arm: 0.6, // 어깨에서 손까지
+  depth: 0.76, // 몸통의 앞뒤 두께(너비에 대한 비)
 };
+// 머리의 틀: 머리·눈·머리카락·수염·머리 소품은 예전 좌표(머리 가운데 y 1.33, 반지름 0.26)로 만들고 이 틀이 새 몸의 목 위에 얹는다.
+// 그래서 머리 모양 열일곱 가지와 머리 소품, 꾸미기 조합 규칙(HEAD_FIT)이 그대로 맞는다. 긴 머리의 길이도 머리 크기를 따라 줄어든다.
+const HEAD_K = 0.43, HEAD_Y = BODY.top - 1.59 * HEAD_K; // 예전 정수리(1.59)가 키에 닿는다. 턱(1.01)은 목 위 1.43에 온다. 머리 높이 0.25(키의 6.7분의 1)
+const headPt = (x, y, z) => new THREE.Vector3(x * HEAD_K, HEAD_Y + y * HEAD_K, z * HEAD_K);
+// 가슴의 틀: 스테이지가 목·가슴에 거는 것(사슬, 줄)을 예전 좌표(목 아래 y 1.06, 몸통 반지름 0.31)로 달 수 있게 새 가슴에 맞춘다
+const CHEST_K = 0.62, CHEST_Y = BODY.neckY - 1.06 * CHEST_K;
+// 옷자락: 허리(waistY)에서 hem 높이까지 반지름이 0.17에서 r로 넓어진다. 허리 위는 가슴(0.19). stride는 걸음의 폭(긴 옷은 좁게 걷는다).
+const OUTFIT_SHAPE = {
+  tunic: { hem: 0.5, r: 0.235, stride: 1 }, traveler: { hem: 0.5, r: 0.235, stride: 1 }, cape: { hem: 0.55, r: 0.225, stride: 1 },
+  robe: { hem: 0.08, r: 0.275, stride: 0.55 }, shepherd: { hem: 0.36, r: 0.25, stride: 0.8 }, girded: { hem: 0.44, r: 0.23, stride: 1 },
+  linen: { hem: 0.08, r: 0.235, stride: 0.5 }, coat: { hem: 0.08, r: 0.27, stride: 0.55 },
+  figleaves: { hem: 0.62, r: 0.23, stride: 1 }, skins: { hem: 0.5, r: 0.24, stride: 1 },
+};
+// 높이 y에서 옷(또는 몸)의 바깥 반지름(옆 방향). 허리·손 소품이 옷 안에 파묻히지 않게 이 값만큼 밀어낸다.
 export function outfitR(outfit, y) {
-  const b = OUTFIT_BODY[outfit];
-  if (!b || y > b[2] || y < b[3]) return 0.28; // 옷이 없는 높이는 몸통(캡슐 0.28)
-  return b[0] + (b[1] - b[0]) * (b[2] - y) / (b[2] - b[3]);
+  const b = OUTFIT_SHAPE[outfit];
+  if (y >= BODY.waistY) return 0.19;
+  if (!b || y < b.hem) return 0.12; // 옷이 없는 높이는 다리
+  return 0.17 + (b.r - 0.17) * (BODY.waistY - y) / (BODY.waistY - b.hem);
 }
-// 손 소품: grip은 소품을 쥐는 자리(소품을 만든 인물 좌표), hand는 오른손을 둘 자리다. 소품은 오른손에 붙어 팔과 함께 움직이고,
+// 손 소품: grip은 소품을 쥐는 자리(소품을 만든 좌표), hand는 오른손을 뻗는 쪽(예전 어깨에서 본 방향)이다. 소품은 오른손에 붙어 팔과 함께 움직이고,
+// 소품의 모양과 grip은 예전 좌표 그대로 두고 새 팔의 손끝에 grip을 맞춘다. ground: 땅을 짚는 지팡이(아래 끝이 발밑에 온다). scale: 새 몸에 맞춘 크기.
 // 손에 무엇을 들면 그 팔은 걸을 때 흔들지 않는다(animateFigure). w·drop: 소품 반폭과 쥔 자리 아래로 내려오는 길이. 옷 반지름 + w보다 손이 몸에 가까우면 바깥으로 민다.
 // both: 두 팔로 가슴 앞에 안는다(어린양). 두 팔을 다 고정하고 소품은 몸 앞에 둔다.
 const LOW = [0.4, 0.55, 0.16], FRONT = [0.4, 0.7, 0.4];
 const HOLD = {
-  staff: { grip: [0.42, 0.58, 0.12], hand: LOW }, jstaff: { grip: [0.42, 0.58, 0.12], hand: LOW },
+  staff: { grip: [0.42, 0.58, 0.12], hand: LOW, ground: true }, jstaff: { grip: [0.42, 0.58, 0.12], hand: LOW, ground: true },
   sling: { grip: [0.42, 0.78, 0.12], hand: LOW, w: 0.08, drop: 0.4 }, horn: { grip: [0.44, 0.86, 0.1], hand: LOW, w: 0.1, drop: 0.1 },
-  jar: { grip: [0.36, 1.36, -0.05], hand: [0.5, 1.42, 0.02] },
+  jar: { grip: [0.39, 1.36, 0.1], hand: [0.5, 1.42, 0.02], scale: 1.3 }, // 어깨 위에 얹고 든 손이 주둥이 곁을 잡는다(물동이가 팔 뒤, 머리 옆에 온다)
   timbrel: { grip: [0.42, 0.66, 0.18], hand: FRONT }, palm: { grip: [0.42, 0.62, 0.12], hand: FRONT },
   olive: { grip: [0.42, 0.66, 0.14], hand: FRONT }, lyre: { grip: [0.42, 0.74, 0.2], hand: FRONT },
   lamp: { grip: [0.42, 0.72, 0.18], hand: FRONT }, scroll: { grip: [0.38, 0.75, 0.2], hand: FRONT },
@@ -228,16 +348,19 @@ const HOLD = {
   pipe: { hand: [0.15, 1.0, 0.42] }, // 입에 댄다: 피리는 입과 손 사이에 그린다(grip 없음)
   lamb: { both: true, hand: [0.2, 0.66, 0.44] },
   myrrh: { grip: [0.42, 0.67, 0.18], hand: FRONT }, alabaster: { grip: [0.42, 0.65, 0.18], hand: FRONT },
-  pearl: { grip: [0.42, 0.53, 0.18], hand: FRONT }, budrod: { grip: [0.42, 0.58, 0.12], hand: LOW },
+  pearl: { grip: [0.42, 0.53, 0.18], hand: FRONT }, budrod: { grip: [0.42, 0.58, 0.12], hand: LOW, ground: true },
   menorah: { grip: [0.42, 0.62, 0.16], hand: FRONT }, stars: { grip: [0.42, 0.56, 0.2], hand: FRONT },
 };
 // 허리 자리지만 몸 가운데에 두르거나 다는 것(옆 허리로 돌리지 않는다)
 const WAIST_CENTER = ['belt', 'breastplate'];
-const SHOULDER = new THREE.Vector3(0.33, 0.96, 0), ARM_LEN = 0.47;
-// 오른손을 t(인물 좌표)로 뻗는 팔 회전 [x, z]과 실제 손 자리. 팔은 한 마디라 길이가 모자라면 그 방향 끝까지 뻗는다.
-function aimArm(t) {
-  const n = new THREE.Vector3(...t).sub(SHOULDER).normalize();
-  return { rot: [Math.atan2(-n.z, -n.y), Math.asin(n.x)], hand: SHOULDER.clone().addScaledVector(n, ARM_LEN) };
+const OLD_SHOULDER = new THREE.Vector3(0.33, 0.96, 0); // HOLD의 hand가 기준으로 삼는 예전 어깨
+const SHOULDER = new THREE.Vector3(BODY.shoulderX, BODY.shoulderY, 0);
+// 오른손을 t(HOLD의 hand, 예전 어깨에서 본 방향) 쪽으로 뻗는 팔 회전 [x, z]과 새 몸에서의 손 자리. 팔은 곧은 한 마디라 그 방향 끝에 손이 온다.
+function aimArm(t, out = 1) {
+  const n = new THREE.Vector3(...t).sub(OLD_SHOULDER);
+  n.x *= out; n.z *= out; // out > 1: 넓은 옷을 비켜 바깥으로
+  n.normalize();
+  return { rot: [Math.atan2(-n.z, -n.y), Math.asin(n.x)], hand: SHOULDER.clone().addScaledVector(n, BODY.arm) };
 }
 
 // spec: { ghost?: 0xRRGGBB (반투명 관찰자), skin, hair, hairColor, outfit, outfitColor }
@@ -257,14 +380,36 @@ export function dressFigure(fig, spec) {
   fig.userData.height = spec.height ?? 1;
   const ghost = spec.ghost;
   // ghost: 천국의 빛나는 형체. aura: 지상의 사람 모습에 은은하게 도는 빛(사람들 눈에는 보이지 않는 존재라는 표시)
-  const m = (hex) => {
-    if (ghost !== undefined) return mat(new THREE.Color(ghost).lerp(new THREE.Color(hex), 0.25), { emissive: ghost, emissiveIntensity: 0.55, transparent: true, opacity: 0.72 });
-    if (spec.aura !== undefined) return mat(hex, { emissive: spec.aura, emissiveIntensity: 0.12 });
-    return mat(hex);
+  // 같은 색은 재질 하나를 함께 쓴다(같은 재질끼리 합쳐 그리는 횟수를 줄인다). 표면마다 거칠기가 다르다: 살갗은 조금 매끈하게, 천은 거칠게.
+  const mats = new Map();
+  // cloth: 옷감(dye로 차분하게 누른다). 원래 색은 material.userData.hex에 남는다(스테이지가 옷 재질을 원래 색으로 찾는다)
+  const m = (hex, rough = 0.92, cloth = false) => {
+    const key = `${hex}/${rough}/${cloth}`;
+    if (!mats.has(key)) {
+      const color = cloth && ghost === undefined ? dye(hex) : hex;
+      const made = ghost !== undefined ? mat(new THREE.Color(ghost).lerp(new THREE.Color(hex), 0.25), { emissive: ghost, emissiveIntensity: 0.55, transparent: true, opacity: 0.72 })
+        : spec.aura !== undefined ? mat(color, { roughness: rough, emissive: spec.aura, emissiveIntensity: 0.12 })
+          : mat(color, { roughness: rough });
+      made.userData.hex = hex;
+      mats.set(key, made);
+    }
+    return mats.get(key);
   };
-  const skin = m(spec.skin ?? PAL.skin);
-  const hairM = m(spec.hairColor ?? PAL.hairDark);
-  let into = rig; // 소품은 자리마다 무리에 모아 한꺼번에 옮긴다
+  const skin = m(spec.skin ?? PAL.skin, 0.7);
+  const hairM = m(spec.hairColor ?? PAL.hairDark, 0.85);
+  const cloth = m(spec.outfitColor ?? PAL.robe, 0.97, true); // 리넨: 거칠고 빛을 고르게 흩는다
+  // 몸의 무리: upper(허리 위 전부: 몸통·팔·머리·소품, 절할 때 엉덩이에서 굽는다), core(몸통과 옷, 앞뒤로 납작하게),
+  // headG(머리의 틀, 예전 머리 좌표), chestG(가슴의 틀, 스테이지가 목걸이·줄을 예전 좌표로 단다). 다리는 rig에 따로 둔다.
+  const upper = new THREE.Group(), core = new THREE.Group(), headG = new THREE.Group(), chestG = new THREE.Group();
+  core.scale.z = BODY.depth;
+  headG.position.y = HEAD_Y;
+  headG.scale.setScalar(HEAD_K);
+  chestG.position.y = CHEST_Y;
+  chestG.scale.setScalar(CHEST_K);
+  upper.add(core, headG, chestG);
+  rig.add(upper);
+  Object.assign(fig.userData, { upper, headG, chestG, held: null });
+  let into = headG; // 지금 만드는 부품이 들어갈 무리(머리부터 만든다). 소품은 자리마다 무리에 모아 한꺼번에 옮긴다
   const add = (geo, material, x, y, z, rx = 0) => {
     const mesh = new THREE.Mesh(geo, material);
     mesh.position.set(x, y, z);
@@ -278,17 +423,20 @@ export function dressFigure(fig, spec) {
   const hide = new Set([...(fit?.hide ?? []), ...(travelerHood ? TRAVELER_HIDE : [])]);
   const hp = (tag, geo, x, y, z) => (hide.has(tag) ? null : add(geo, hairM, x, y, z));
 
-  add(new THREE.CapsuleGeometry(0.28, 0.5, 3, 8), skin, 0, 0.62, 0);
-  add(new THREE.SphereGeometry(0.26, 8, 6), skin, 0, 1.3, 0);
-  for (const x of [-0.09, 0.09]) add(new THREE.BoxGeometry(0.05, 0.07, 0.03), m(PAL.eye), x, 1.33, 0.245);
+  // 머리(예전 머리 좌표): 둥근 머리통 아래에 턱을 이어 얼굴이 길다. 눈은 작고 차분하게(검은 칸으로 보이지 않게 짙은 갈색의 작은 점),
+  // 눈 위에 얕은 눈두덩 그늘, 코는 옆모습의 윤곽이다.
+  add(new THREE.SphereGeometry(0.26, 12, 9), skin, 0, 1.33, 0);
+  add(new THREE.SphereGeometry(0.2, 10, 7).scale(0.94, 0.95, 1), skin, 0, 1.19, 0.035);
+  for (const x of [-0.092, 0.092]) add(new THREE.SphereGeometry(0.026, 6, 5).scale(1.15, 1, 0.5), m(PAL.eye, 0.4), x, 1.325, 0.249);
+  add(new THREE.BoxGeometry(0.045, 0.1, 0.055), skin, 0, 1.25, 0.26);
 
   if (spec.hair && spec.hair !== 'none' && spec.hair !== 'veil') {
     // 짧은 머리(crop)는 정수리만 얇게 덮는다
     add(new THREE.SphereGeometry(spec.hair === 'crop' ? 0.27 : 0.28, 8, 6, 0, Math.PI * 2, 0, Math.PI * (spec.hair === 'crop' ? 0.42 : 0.55)), hairM, 0, 1.33, -0.02);
   }
   if (spec.hair === 'long') {
-    add(new THREE.BoxGeometry(0.46, 0.8, 0.12), hairM, 0, 1.02, -0.22);
-    for (const x of [-0.2, 0.2]) add(new THREE.BoxGeometry(0.11, 0.62, 0.1), hairM, x, 0.98, 0.13);
+    add(new THREE.BoxGeometry(0.46, 0.8, 0.12), hairM, 0, 1.02, -0.27); // 등 뒤로(새 몸의 등 바깥)
+    for (const x of [-0.2, 0.2]) add(new THREE.BoxGeometry(0.11, 0.62, 0.1), hairM, x, 0.98, 0.24); // 가슴 앞으로 넘긴 두 가닥
   }
   if (spec.hair === 'tied') {
     hp('top', new THREE.SphereGeometry(0.11, 6, 5), 0, 1.38, -0.3);
@@ -299,21 +447,21 @@ export function dressFigure(fig, spec) {
   }
   if (spec.hair === 'bun') hp('top', new THREE.SphereGeometry(0.14, 7, 5), 0, 1.58, -0.08);
   if (spec.hair === 'wavy') { // 물결 머리: 어깨에 닿는 굽은 머리 다발
-    add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hairM, 0, 1.15, -0.22);
-    for (const x of [-0.24, 0.24]) for (let i = 0; i < 3; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, x + Math.sin(i * 2) * 0.03, 1.22 - i * 0.12, 0.05);
+    add(new THREE.BoxGeometry(0.5, 0.5, 0.12), hairM, 0, 1.15, -0.27);
+    for (const x of [-0.24, 0.24]) for (let i = 0; i < 3; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, x + Math.sin(i * 2) * 0.03, 1.22 - i * 0.12, 0.05 + i * 0.1); // 아래 다발일수록 어깨 앞으로
   }
   if (spec.hair === 'twin') for (const x of [-0.26, 0.26]) { // 양갈래: 귀 뒤로 묶어 내린 두 다발
     hp('top', new THREE.SphereGeometry(0.07, 6, 5), x, 1.3, -0.12);
     for (let i = 0; i < 3; i++) add(new THREE.IcosahedronGeometry(0.06, 0), hairM, x * 1.08, 1.16 - i * 0.11, -0.12);
   }
   if (spec.hair === 'veil') { // 머릿수건: 머리를 덮고 등으로 늘어진 천(옷 색)
-    add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.58), m(spec.outfitColor ?? PAL.robe), 0, 1.32, -0.02);
-    add(new THREE.BoxGeometry(0.5, 0.55, 0.06), m(spec.outfitColor ?? PAL.robe), 0, 1.05, -0.26, 0.08);
+    add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.58), cloth, 0, 1.32, -0.02);
+    add(new THREE.BoxGeometry(0.5, 0.55, 0.06), cloth, 0, 1.05, -0.29, 0.08);
   }
   // 2026-11-03 F06 머리
   if (spec.hair === 'fringe') hp('brow', new THREE.BoxGeometry(0.4, 0.1, 0.08), 0, 1.47, 0.19);
   if (spec.hair === 'shoulder') {
-    add(new THREE.BoxGeometry(0.5, 0.42, 0.12), hairM, 0, 1.18, -0.22);
+    add(new THREE.BoxGeometry(0.5, 0.42, 0.12), hairM, 0, 1.18, -0.27);
     for (const x of [-0.22, 0.22]) add(new THREE.BoxGeometry(0.1, 0.36, 0.1), hairM, x, 1.2, 0.1);
   }
   if (spec.hair === 'side') {
@@ -325,18 +473,16 @@ export function dressFigure(fig, spec) {
     hp('back', new THREE.CylinderGeometry(0.04, 0.025, 0.6, 5), Math.cos(a) * 0.3, 1.06, -Math.sin(a) * 0.3 - 0.02);
   }
   if (spec.hair === 'longwave') { // 긴 물결(아 4:1): 허리까지 내려오는 머리와 굽이치는 옆 다발
-    add(new THREE.BoxGeometry(0.5, 0.95, 0.12), hairM, 0, 0.95, -0.22);
-    for (const x of [-0.23, 0.23]) for (let i = 0; i < 5; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, x + Math.sin(i * 1.7) * 0.03, 1.22 - i * 0.14, 0.04);
+    add(new THREE.BoxGeometry(0.5, 0.95, 0.12), hairM, 0, 0.95, -0.27);
+    for (const x of [-0.23, 0.23]) for (let i = 0; i < 5; i++) add(new THREE.IcosahedronGeometry(0.075, 0), hairM, x + Math.sin(i * 1.7) * 0.03, 1.22 - i * 0.14, 0.04 + i * 0.06);
   }
   if (spec.hair === 'crownbraid') for (let i = 0; i < 12; i++) { // 땋은 관(아 7:5): 머리 둘레에 땋아 두른 머리
     const a = (i / 12) * Math.PI * 2;
     hp('top', new THREE.IcosahedronGeometry(0.07, 0), Math.cos(a) * 0.25, 1.47, Math.sin(a) * 0.25 - 0.02);
   }
-  if (spec.beard === 'short') add(new THREE.BoxGeometry(0.3, 0.12, 0.12), hairM, 0, 1.17, 0.19);
-  if (spec.beard === 'long') {
-    add(new THREE.BoxGeometry(0.3, 0.1, 0.12), hairM, 0, 1.17, 0.19);
-    add(new THREE.ConeGeometry(0.13, 0.3, 6), hairM, 0, 1.0, 0.21, Math.PI);
-  }
+  // 수염: 턱의 아래 절반을 감싸는 둥근 면(얼굴에 붙은 네모로 보이지 않게). 긴 수염은 그 아래로 가슴 쪽에 늘어진다
+  if (spec.beard === 'short' || spec.beard === 'long') add(new THREE.SphereGeometry(0.212, 10, 5, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5).scale(0.96, 0.95, 1.02), hairM, 0, 1.185, 0.04);
+  if (spec.beard === 'long') add(new THREE.ConeGeometry(0.12, 0.34, 7), hairM, 0, 0.95, 0.17, Math.PI);
   if (spec.hair === 'curly') {
     add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), hairM, 0, 1.35, -0.05);
     for (let i = 0; i < 9; i++) {
@@ -347,96 +493,132 @@ export function dressFigure(fig, spec) {
     for (const [x, z] of [[0, 0.04], [-0.12, -0.08], [0.12, -0.08], [0, -0.18]]) hp('top', new THREE.IcosahedronGeometry(0.08, 0), x, 1.56, z);
   }
 
-  const cloth = m(spec.outfitColor ?? PAL.robe);
+  // ── 몸통과 옷(새 몸의 좌표). core 안에서 앞뒤로 납작해진다 ──
+  into = core;
+  const leather = m(PAL.bark, 0.8);
+  const W = BODY.waistY, S = BODY.shoulderY;
+  // 위 반지름 rt(높이 yt)에서 아래 반지름 rb(높이 yb)까지의 통
+  const tube = (rt, rb, yt, yb, material, seg = 10, open = false) => add(new THREE.CylinderGeometry(rt, rb, yt - yb, seg, 1, open), material, 0, (yt + yb) / 2, 0);
+  // 맨몸: 골반, 허리에서 가슴으로 넓어지는 몸통, 어깨. 옷이 덮는 곳은 만들지 않는다
+  const torso = (material, pelvis = true) => {
+    if (pelvis) tube(0.15, 0.165, W + 0.02, 0.8, material, 8);
+    tube(0.185, 0.15, S, W, material, 8);
+    add(new THREE.SphereGeometry(0.185, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.38, 1), material, 0, S, 0);
+  };
+  add(new THREE.CylinderGeometry(0.046, 0.062, 0.12, 7), skin, 0, S + 0.06, 0); // 목: 어깨에서 턱 밑까지
+  const shape = OUTFIT_SHAPE[spec.outfit];
+  // 웃옷: 어깨를 덮고 허리로 좁아진다
+  const bodice = (material) => {
+    tube(0.195, 0.172, S, W - 0.01, material);
+    add(new THREE.SphereGeometry(0.195, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.4, 1), material, 0, S, 0);
+  };
+  // 옷자락: 허리에서 hem까지 넓어지고, 앞에 세로 주름이 두 줄 잡힌다(천이 접힌 자리)
+  const skirt = (material) => {
+    const { hem, r } = shape;
+    tube(0.172, r, W, hem, material, 12);
+    for (const x of [-0.06, 0.07]) {
+      const fold = add(new THREE.BoxGeometry(0.035, W - hem - 0.04, 0.03), material, x, (W + hem) / 2 - 0.02, (0.172 + r) / 2 + 0.006);
+      fold.rotation.x = -Math.atan2(r - 0.172, W - hem);
+    }
+  };
+  // 허리끈: 허리를 두르고 한쪽 끝이 앞으로 늘어진다
+  const sash = (r = 0.18, y = W) => {
+    add(new THREE.TorusGeometry(r, 0.028, 4, 12), leather, 0, y, 0, Math.PI / 2);
+    add(new THREE.BoxGeometry(0.04, 0.2, 0.025), leather, -0.07, y - 0.11, r + 0.02);
+  };
+  // 겉에 걸친 천: 왼 어깨에서 오른 허리로 비스듬히 두른다(겹쳐 입은 리넨)
+  const wrap = (material) => {
+    const w = add(new THREE.CylinderGeometry(0.205, 0.2, S - W + 0.14, 10, 1, true, -0.6, Math.PI * 1.25), material, 0, (S + W) / 2 - 0.02, 0);
+    w.rotation.z = 0.32;
+  };
   // 망토: 목에서 여며 어깨부터 늘어지고 아래로 갈수록 넓어지는 천(원뿔대의 뒤쪽 절반). 목 앞에 여밈 장식.
   function addCape(material) {
     const back = material.clone();
     back.side = THREE.DoubleSide;
-    add(new THREE.CylinderGeometry(0.25, 0.56, 0.98, 10, 1, true, Math.PI / 2, Math.PI), back, 0, 0.6, -0.02);
-    add(new THREE.CylinderGeometry(0.27, 0.3, 0.1, 10), material, 0, 1.06, 0); // 목둘레 깃
-    add(new THREE.IcosahedronGeometry(0.06, 0), m(PAL.gold), 0, 1.04, 0.27);
+    add(new THREE.CylinderGeometry(0.2, 0.34, 0.96, 10, 1, true, Math.PI / 2, Math.PI), back, 0, S + 0.04 - 0.48, -0.02); // 어깨에서 종아리까지
+    tube(0.1, 0.205, S + 0.07, S - 0.03, material, 10); // 목둘레 깃
+    add(new THREE.IcosahedronGeometry(0.035, 0), m(PAL.gold, 0.45), 0, S + 0.01, 0.2);
   }
-  // 어깨: 몸통 윗부분을 천으로 덮는다(옷이 허리 아래만 가린 치마처럼 보이지 않게)
-  const shoulders = (material) => add(new THREE.SphereGeometry(0.31, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.5), material, 0, 0.84, 0);
-  const sash = (y, r) => add(new THREE.TorusGeometry(r, 0.04, 4, 10), m(PAL.bark), 0, y, 0, Math.PI / 2);
   switch (spec.outfit) {
-    case 'tunic':
-      add(new THREE.CylinderGeometry(0.31, 0.38, 0.62, 8), cloth, 0, 0.53, 0);
-      shoulders(cloth);
-      sash(0.62, 0.32);
-      break;
-    case 'cape':
-      add(new THREE.CylinderGeometry(0.31, 0.36, 0.5, 8), cloth, 0, 0.6, 0);
-      shoulders(cloth);
-      addCape(cloth);
-      break;
-    case 'robe': // 두루마기: 어깨에서 발목까지 덮고 아래로 넓어지는 긴 옷, 허리띠
-      add(new THREE.CylinderGeometry(0.31, 0.46, 0.92, 8), cloth, 0, 0.46, 0);
-      shoulders(cloth);
-      sash(0.66, 0.34);
-      break;
-    case 'shepherd':
-      add(new THREE.CylinderGeometry(0.31, 0.4, 0.7, 8), cloth, 0, 0.5, 0);
-      shoulders(cloth);
-      sash(0.72, 0.32);
-      break;
+    case 'tunic': bodice(cloth); skirt(cloth); sash(); break; // 무릎까지 오는 속옷과 허리끈
+    case 'cape': bodice(cloth); skirt(cloth); addCape(cloth); break;
+    case 'robe': bodice(cloth); skirt(cloth); sash(0.182); break; // 두루마기: 어깨에서 발목까지 덮고 아래로 넓어지는 긴 옷, 허리끈
+    case 'shepherd': bodice(cloth); skirt(cloth); wrap(cloth); sash(0.186, W + 0.01); break; // 목자: 겉에 한 겹 더 두른다
     case 'traveler':
-      add(new THREE.CylinderGeometry(0.31, 0.38, 0.62, 8), cloth, 0, 0.53, 0);
-      shoulders(cloth);
-      addCape(cloth);
-      if (travelerHood) add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth, 0, 1.25, -0.12, -0.5);
+      bodice(cloth); skirt(cloth); addCape(cloth);
+      if (travelerHood) { into = headG; add(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth, 0, 1.25, -0.12, -0.5); into = core; }
       break;
     case 'girded': { // 띠 띤 옷(왕상 18:46 허리를 동이고): 넓은 허리띠와 어깨에서 허리로 맨 끈
-      add(new THREE.CylinderGeometry(0.31, 0.37, 0.66, 8), cloth, 0, 0.5, 0);
-      shoulders(cloth);
-      add(new THREE.CylinderGeometry(0.33, 0.34, 0.1, 10), m(PAL.bark), 0, 0.66, 0);
-      const strap = add(new THREE.BoxGeometry(0.06, 0.62, 0.04), m(PAL.bark), 0.02, 0.96, 0.27);
-      strap.rotation.z = 0.6;
+      bodice(cloth); skirt(cloth);
+      tube(0.187, 0.187, W + 0.05, W - 0.05, leather, 10);
+      const band = add(new THREE.BoxGeometry(0.04, 0.42, 0.03), leather, 0.01, (S + W) / 2, 0.195);
+      band.rotation.z = 0.6;
       break;
     }
     case 'linen': // 세마포 옷(출 28:39): 발목까지 곧게 내려오는 옷과 금빛 목깃
-      add(new THREE.CylinderGeometry(0.31, 0.36, 0.95, 8), cloth, 0, 0.47, 0);
-      shoulders(cloth);
-      add(new THREE.TorusGeometry(0.2, 0.035, 4, 10), m(PAL.gold), 0, 1.08, 0, Math.PI / 2);
+      bodice(cloth); skirt(cloth);
+      add(new THREE.TorusGeometry(0.105, 0.022, 4, 12), m(PAL.gold, 0.45), 0, S + 0.03, 0, Math.PI / 2);
       break;
-    case 'coat': { // 채색옷(창 37:3, 상점): 발목까지 오는 옷에 여러 빛깔 띠
-      add(new THREE.CylinderGeometry(0.31, 0.44, 0.92, 8), cloth, 0, 0.46, 0);
-      shoulders(cloth);
+    case 'coat': // 채색옷(창 37:3, 상점): 발목까지 오는 옷에 여러 빛깔 띠
+      bodice(cloth); skirt(cloth);
       [0xb8452f, 0xe0b040, 0x3f5a8a, 0x6b8a3a, 0x6e3f73].forEach((hex, i) => {
-        const y = 0.1 + i * 0.17, r = 0.44 - 0.13 * (y / 0.92) + 0.012;
-        add(new THREE.CylinderGeometry(r - 0.01, r, 0.07, 8, 1, true), m(hex), 0, y, 0);
+        const y = 0.16 + i * 0.16;
+        tube(outfitR('coat', y + 0.03) + 0.006, outfitR('coat', y - 0.03) + 0.006, y + 0.03, y - 0.03, m(hex, 0.97, true), 12, true);
       });
       break;
-    }
-    case 'figleaves': add(new THREE.CylinderGeometry(0.33, 0.43, 0.42, 7), m(PAL.fig), 0, 0.48, 0); break;
-    case 'skins':
-      add(new THREE.CylinderGeometry(0.33, 0.42, 0.78, 7), m(PAL.skins), 0, 0.55, 0);
-      add(new THREE.BoxGeometry(0.12, 0.5, 0.06), m(PAL.skins), 0.14, 1.0, 0.2, 0.2);
+    case 'figleaves': torso(skin); tube(0.172, shape.r, W, shape.hem, m(PAL.fig, 0.95), 7); break;
+    case 'skins': { // 가죽옷(창 3:21): 한쪽 어깨에 걸친 가죽
+      const hide = m(PAL.skins, 0.98);
+      torso(skin, false);
+      tube(0.192, 0.172, S - 0.1, W, hide, 8);
+      tube(0.172, shape.r, W, shape.hem, hide, 7);
+      const band = add(new THREE.BoxGeometry(0.08, 0.3, 0.04), hide, 0.1, S - 0.02, 0.14);
+      band.rotation.z = -0.5;
       break;
-    default: break;
+    }
+    default: torso(skin); break; // 옷이 없으면 맨몸(몸의 세부는 그리지 않는다)
   }
 
-  // 팔: 어깨에 축을 둔 무리(걷기·안기·들기에 따라 돌린다). 옷이 있으면 소매는 옷 색, 끝은 손.
-  const sleeve = spec.outfit && !['figleaves'].includes(spec.outfit) ? (spec.outfit === 'skins' ? m(PAL.skins) : cloth) : skin;
+  // 팔: 어깨에 축을 둔 무리(걷기·안기·들기에 따라 돌린다). 위팔·아래팔·손, 옷이 있으면 소매(긴 옷은 손목까지, 짧은 옷은 위팔까지).
+  const sleeve = !shape || ['figleaves', 'skins'].includes(spec.outfit) ? 0 : ['robe', 'linen', 'coat'].includes(spec.outfit) ? 0.5 : 0.24;
   fig.userData.arms = [-1, 1].map((side) => {
     const arm = new THREE.Group();
-    arm.position.set(side * 0.33, 0.96, 0);
+    arm.position.set(side * BODY.shoulderX, BODY.shoulderY, 0);
     arm.rotation.z = side * 0.12;
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.34, 2, 6), sleeve);
-    upper.position.y = -0.22;
-    const hand = new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 0), skin);
-    hand.position.y = -0.47;
-    arm.add(upper, hand);
-    rig.add(arm);
+    const piece = (geo, material, y) => { const p = new THREE.Mesh(geo, material); p.position.y = y; arm.add(p); };
+    piece(new THREE.CapsuleGeometry(0.05, 0.2, 2, 6), skin, -0.15);
+    piece(new THREE.CapsuleGeometry(0.042, 0.2, 2, 6), skin, -0.43);
+    piece(new THREE.IcosahedronGeometry(0.05, 0).scale(0.85, 1.15, 0.7), skin, -BODY.arm);
+    if (sleeve) piece(new THREE.CylinderGeometry(0.066, 0.084, sleeve, 7), cloth, -sleeve / 2 - 0.01);
+    upper.add(arm);
     return arm;
+  });
+  // 다리: 엉덩이에 축을 둔 무리 안에 무릎 아래(정강이와 발)의 무리가 있다. 걷기·앉기·무릎 꿇기는 poseFigure가 돌린다.
+  fig.userData.stride = shape?.stride ?? 1;
+  const sole = m(PAL.skins, 0.9);
+  fig.userData.legs = [-1, 1].map((side) => {
+    const leg = new THREE.Group(), knee = new THREE.Group();
+    leg.position.set(side * BODY.hipX, BODY.hipY, 0);
+    knee.position.y = -BODY.thigh;
+    const piece = (to, geo, material, y, z = 0) => { const p = new THREE.Mesh(geo, material); p.position.set(0, y, z); to.add(p); };
+    piece(leg, new THREE.CapsuleGeometry(0.066, 0.28, 2, 6), skin, -BODY.thigh / 2);
+    piece(knee, new THREE.CapsuleGeometry(0.05, 0.28, 2, 6), skin, -0.2);
+    piece(knee, new THREE.BoxGeometry(0.085, 0.06, 0.2), skin, -(BODY.shin - 0.045), 0.045); // 발
+    piece(knee, new THREE.BoxGeometry(0.095, 0.02, 0.22), sole, -(BODY.shin - 0.01), 0.045); // 신 바닥
+    piece(knee, new THREE.BoxGeometry(0.09, 0.02, 0.03), sole, -(BODY.shin - 0.085), 0.03); // 발등을 가로지른 신 끈
+    leg.add(knee);
+    leg.userData.knee = knee;
+    rig.add(leg);
+    return leg;
   });
 
   fig.userData.hold = null;
-  const strap = () => { into = rig; const st = add(new THREE.BoxGeometry(0.05, 0.66, 0.04), m(PAL.skins), 0, 0.86, 0.3); st.rotation.z = -0.75; }; // 오른 어깨에서 왼 허리로 맨 끈
+  const strap = () => { into = core; const st = add(new THREE.BoxGeometry(0.045, 0.52, 0.03), m(PAL.skins, 0.9), 0, (S + W) / 2, 0.2); st.rotation.z = -0.72; }; // 오른 어깨에서 왼 허리로 맨 끈
   for (const [slot, prop] of [['hand', spec.item], ['waist', spec.waist], ['head', spec.head]]) {
   if (!prop || prop === 'none') continue;
   const g = new THREE.Group();
-  rig.add(g);
+  g.name = prop; // 소품의 이름(스테이지가 손에 든 것이 무엇인지 이 이름으로 안다)
+  (slot === 'head' ? headG : upper).add(g); // 머리 소품은 머리의 틀(예전 머리 좌표)에, 나머지는 허리 위 무리에
   into = g;
   switch (prop) {
     case 'staff': add(new THREE.CylinderGeometry(0.035, 0.035, 1.7, 5), m(PAL.bark), 0.42, 0.85, 0.12); break;
@@ -507,7 +689,7 @@ export function dressFigure(fig, spec) {
       for (const [x, z, c] of [[-0.06, 0, PAL.fruit], [0.06, 0.03, 0xf2cf66], [0, -0.05, 0x9a4fd0]]) add(new THREE.IcosahedronGeometry(0.06, 0), m(c), 0.42 + x, 0.72, 0.16 + z);
       break;
     case 'lamb': { // 어린양(창 4:2): 품에 안은 작은 양
-      const z = outfitR(spec.outfit, 0.72) + 0.13; // 옷 앞에 닿게
+      const z = 0.44; // 예전 가슴 앞. 새 몸의 가슴 앞으로는 아래에서 무리째 옮긴다
       add(new THREE.IcosahedronGeometry(0.17, 1).scale(1.25, 0.85, 0.75), m(0xf3efe6), -0.03, 0.74, z);
       add(new THREE.BoxGeometry(0.11, 0.12, 0.12), m(0x3a302a), 0.22, 0.84, z + 0.02);
       for (const x of [-0.07, 0.05]) add(new THREE.BoxGeometry(0.04, 0.12, 0.04), m(0x3a302a), x, 0.6, z + 0.05);
@@ -530,7 +712,7 @@ export function dressFigure(fig, spec) {
       for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; const lf = add(new THREE.BoxGeometry(0.1, 0.04, 0.06), m(0x5e8a3a), Math.cos(a) * 0.26, 1.45, Math.sin(a) * 0.26); lf.rotation.y = Math.PI / 2 - a; }
       break;
     case 'nosering': // 금 코걸이(창 24:22): 코 아래 작은 금 고리
-      add(new THREE.TorusGeometry(0.035, 0.012, 4, 8), m(PAL.gold), 0, 1.27, 0.26);
+      add(new THREE.TorusGeometry(0.035, 0.012, 4, 8), m(PAL.gold, 0.45), 0, 1.2, 0.3); // 코끝 아래
       break;
     case 'waterskin': // 가죽 부대(창 21:14): 어깨끈과 허리의 불룩한 부대
       add(new THREE.IcosahedronGeometry(0.16, 1).scale(0.8, 1, 0.7), m(PAL.skins), -0.36, 0.62, 0.02);
@@ -584,15 +766,17 @@ export function dressFigure(fig, spec) {
       for (let i = 0; i < 3; i++) add(new THREE.TorusGeometry(0.25 - i * 0.04, 0.06, 5, 12), m(0xf1ead8), 0, 1.44 + i * 0.07, -0.02, Math.PI / 2);
       break;
     case 'pipe': { // 피리(삼상 10:5): 입에 대는 가는 관
-      const mouth = new THREE.Vector3(0.03, 1.19, 0.27), dir = aimArm(HOLD.pipe.hand).hand.sub(mouth).normalize();
-      const p = add(new THREE.CylinderGeometry(0.025, 0.03, 0.42, 6), m(0xc9a46a), 0, 0, 0);
-      p.position.copy(mouth).addScaledVector(dir, 0.21);
+      const mouth = headPt(0.03, 1.17, 0.27), dir = aimArm(HOLD.pipe.hand).hand.sub(mouth).normalize(); // 입(머리의 틀)에서 손까지
+      const p = add(new THREE.CylinderGeometry(0.02, 0.024, 0.36, 6), m(0xc9a46a), 0, 0, 0);
+      p.position.copy(mouth).addScaledVector(dir, 0.18);
       p.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
       break;
     }
-    case 'belt': // 금띠(계 1:13): 허리에 두른 금빛 띠
-      add(new THREE.TorusGeometry(outfitR(spec.outfit, 0.74) + 0.03, 0.05, 4, 12), m(PAL.gold), 0, 0.74, 0, Math.PI / 2);
+    case 'belt': { // 금띠(계 1:13): 허리에 두른 금빛 띠(새 몸의 허리, 몸통처럼 앞뒤로 납작하다)
+      const b = add(new THREE.TorusGeometry(0.19, 0.034, 4, 14), m(PAL.gold, 0.45), 0, BODY.waistY + 0.02, 0, Math.PI / 2);
+      b.scale.y = BODY.depth + 0.03;
       break;
+    }
     case 'censer': { // 금 향로(계 8:3): 사슬에 매단 향로와 피어오르는 연기
       add(new THREE.CylinderGeometry(0.1, 0.07, 0.12, 8), m(PAL.gold), 0.42, 0.55, 0.16);
       add(new THREE.BoxGeometry(0.015, 0.3, 0.015), m(PAL.gold), 0.42, 0.74, 0.16);
@@ -627,11 +811,12 @@ export function dressFigure(fig, spec) {
       }
       break;
     case 'breastplate': { // 판결 흉패(출 28:15): 가슴 앞에 매단 금 판과 네 줄 보석 열두 개
-      const z = Math.max(0.31, outfitR(spec.outfit, 0.9)) + 0.02;
-      add(new THREE.BoxGeometry(0.22, 0.25, 0.03), m(PAL.gold), 0, 0.9, z);
+      const z = 0.195 * BODY.depth + 0.014, gold = m(PAL.gold, 0.45); // 새 몸의 가슴 앞
+      const y = BODY.shoulderY - 0.15; // 가슴 한가운데
+      add(new THREE.BoxGeometry(0.17, 0.19, 0.024), gold, 0, y, z);
       [0xb8452f, 0x3f8a3a, 0x3f5a8a, 0xe0b040, 0x6e3f73, 0xf1ead8, 0x7fd6d0, 0x8a2a3a, 0x2f7d3a, 0xd9a63a, 0x5a3a22, 0x9fd0ff]
-        .forEach((hex, i) => add(new THREE.BoxGeometry(0.045, 0.04, 0.02), m(hex), (i % 3 - 1) * 0.065, 0.99 - Math.floor(i / 3) * 0.06, z + 0.02));
-      for (const x of [-0.09, 0.09]) add(new THREE.BoxGeometry(0.02, 0.14, 0.02), m(PAL.gold), x, 1.07, z - 0.02);
+        .forEach((hex, i) => add(new THREE.BoxGeometry(0.035, 0.03, 0.016), m(hex, 0.5), (i % 3 - 1) * 0.05, y + 0.068 - Math.floor(i / 3) * 0.045, z + 0.016));
+      for (const x of [-0.07, 0.07]) add(new THREE.BoxGeometry(0.016, 0.11, 0.016), gold, x, y + 0.14, z - 0.012);
       break;
     }
     case 'goldplate': // 성결 금패(출 28:36): 이마 앞 순금 패와 머리를 두른 청색 끈
@@ -657,37 +842,46 @@ export function dressFigure(fig, spec) {
     g.scale.setScalar(k);
     g.position.y = 1.33 * (1 - k);
   }
-  if (slot === 'waist' && !WAIST_CENTER.includes(prop)) { // 왼쪽 옆구리에서 앞 허리로 돌려 걷는 팔과 비키고, 옷이 넓으면 그만큼 밀어낸다
-    const a = 0.6, d = Math.max(0, outfitR(spec.outfit, 0.6) - 0.335);
+  if (slot === 'waist' && !WAIST_CENTER.includes(prop)) {
+    // 허리 소품은 예전 좌표(왼쪽 허리 x -0.335, y 0.62)로 만들었다. 왼쪽 옆구리에서 앞 허리로 돌려 걷는 팔과 비키고,
+    // 새 몸의 허리 높이와 옷의 바깥(앞뒤로 납작한 몸통이라 비스듬한 쪽은 조금 안쪽)에 맞춰 옮긴다
+    const a = 0.6, d = outfitR(spec.outfit, BODY.waistY - 0.08) * 0.92 - 0.335;
     g.rotation.y = a;
-    g.position.set(-d * Math.cos(a), 0, d * Math.sin(a));
+    g.position.set(-d * Math.cos(a), BODY.waistY - 0.62, d * Math.sin(a));
   }
   if (slot === 'hand') {
     const h = HOLD[prop] ?? { grip: [0.42, 0.75, 0.15], hand: LOW };
-    const t = [...h.hand];
-    if (h.w) { // 넓은 옷: 소품 아래 끝 높이의 옷 반지름보다 바깥으로
-      const need = outfitR(spec.outfit, t[1] - (h.drop ?? 0)) + h.w + 0.02, r = Math.hypot(t[0], t[2]);
-      if (r < need) { t[0] *= need / r; t[2] *= need / r; }
-    }
-    const { rot, hand } = aimArm(t);
+    const k = h.scale ?? 1;
+    let aim = aimArm(h.hand);
+    // 넓은 옷: 손이 소품 아래 끝 높이의 옷 반지름보다 안쪽이면 팔을 조금씩 바깥으로 벌린다
+    if (h.w) for (let out = 1.15; out < 2.6 && Math.hypot(aim.hand.x, aim.hand.z) < outfitR(spec.outfit, aim.hand.y - (h.drop ?? 0)) + h.w + 0.02; out += 0.15) aim = aimArm(h.hand, out);
+    const { rot, hand } = aim;
     const [left, right] = fig.userData.arms;
-    if (h.both) {
+    if (h.both) { // 두 팔로 가슴 앞에 안는다: 소품은 새 몸의 가슴 앞으로 옮기고 몸에 둔다
       fig.userData.hold = [[rot[0], -rot[1]], rot];
+      g.position.set(0, BODY.waistY + 0.1 - 0.74, 0.195 * BODY.depth + 0.13 - 0.44);
+      left.rotation.set(rot[0], 0, -rot[1]);
+      right.rotation.set(rot[0], 0, rot[1]);
     } else {
       fig.userData.hold = [null, rot];
-      if (h.grip) g.position.copy(hand).sub(new THREE.Vector3(...h.grip));
+      g.scale.setScalar(k);
+      if (h.grip) g.position.copy(hand).sub(new THREE.Vector3(...h.grip).multiplyScalar(k)); // 소품의 쥐는 자리를 손끝에
+      if (h.ground) g.position.y = 0; // 지팡이: 아래 끝이 발밑에
       right.rotation.set(rot[0], 0, rot[1]);
-      rig.updateMatrixWorld(true);
       right.attach(g); // 손에 붙여 팔과 함께 움직인다
+      fig.userData.held = g; // 손에 든 소품의 무리(스테이지가 물동이의 주둥이 같은 자리를 이 무리의 좌표로 찾는다)
     }
-    if (h.both) { left.rotation.set(rot[0], 0, -rot[1]); right.rotation.set(rot[0], 0, rot[1]); }
   }
   }
+  // 움직이지 않는 부품(머리, 몸통과 옷)은 재질별로 합친다. 팔·다리·손 소품은 따로 움직이므로 합치지 않는다
+  bake(headG);
+  bake(core);
+  poseFigure(fig);
 
   // 지상 모습: 발밑의 빛 고리
   if (spec.aura !== undefined) {
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.42, 0.56, 20),
+      new THREE.RingGeometry(0.32, 0.44, 20),
       new THREE.MeshBasicMaterial({ color: spec.aura, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }),
     );
     ring.rotation.x = -Math.PI / 2;
@@ -722,14 +916,54 @@ export function animateFigure(fig, speed, dt, t, ref = 4) {
   const idle = 1 - s;
   const talk = u.talk ?? 0;
   if (talk > 0) u.talk = Math.max(0, talk - dt * 0.9);
-  rig.position.y = Math.abs(Math.sin(p)) * 0.13 * s + Math.abs(Math.sin(t * 9)) * 0.05 * talk;
-  rig.rotation.x = 0.14 * s + Math.sin(t * 7) * 0.06 * talk;
-  rig.rotation.z = Math.sin(p) * 0.06 * s + Math.sin(t * 0.9 + (u.seed ??= Math.random() * 6)) * 0.025 * idle;
+  // 어른의 걸음: 몸은 조금만 오르내리고 조금만 숙인다. 다리가 걷고(poseFigure) 팔은 다리와 엇갈려 흔든다. 말할 때는 고개를 끄덕인다.
+  rig.position.y = Math.abs(Math.sin(p)) * 0.035 * s + Math.abs(Math.sin(t * 9)) * 0.015 * talk;
+  rig.rotation.x = 0.06 * s;
+  rig.rotation.z = Math.sin(p) * 0.025 * s + Math.sin(t * 0.9 + (u.seed ??= Math.random() * 6)) * 0.012 * idle;
+  if (u.headG) { // 고개: 목을 축으로 끄덕인다(머리의 틀은 원점이 목보다 아래라, 돌린 만큼 자리를 되돌려 목 위에 머물게 한다)
+    const a = Math.sin(t * 7) * 0.1 * talk + 0.04 * s, n = BODY.neckY + 0.035 - HEAD_Y;
+    u.headG.rotation.x = a;
+    u.headG.position.set(0, HEAD_Y + n * (1 - Math.cos(a)), -n * Math.sin(a));
+  }
   if (u.armPose) setArms(fig, u.armPose);
-  else u.arms?.forEach((arm, i) => { const hold = u.hold?.[i]; if (hold) { arm.rotation.x = hold[0]; arm.rotation.z = hold[1]; return; } arm.rotation.x = Math.sin(p + (i ? Math.PI : 0)) * 0.55 * s + Math.sin(t * 1.2 + i) * 0.04 * idle - 0.3 * talk * (i ? 1 : 0); arm.rotation.z = (i ? 1 : -1) * 0.12; });
-  if (u.limp && s > 0) { rig.rotation.z += Math.max(0, Math.sin(p)) * 0.16 * s; rig.position.y -= Math.max(0, Math.sin(p)) * 0.08 * s; }
+  else u.arms?.forEach((arm, i) => { const hold = u.hold?.[i]; if (hold) { arm.rotation.x = hold[0]; arm.rotation.z = hold[1]; return; } arm.rotation.x = Math.sin(p + (i ? Math.PI : 0)) * 0.5 * s + Math.sin(t * 1.2 + i) * 0.03 * idle - 0.3 * talk * (i ? 1 : 0); arm.rotation.z = (i ? 1 : -1) * 0.12; });
+  if (u.limp && s > 0) { rig.rotation.z += Math.max(0, Math.sin(p)) * 0.1 * s; rig.position.y -= Math.max(0, Math.sin(p)) * 0.03 * s; } // 저는 걸음: 한쪽 발을 디딜 때마다 그쪽으로 기운다
   const h = u.height ?? 1;
-  rig.scale.set(h, h * (1 + Math.sin(t * 2 + u.seed) * 0.015 * idle), h);
+  rig.scale.set(h, h * (1 + Math.sin(t * 2 + u.seed) * 0.006 * idle), h);
+  poseFigure(fig, p, s);
+}
+
+// 다리와 허리(2026-11-14 새 몸). 스테이지와 장면은 예전처럼 rig만 움직인다: rig.rotation.x로 숙이고, rig.position.y로 낮추고, pose로 자세의 이름을 건다.
+// 이 함수가 그 값을 읽어 몸에 옮긴다.
+//  - 숙이면 허리 위(upper)만 엉덩이에서 굽고 다리는 제자리에서 땅을 딛는다(몸 전체가 널빤지처럼 기울지 않는다).
+//  - 낮추면 무릎이 굽는다. pose가 'sit'이면 넓적다리가 앞으로 나가 앉고, 그 밖에는 무릎을 꿇는다(엎드려 절하기, 주저앉기).
+//  - 눕기(pose 'lie')와 깊이 젖힌 몸(1.5 이상)은 굽히지 않고 통째로 눕는다.
+//  - phase·s를 주면 걷는다: 다리가 엇갈려 앞뒤로 가고, 앞으로 나가는 다리의 무릎이 굽는다. 긴 옷은 걸음이 좁다(stride).
+// 걷거나 선 인물은 animateFigure가 부르고, 자세를 잡은 인물(pose)은 장면의 update가 프레임마다 부른다(field.js, eden.js, cain.js).
+export function poseFigure(fig, phase = 0, s = 0) {
+  const u = fig.userData, { rig, upper, legs } = u;
+  if (!legs) return;
+  const lie = u.pose === 'lie', sit = u.pose === 'sit', H = BODY.hipY;
+  const x = rig.rotation.x;
+  const bend = lie || x < 0 ? 0 : x * Math.min(1, Math.max(0, (1.5 - x) / 0.2)); // 뒤로 젖힐 때(눕고 일어날 때)는 굽히지 않는다
+  const c = Math.cos(bend), sn = Math.sin(bend);
+  upper.position.set(0, H * c - H, -H * sn); // 엉덩이가 제자리에 남게 허리 위를 되돌려 놓는다
+  const drop = lie ? 0 : Math.max(0, -rig.position.y / (rig.scale.y || 1));
+  const fold = drop > 0.01 ? Math.acos(Math.max(-0.3, 1 - drop / (sit ? BODY.thigh : BODY.shin))) : 0;
+  const amp = 0.5 * (u.stride ?? 1) * s;
+  legs.forEach((leg, i) => {
+    const ph = phase + (i ? Math.PI : 0);
+    leg.position.set((i ? 1 : -1) * BODY.hipX, H * c, -H * sn);
+    leg.rotation.x = -bend - (sit ? fold : 0) - Math.sin(ph) * amp;
+    leg.userData.knee.rotation.x = fold + Math.max(0, Math.cos(ph)) * 1.3 * amp;
+  });
+}
+// 오른손의 자리(월드 좌표). 장면이 손에 든 물체를 여기에 둔다
+export function handOf(fig, out = new THREE.Vector3()) {
+  const arm = fig.userData.arms?.[1];
+  if (!arm) { fig.updateMatrixWorld(true); return fig.localToWorld(out.set(BODY.shoulderX, 0.8, 0.2)); }
+  arm.updateWorldMatrix(true, false);
+  return arm.localToWorld(out.set(0, -BODY.arm, 0.03));
 }
 
 // 쓰러진다(창 4:8). 휘청이다 무릎이 꺾이고, 무게에 끌려 점점 빨라지며 옆으로 넘어진 뒤 바닥에서 한 번 튄다.
@@ -739,10 +973,12 @@ export async function collapseFigure(fig) {
   fig.userData.pose = 'lie';
   const h = fig.userData.height ?? 1;
   rig.scale.setScalar(h);
-  await tween(260, (p) => { rig.rotation.set(-0.3 * Math.sin(p * Math.PI * 0.5), 0, 0.12 * Math.sin(p * Math.PI * 2)); rig.position.y = 0.04 * Math.sin(p * Math.PI); });
-  await tween(380, (p) => { const k = easeOut(p); rig.rotation.set(-0.3 + 0.75 * k, 0, 0.1 * k); rig.position.y = -0.22 * k; });
-  await tween(420, (p) => { const k = p * p; rig.rotation.set(0.45 - 0.45 * k, 0, 0.1 + (Math.PI / 2 - 0.1) * k); rig.position.y = -0.22 + 0.5 * k; });
-  await tween(260, (p) => { rig.rotation.z = Math.PI / 2 - 0.1 * Math.sin(p * Math.PI); rig.position.y = 0.28 + 0.05 * Math.sin(p * Math.PI); });
+  // pose가 'lie'라 몸은 굽지 않고 통째로 기운다(poseFigure). 끝에는 옆으로 누워 어깨 너비의 절반(0.2)만큼 땅에서 뜬다
+  const settle = () => poseFigure(fig);
+  await tween(260, (p) => { rig.rotation.set(-0.3 * Math.sin(p * Math.PI * 0.5), 0, 0.12 * Math.sin(p * Math.PI * 2)); rig.position.y = 0.04 * Math.sin(p * Math.PI); settle(); });
+  await tween(380, (p) => { const k = easeOut(p); rig.rotation.set(-0.3 + 0.75 * k, 0, 0.1 * k); rig.position.y = -0.1 * k; settle(); });
+  await tween(420, (p) => { const k = p * p; rig.rotation.set(0.45 - 0.45 * k, 0, 0.1 + (Math.PI / 2 - 0.1) * k); rig.position.y = -0.1 + 0.3 * k; settle(); });
+  await tween(260, (p) => { rig.rotation.z = Math.PI / 2 - 0.1 * Math.sin(p * Math.PI); rig.position.y = 0.2 + 0.04 * Math.sin(p * Math.PI); settle(); });
 }
 
 // 팔 자세. k(0~1)만큼 그 자세로 옮긴다.
@@ -762,25 +998,33 @@ export function turnFigure(fig, targetYaw, dt) {
 
 // ---------- 천사: 대천사와 그룹(케루빔)이 같은 모양을 쓴다 ----------
 export function makeAngel({ cherub = false } = {}) {
+  // 사람과 같은 어른의 비례(BODY): 발끝까지 내려오는 흰 옷, 어깨, 목, 작은 머리. 얼굴은 그리지 않는다(빛나는 존재). 날개는 어깨 뒤에서 세 겹으로 편다.
   const g = new THREE.Group();
-  const robe = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.2, 8), mat(PAL.robe));
-  robe.position.y = 0.6;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), mat(PAL.skin));
-  head.position.y = 1.4;
-  g.add(robe, head);
+  const robeM = glowMat(PAL.robe, 0.12), body = new THREE.Group();
+  body.scale.z = BODY.depth;
+  const part = (geo, material, y, to = body) => { const p = new THREE.Mesh(geo, material); p.position.y = y; to.add(p); return p; };
+  part(new THREE.CylinderGeometry(0.17, 0.34, BODY.waistY, 10), robeM, BODY.waistY / 2); // 옷자락
+  part(new THREE.CylinderGeometry(0.2, 0.17, BODY.shoulderY - BODY.waistY, 10), robeM, (BODY.shoulderY + BODY.waistY) / 2);
+  part(new THREE.SphereGeometry(0.2, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.4, 1), robeM, BODY.shoulderY);
+  for (const s of [-1, 1]) { const sleeve = part(new THREE.CylinderGeometry(0.06, 0.1, 0.52, 7), robeM, BODY.shoulderY - 0.25); sleeve.position.x = s * 0.235; sleeve.rotation.z = s * 0.14; }
+  g.add(bake(body));
+  part(new THREE.CylinderGeometry(0.046, 0.062, 0.12, 7), mat(PAL.skin), BODY.shoulderY + 0.06, g);
+  part(new THREE.SphereGeometry(0.118, 12, 9).scale(0.95, 1.08, 1), mat(PAL.skin), BODY.top - 0.125, g);
   if (!cherub) {
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 4, 12), glowMat(0xffd84a, 0.8));
-    halo.position.y = 1.75;
+    const halo = part(new THREE.TorusGeometry(0.12, 0.016, 4, 16), glowMat(0xffd84a, 0.8), BODY.top + 0.1, g);
     halo.rotation.x = Math.PI / 2;
-    g.add(halo);
   }
-  const wingM = glowMat(PAL.cloud, cherub ? 0.6 : 0.2);
-  for (const s of [-1, 1]) for (const [y, rz] of cherub ? [[1.25, -0.6], [0.75, -1.1]] : [[1.05, -0.5]]) {
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.85, 0.6), wingM);
-    wing.position.set(s * 0.34, y, -0.25);
-    wing.rotation.z = s * rz;
-    g.add(wing);
+  const wingM = glowMat(PAL.cloud, cherub ? 0.6 : 0.25), wings = new THREE.Group();
+  for (const s of [-1, 1]) for (const [y, rz] of cherub ? [[1.3, -0.6], [0.85, -1.1]] : [[1.18, -0.5]]) {
+    // 접은 날개(2026-11-14 6B 교정: 부채처럼 편 날개가 곁의 사람을 덮었다): 등 뒤에서 아래로 모은 깃 세 겹. 어깨 너비를 조금만 넘는다
+    for (let i = 0; i < 3; i++) {
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.62 - i * 0.12, 0.2), wingM);
+      wing.position.set(s * (0.13 + i * 0.075), y - 0.12 - i * 0.04 + (cherub ? 0.1 : 0), -0.17 - i * 0.02);
+      wing.rotation.z = s * (cherub ? rz : -0.16 - i * 0.12);
+      wings.add(wing);
+    }
   }
+  g.add(bake(wings));
   if (cherub) g.scale.setScalar(1.3);
   return g;
 }
@@ -821,30 +1065,42 @@ export function makeFruit(kind) {
 export function makeTree(kind = 'round', fruit = null) {
   if (fruit === 'date') return makePalm();
   const g = new THREE.Group();
+  // 어른 키(1.68)의 사람 곁에 서는 나무: 보통 나무는 사람 키의 한 배 반, 동산 가운데의 두 나무는 그 두 배다.
+  // 줄기는 뿌리 쪽이 굵고, 잎은 큰 덩어리 하나에 작은 덩어리 둘을 어긋나게 겹쳐 그늘진 쪽이 생긴다(같은 잎 색의 밝고 어두운 두 톤).
   const big = kind === 'life' || kind === 'knowledge';
-  const k = big ? 1.8 : 1;
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * k, 0.14 * k, 0.6 * k, 5), mat(PAL.bark));
-  trunk.position.y = 0.3 * k;
-  g.add(trunk);
-  let top;
+  const k = big ? 2.7 : 1.5;
+  const wood = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.075 * k, 0.13 * k, 0.75 * k, 6), mat(PAL.bark));
+  trunk.position.y = 0.375 * k;
+  const root = new THREE.Mesh(new THREE.ConeGeometry(0.2 * k, 0.22 * k, 6), mat(PAL.bark));
+  root.position.y = 0.11 * k;
+  wood.add(trunk, root);
+  const crown = new THREE.Group();
   if (kind === 'pine') {
-    top = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.3, 6), mat(PAL.leafDark));
-    top.position.y = 1.15;
+    for (const [r, h, y] of [[0.5, 0.75, 0.95], [0.4, 0.65, 1.35], [0.27, 0.55, 1.75]]) { // 세 단으로 쌓인 가지
+      const tier = new THREE.Mesh(new THREE.ConeGeometry(r * k, h * k, 7), mat(PAL.leafDark));
+      tier.position.y = y * k;
+      crown.add(tier);
+    }
   } else {
     const leaf = kind === 'life' ? glowMat(0x9fe07a, 0.35) : kind === 'knowledge' ? mat(PAL.leafDark) : mat(PAL.leafLight);
-    top = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55 * k, 0), leaf);
-    top.position.y = 0.95 * k;
+    const shade = kind === 'life' ? leaf : mat(kind === 'knowledge' ? 0x3c5a34 : 0x6f8a4c, { roughness: 0.82 });
+    for (const [r, x, y, z, m] of [[0.55, 0, 1.05, 0, leaf], [0.36, -0.34, 0.86, 0.14, shade], [0.33, 0.3, 0.9, -0.2, shade]]) {
+      const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(r * k, 0).scale(1, 0.86, 1), m);
+      blob.position.set(x * k, y * k, z * k);
+      crown.add(blob);
+    }
   }
-  g.add(top);
+  g.add(bake(wood), bake(crown));
   g.userData.fruits = [];
   if (kind === 'fruit' || big) {
     const fruitM = kind === 'life' ? glowMat(PAL.lifeFruit, 0.7) : mat(PAL.fruit);
     const n = big ? 7 : 4;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
-      const f = fruit ? makeFruit(fruit) : new THREE.Mesh(new THREE.IcosahedronGeometry(0.09 * k, 0), fruitM);
+      const f = fruit ? makeFruit(fruit) : new THREE.Mesh(new THREE.IcosahedronGeometry(big ? 0.16 : 0.1, 0), fruitM);
       if (fruit) f.scale.setScalar(1.7);
-      f.position.set(Math.cos(a) * 0.5 * k, (0.8 + (i % 2) * 0.25) * k, Math.sin(a) * 0.5 * k);
+      f.position.set(Math.cos(a) * 0.52 * k, (0.82 + (i % 2) * 0.2) * k, Math.sin(a) * 0.52 * k); // 잎 덩어리의 아래 둘레(손이 닿는 높이)
       g.add(f);
       g.userData.fruits.push(f);
     }
@@ -959,8 +1215,11 @@ export function makeAnimal(color, s, kind = 'generic') {
   const m = mat(color);
   const dark = mat(new THREE.Color(color).multiplyScalar(0.55));
   const light = mat(new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.45));
+  // 몸의 덩어리(2026-11-14 6B): 몸통·목·머리·주둥이 같은 굵은 부분은 네모 상자가 아니라 둥근 덩어리(상자에 꽉 차는 타원체)로 만든다.
+  // 꼬리·뿔·귀처럼 가는 부분(가장 얇은 변이 0.1보다 작은 것)은 곧은 막대 그대로 둔다. 자리와 크기, 부르는 법은 같다.
   const box = (w, h, d, x, y, z, material = m, rz = 0) => {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(w * s, h * s, d * s), material);
+    const round = Math.min(w, h, d) >= 0.1;
+    const b = new THREE.Mesh(round ? new THREE.IcosahedronGeometry(0.5, 1).scale(w * s * 1.2, h * s * 1.2, d * s * 1.2) : new THREE.BoxGeometry(w * s, h * s, d * s), material);
     b.position.set(x * s, y * s, z * s);
     b.rotation.z = rz;
     body.add(b);
@@ -978,9 +1237,12 @@ export function makeAnimal(color, s, kind = 'generic') {
       const hip = new THREE.Group();
       hip.position.set(x * s, h * s, z * s);
       hip.userData.y = h * s;
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(w * s, h * s, w * s), material);
+      // 다리: 위가 굵고 아래로 가늘어지는 둥근 기둥과 발굽(2026-11-14 6B, 전에는 네모 막대였다)
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.58 * s, w * 0.4 * s, h * s, 6), material);
       leg.position.y = (-h / 2) * s;
-      hip.add(leg);
+      const hoof = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.46 * s, w * 0.5 * s, Math.min(0.08, h * 0.15) * s, 6), dark);
+      hoof.position.y = -(h - Math.min(0.04, h * 0.075)) * s;
+      hip.add(leg, hoof);
       g.add(hip);
       legsOut.push(hip);
     }
@@ -1051,12 +1313,26 @@ export function makeAnimal(color, s, kind = 'generic') {
       break;
     }
     case 'camel': { // 낙타(창 24:10): 긴 다리, 등의 혹, 앞으로 굽은 긴 목
-      legs(0.11, 0.9, 0.34, 0.14);
-      box(1.0, 0.42, 0.42, 0, 1.08, 0);
-      blob(new THREE.IcosahedronGeometry(0.3 * s, 0).scale(1, 0.9, 0.9), -0.05, 1.38, 0, dark);
-      box(0.18, 0.62, 0.2, 0.56, 1.28, 0, m, -0.7);
-      box(0.36, 0.2, 0.2, 0.86, 1.5, 0);
-      box(0.05, 0.4, 0.06, -0.52, 0.95, 0, dark, 0.3);
+      // 2026-11-14 6B: 둥근 몸통과 등의 혹, 가슴에서 앞으로 굽어 오르는 긴 목, 긴 얼굴과 주둥이, 귀, 등에 덮은 깔개.
+      // 목(neck)과 머리(head)는 이름이 붙은 무리다: 스테이지가 목 뿌리(0.36, 1.04)를 축으로 숙인다(물 마시기).
+      legs(0.11, 0.9, 0.36, 0.13);
+      blob(new THREE.IcosahedronGeometry(0.5 * s, 1).scale(1.12, 0.5, 0.48), 0, 1.1, 0);
+      blob(new THREE.IcosahedronGeometry(0.28 * s, 1).scale(1.05, 0.9, 0.72), -0.06, 1.4, 0, dark);
+      blob(new THREE.IcosahedronGeometry(0.24 * s, 1).scale(1, 1.05, 0.85), 0.4, 1.1, 0);
+      blob(new THREE.BoxGeometry(0.46 * s, 0.04 * s, 0.5 * s), -0.05, 1.27, 0, mat(0x8a4a3a)); // 깔개(짐을 싣는 짐승)
+      const neck = new THREE.Group(), head = new THREE.Group();
+      neck.name = 'neck';
+      head.name = 'head';
+      neck.add(new THREE.Mesh(new THREE.CylinderGeometry(0.075 * s, 0.13 * s, 0.72 * s, 7), m));
+      neck.position.set(0.58 * s, 1.36 * s, 0);
+      neck.rotation.z = -0.62;
+      const face = (geo, x, y, z, material = m) => { const p = new THREE.Mesh(geo, material); p.position.set(x * s, y * s, z * s); head.add(p); };
+      face(new THREE.IcosahedronGeometry(0.13 * s, 1).scale(1.25, 0.95, 0.85), 0, 0, 0);
+      face(new THREE.BoxGeometry(0.2 * s, 0.11 * s, 0.13 * s), 0.17, -0.04, 0, light);
+      for (const z of [-0.07, 0.07]) face(new THREE.ConeGeometry(0.03 * s, 0.09 * s, 4), -0.08, 0.13, z, dark);
+      head.position.set(0.86 * s, 1.67 * s, 0);
+      body.add(neck, head);
+      box(0.04, 0.42, 0.05, -0.57, 0.98, 0, dark, 0.3);
       break;
     }
     case 'cow': { // 소(창 41:2): 넓은 몸, 짧은 뿔, 흰 얼룩
@@ -1161,43 +1437,105 @@ export function makeSerpent() {
 // ---------- 족장 시대의 소품: 여러 스테이지가 같이 쓴다 ----------
 // 장막(창 12:8, 18:1): 기둥 셋에 천을 덮은 낮은 집. 입구는 +x 쪽이다.
 export function makeTent(color = 0x6b4a32, s = 1) {
+  // 2026-11-14 6B: 염소 털로 짠 넓고 낮은 장막. 용마루에서 양옆으로 천이 늘어지고(가운데가 조금 처진다), 낮은 옆벽, 앞(+x)은 열려 안이 어둡고
+  // 한쪽 자락을 걷어 올렸다. 앞뒤의 기둥, 천의 줄무늬 띠, 땅에 박은 말뚝과 당김줄. 사람(키 1.68)이 허리를 조금 숙여 드는 높이(1.9)다.
+  // 바닥의 크기(가로 3.9, 세로 3)와 입구의 방향은 전과 같다.
   const g = new THREE.Group();
-  const cloth = mat(color, { side: THREE.DoubleSide });
-  const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 1.5 * s, 1.5 * s, 4, 1, true), cloth);
-  roof.position.y = 0.75 * s;
-  roof.rotation.y = Math.PI / 4;
-  roof.scale.set(1.3, 1, 1);
-  const door = new THREE.Mesh(new THREE.PlaneGeometry(0.6 * s, 0.9 * s), mat(0x2a1d14, { side: THREE.DoubleSide }));
-  door.position.set(1.0 * s, 0.45 * s, 0);
-  door.rotation.y = Math.PI / 2;
-  g.add(roof, door);
+  const cloth = mat(dye(color), { side: THREE.DoubleSide, roughness: 0.98 }), band = mat(dye(new THREE.Color(color).multiplyScalar(0.62)), { side: THREE.DoubleSide });
+  const wood = mat(PAL.bark), cord = mat(0xb59a6a), dark = mat(0x241a14, { side: THREE.DoubleSide });
+  const add = (geo, material, x, y, z) => { const m = new THREE.Mesh(geo, material); m.position.set(x * s, y * s, z * s); g.add(m); return m; };
+  const L = 1.95, W = 1.5, H = 1.9, EAVE = 0.55; // 용마루의 절반 길이, 처마까지의 폭, 용마루 높이, 처마 높이
+  const slope = Math.hypot(W, H - EAVE), tilt = Math.atan2(H - EAVE, W);
+  for (const side of [-1, 1]) {
+    const roof = add(new THREE.PlaneGeometry(L * 2 * s, slope * s, 4, 3), cloth, 0, (H + EAVE) / 2, side * W / 2); // 지붕 한쪽
+    roof.rotation.x = -side * (Math.PI / 2 - tilt); // 위쪽 변이 용마루(가운데 위), 아래쪽 변이 처마(바깥 아래)에 온다
+    const pos = roof.geometry.attributes.position; // 가운데가 조금 처진 천(면의 안쪽으로)
+    for (let i = 0; i < pos.count; i++) pos.setZ(i, -0.05 * side * s * Math.cos((pos.getX(i) / (L * s)) * Math.PI / 2) * Math.sin(((pos.getY(i) / (slope * s)) + 0.5) * Math.PI));
+    roof.geometry.computeVertexNormals();
+    const stripe = add(new THREE.PlaneGeometry(L * 2 * s, 0.16 * s), band, 0, EAVE + (H - EAVE) * 0.2, side * W * 0.8); // 처마 가까이의 줄무늬 띠
+    stripe.rotation.x = -side * (Math.PI / 2 - tilt);
+    stripe.position.y += 0.015 * s;
+    add(new THREE.PlaneGeometry(L * 2 * s, EAVE * s), cloth, 0, EAVE / 2, side * W); // 낮은 옆벽
+    for (const x of [-L, L]) { // 당김줄과 말뚝
+      const rope = add(new THREE.CylinderGeometry(0.012 * s, 0.012 * s, 1.05 * s, 4), cord, x * 0.96, EAVE / 2 + 0.02, side * (W + 0.42));
+      rope.rotation.x = side * -1.0;
+      add(new THREE.CylinderGeometry(0.03 * s, 0.02 * s, 0.22 * s, 5), wood, x * 0.96, 0.08, side * (W + 0.84));
+    }
+  }
+  const back = add(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -W * s), new THREE.Vector3(0, 0, W * s), new THREE.Vector3(0, EAVE * s, W * s), new THREE.Vector3(0, H * s, 0), new THREE.Vector3(0, EAVE * s, -W * s)]), cloth, -L, 0, 0); // 뒤쪽 막음
+  back.geometry.setIndex([0, 1, 2, 0, 2, 4, 4, 2, 3]);
+  back.geometry.computeVertexNormals();
+  const inside = add(back.geometry.clone(), dark, L - 0.25, 0, 0); // 열린 앞: 안쪽의 어둠
+  inside.scale.set(1, 0.97, 0.94);
+  const flap = add(new THREE.PlaneGeometry(0.75 * s, 1.25 * s), cloth, L, 0.72, W * 0.62); // 걷어 올린 한쪽 자락
+  flap.rotation.set(0, Math.PI / 2, 0.22);
+  for (const x of [-L, L]) add(new THREE.CylinderGeometry(0.04 * s, 0.05 * s, H * s, 6), wood, x, H / 2, 0); // 앞뒤 기둥
   return g;
 }
 // 돌 제단(창 8:20, 12:7, 22:9): 쌓은 돌. 위에 나무를 놓을 수 있다(userData.top).
 export function makeAltar(s = 1) {
+  // 2026-11-14 6B: 다듬지 않은 돌(출 20:25)을 두 단으로 쌓고 위에 넓적한 돌을 얹는다. 아래 단은 넓게 둘러 놓고 위 단은 안쪽으로 들여 쌓는다.
+  // 돌은 석회암의 결(stoneMat)이고 밝고 어두운 두 톤이 섞인다. 위에 나무를 놓는 높이(userData.top)는 전과 같다.
   const g = new THREE.Group();
-  const stone = mat(0x9a9488);
-  for (const [x, y, z, h] of [[0, 0.2, 0, 0.42], [0.36, 0.17, 0.18, 0.32], [-0.32, 0.17, 0.24, 0.34], [0.05, 0.17, -0.34, 0.32], [-0.2, 0.17, -0.2, 0.3], [0, 0.52, 0.02, 0.3]]) {
-    const b = new THREE.Mesh(new THREE.DodecahedronGeometry(h * s, 0), stone);
+  const stone = stoneMat(0xc2b8a4), shade = stoneMat(0xa89e8a, { roughness: 0.94 });
+  const rock = (r, x, y, z, i) => {
+    const b = new THREE.Mesh(new THREE.DodecahedronGeometry(r * s, 0).scale(1.15, 0.78, 1), i % 3 ? stone : shade);
     b.position.set(x * s, y * s, z * s);
+    b.rotation.y = i * 1.7;
     g.add(b);
-  }
+  };
+  for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; rock(0.25, Math.cos(a) * 0.42, 0.17, Math.sin(a) * 0.42, i); } // 아래 단
+  rock(0.3, 0, 0.2, 0, 1);
+  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 + 0.5; rock(0.21, Math.cos(a) * 0.26, 0.47, Math.sin(a) * 0.26, i + 1); } // 위 단
+  const slab = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * s, 0.46 * s, 0.14 * s, 7), stone); // 위의 넓적한 돌
+  slab.position.y = 0.7 * s;
+  g.add(slab);
   g.userData.top = new THREE.Vector3(0, 0.85 * s, 0);
   return g;
 }
 // 우물(창 24:11, 21:19): 둥근 돌 둘레와 물빛
+// 2026-11-14 6B: 석회암 덩이를 세 줄로 어긋나게 쌓은 둘레(줄눈이 보인다), 깊고 어두운 안쪽의 물, 두 기둥과 가로대의 나무 틀,
+// 가로대에 감긴 줄과 두레박. 사람(키 1.68)의 허리 아래까지 오는 높이다. 둘레의 바깥 반지름은 0.9(스테이지가 0.95로 막는다).
 export function makeWell() {
   const g = new THREE.Group();
-  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.5, 10, 1, true), mat(0xa39a8a, { side: THREE.DoubleSide }));
-  rim.position.y = 0.25;
-  const water = new THREE.Mesh(new THREE.CircleGeometry(0.72, 10), mat(PAL.water));
+  const lime = stoneMat(0xd6cab2), limeShade = stoneMat(0xbdb098, { roughness: 0.92 }), wood = mat(PAL.bark), cord = mat(0xb59a6a);
+  const add = (geo, material, x, y, z) => { const m = new THREE.Mesh(geo, material); m.position.set(x, y, z); g.add(m); return m; };
+  for (let row = 0; row < 3; row++) for (let i = 0; i < 12; i++) {
+    const a = ((i + (row % 2) * 0.5) / 12) * Math.PI * 2;
+    const b = add(new THREE.BoxGeometry(0.4, 0.2, 0.25), (i + row * 2) % 3 ? lime : limeShade, Math.cos(a) * 0.775, 0.1 + row * 0.205, Math.sin(a) * 0.775);
+    b.rotation.y = -a + Math.PI / 2;
+  }
+  add(new THREE.CylinderGeometry(0.66, 0.66, 0.6, 14, 1, true), mat(0x4a4338, { side: THREE.BackSide }), 0, 0.31, 0); // 안쪽 벽(그늘)
+  const water = add(new THREE.CircleGeometry(0.66, 14), mat(PAL.water), 0, 0.26, 0);
   water.rotation.x = -Math.PI / 2;
-  water.position.y = 0.3;
-  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.08, 4, 10), mat(0x8a8274));
-  lip.rotation.x = Math.PI / 2;
-  lip.position.y = 0.5;
-  g.add(rim, water, lip);
-  return g;
+  for (const x of [-0.98, 0.98]) add(new THREE.CylinderGeometry(0.055, 0.07, 1.95, 6), wood, x, 0.975, 0); // 두 기둥
+  const beam = add(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 6), wood, 0, 1.9, 0);
+  beam.rotation.z = Math.PI / 2;
+  const coil = add(new THREE.CylinderGeometry(0.085, 0.085, 0.3, 8), cord, 0.05, 1.9, 0); // 가로대에 감긴 줄
+  coil.rotation.z = Math.PI / 2;
+  add(new THREE.CylinderGeometry(0.012, 0.012, 0.75, 4), cord, 0.05, 1.5, 0); // 늘어진 줄
+  add(new THREE.CylinderGeometry(0.15, 0.115, 0.24, 8), wood, 0.05, 1.03, 0); // 두레박
+  const hoop = add(new THREE.TorusGeometry(0.15, 0.012, 4, 10), mat(0x4a3a2a), 0.05, 1.12, 0);
+  hoop.rotation.x = Math.PI / 2;
+  return bake(g);
+}
+// 흙벽돌과 석회암으로 지은 집(창 24:23 브두엘의 집, 나홀의 성): 돌 기초 위의 벽, 난간이 둘린 평평한 지붕, 나무 문과 상인방, 작은 창,
+// 벽 위로 나온 들보 끝, 지붕으로 오르는 바깥 계단. 문은 +x 쪽이다. 사람(키 1.68)이 드나드는 높이다(벽 2.2, 문 1.55).
+export function makeHouse(s = 1, color = 0xd9ccb2) {
+  const g = new THREE.Group();
+  const wall = stoneMat(color, { roughness: 0.94 }), trim = stoneMat(new THREE.Color(color).multiplyScalar(0.84)), wood = mat(PAL.bark), dark = mat(0x3a2e24);
+  const add = (w, h, d, material, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * s, h * s, d * s), material); m.position.set(x * s, y * s, z * s); g.add(m); return m; };
+  const W = 1.6, H = 2.2, D = 1.4;
+  add(W, H, D, wall, 0, H / 2, 0);
+  add(W + 0.1, 0.24, D + 0.1, trim, 0, 0.12, 0); // 돌 기초
+  for (const [w, d, x, z] of [[W + 0.08, 0.12, 0, D / 2], [W + 0.08, 0.12, 0, -D / 2], [0.12, D + 0.08, W / 2, 0], [0.12, D + 0.08, -W / 2, 0]]) add(w, 0.24, d, trim, x, H + 0.12, z); // 지붕 난간
+  add(0.06, 1.55, 0.72, dark, W / 2 + 0.005, 0.775, 0.12); // 문틀 안의 그늘
+  add(0.05, 1.46, 0.58, wood, W / 2 + 0.03, 0.73, 0.12); // 나무 문
+  add(0.1, 0.13, 0.92, trim, W / 2 + 0.03, 1.62, 0.12); // 상인방
+  add(0.05, 0.3, 0.22, dark, W / 2 + 0.005, 1.5, -0.45); // 작은 창
+  for (const x of [-0.55, -0.1, 0.35]) { const b = add(0.09, 0.09, 0.2, wood, x, H - 0.22, D / 2 + 0.07); b.rotation.z = Math.PI / 4; } // 들보 끝
+  for (let i = 0; i < 6; i++) add(0.27, 0.36 * (i + 1), 0.42, trim, -W / 2 + 0.135 + i * 0.27, 0.18 * (i + 1), D / 2 + 0.21); // 바깥 계단
+  return bake(g);
 }
 // 곡식 자루(창 42:25)
 export function makeSack(color = 0xc8b088) {
@@ -1292,12 +1630,27 @@ export function makeHeaven() {
   const group = new THREE.Group();
   group.add(new THREE.HemisphereLight(0xfff8e7, 0xb9a6d8, 1.1));
   const sun = new THREE.DirectionalLight(0xfff4dc, 1.2);
-  sun.position.set(5, 10, 3);
+  sun.position.set(-4, 9, 8); // 지상 장면과 같은 쪽(화면 왼쪽 앞 위)에서 비춘다
   group.add(sun);
 
   const ground = new THREE.Mesh(new THREE.CylinderGeometry(10, 9, 1, 24), mat(PAL.cloudShade));
   ground.position.y = -0.5;
   group.add(ground);
+  // 구름 바다(2026-11-14 6B): 낮은 시점에서는 섬 너머가 보인다. 섬 아래로 넓게 깔린 구름의 면과, 멀어질수록 큰 구름 덩이가 지평선까지 이어진다
+  const seaM = glowMat(PAL.cloud, 0.3);
+  const sea = new THREE.Mesh(new THREE.CircleGeometry(90, 40), glowMat(PAL.cloudShade, 0.3));
+  sea.rotation.x = -Math.PI / 2;
+  sea.position.y = -1.3;
+  group.add(sea);
+  const far = new THREE.Group();
+  for (let i = 0; i < 34; i++) {
+    const a = (i / 34) * Math.PI * 2 + (i % 3) * 0.21, r = 15 + ((i * 37) % 23) * 2.4, k = 1.6 + r / 16;
+    const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(k, 1).scale(1.7, 0.42, 1.2), seaM);
+    puff.position.set(Math.cos(a) * r, -1.25 + k * 0.2, Math.sin(a) * r);
+    puff.rotation.y = a;
+    far.add(puff);
+  }
+  group.add(bake(far));
 
   // 섬 가장자리의 구름(창조의 구름과 같은 부품)
   for (let i = 0; i < 16; i++) {

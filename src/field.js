@@ -2,7 +2,7 @@
 // 형상 없는 빛, 하늘빛 바꾸기, 동물 돌아다니기)을 모았다. 스테이지 파일(src/stages/*.js)은 이 틀 위에 소품과 연출만 더한다.
 // 규칙은 docs/standards/art-3d.md(충돌, 겹침), quests-and-staging.md(무대, 비켜 서기, 연출)를 따른다.
 import * as THREE from 'three';
-import { PAL, mat, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, turnFigure, makeLightPillar, makeSpiritLight, setArms } from './props.js';
+import { PAL, mat, earthMat, tileUV, makeLand, bake, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, poseFigure, handOf as figHand, turnFigure, makeLightPillar, makeSpiritLight, setArms } from './props.js';
 import { tween, easeOut, stagger } from './anim.js';
 
 export const V = (x, z) => new THREE.Vector3(x, 0, z);
@@ -24,11 +24,23 @@ export function makeField(cfg) {
   const rand = seeded(seed);
   const group = new THREE.Group();
   const sky = new THREE.Color(skyHex);
-  const hemi = new THREE.HemisphereLight(0xf4f8e0, 0x6b5a3a, 1.1);
-  const sun = new THREE.DirectionalLight(0xfff1d0, 1.3);
-  sun.position.set(-6, 12, 5);
+  // 낮의 빛(기준값): 하늘빛·땅에서 되비치는 빛(반구광)과 해. acts.sky가 이 값을 기준으로 저녁·밤의 목표를 만든다
+  // 2026-11-14 6B: 그늘은 푸른 하늘빛이 채우고 볕은 따뜻한 햇빛이 비춘다(둘이 같은 누런빛이면 화면이 한 덩어리의 겨자색이 된다).
+  // 땅에서 되비치는 빛은 밝은 흙빛이라 옷과 벽의 아래쪽이 검게 죽지 않는다.
+  const SUN_DAY = 0xfff0d8, HEMI_SKY = 0xcfdff2, HEMI_GROUND = 0xa58f72;
+  const HEMI_I = 1.15, SUN_I = 1.55;
+  let skyRun = 0; // 하늘빛 바꾸기 요청 번호(마지막 요청만 끝까지 간다)
+  const hemi = new THREE.HemisphereLight(HEMI_SKY, HEMI_GROUND, HEMI_I);
+  const sun = new THREE.DirectionalLight(SUN_DAY, SUN_I);
+  // 해는 화면 왼쪽 앞 위에서 비춘다(2026-11-14 6B 교정: 전에는 거의 머리 위·뒤쪽이라 카메라를 보는 벽과 얼굴이 모두 그늘이었다).
+  // 왼쪽 앞을 보는 면(+z)은 볕, 오른쪽을 보는 면(+x)은 그늘이 되어 덩어리가 읽히고, 그림자는 오른쪽 뒤로 눕는다
+  sun.position.set(-4, 9, 8);
   group.add(hemi, sun);
-  const floor = new THREE.Mesh(new THREE.CylinderGeometry(radius + 0.5, radius + 2, 2, 20), mat(ground));
+  // 땅의 색: 스테이지가 준 색을 밝고 차분한 흙빛 쪽으로 모은다(진한 겨자색·풀색 원판으로 보이지 않게). 스테이지마다의 차이는 남는다
+  const earth = new THREE.Color(ground).lerp(new THREE.Color(0xcfbb98), 0.45);
+  // 흙의 결(props.js earthMat): 타일 하나가 TILE_M만큼의 땅을 덮는다. 색은 위의 earth가 정하고 텍스처는 결만 더한다
+  const TILE_M = 5;
+  const floor = new THREE.Mesh(tileUV(new THREE.CylinderGeometry(radius + 0.5, radius + 2, 2, 20), (2 * (radius + 0.5)) / TILE_M), earthMat(earth, { flatShading: false }));
   floor.position.y = -1;
   group.add(floor);
 
@@ -164,7 +176,7 @@ export function makeField(cfg) {
     return new Promise((resolve) => movers.set(fig, { to: route.shift(), route, speed, resolve, best: Infinity, stuck: 0 }));
   }
   const face = (fig, p) => { fig.userData.faceYaw = Math.atan2(p.x - fig.position.x, p.z - fig.position.z); };
-  const handOf = (fig) => { fig.updateMatrixWorld(true); return fig.localToWorld(new THREE.Vector3(0.36, 0.8, 0.22)); };
+  const handOf = (fig) => figHand(fig); // 오른손의 실제 자리(새 몸의 손끝, props.js). 전에는 몸 앞의 고정된 한 점이었다
   const carried = new Map(); // 물체 → 드는 인물
   let stage = null;
   const updaters = [];
@@ -197,18 +209,29 @@ export function makeField(cfg) {
       await tween(1400, (k) => pillar.scale.set(Math.max(0.01, easeOut(k)), 1, Math.max(0.01, easeOut(k))));
     },
     // 하늘빛: to(색), dim(0 밝음 ~ 1 어둠), warm(노을빛 섞기)
+    // 모든 값을 "지금 값"에서 목표로 옮긴다(2026-11-14: 전에는 해의 색을 낮 색에서 다시 시작해, 저녁에서 밤으로 갈 때 첫 프레임에
+    // 색이 튀었다). 옮기는 중에 새 요청이 오면 앞의 것은 멈추고 그때의 값에서 새 목표로 이어 간다(마지막 요청이 남는다).
+    // 해·하늘빛(반구광)·바탕이 함께 바뀐다: 저녁은 따뜻하게, 밤은 푸르게. 밤에도 반구광이 남아 인물의 윤곽이 보인다.
     sky: (to, dim = 0, warm = 0, ms = 1800, cool = 0) => {
-      const from = cfg.scene.background.clone(), target = new THREE.Color(to);
-      const h0 = hemi.intensity, s0 = sun.intensity;
+      const run = ++skyRun;
+      const bg0 = cfg.scene.background.clone(), bg1 = new THREE.Color(to);
+      const h0 = hemi.intensity, h1 = HEMI_I - 0.62 * dim, s0 = sun.intensity, s1 = SUN_I - 1.2 * dim;
+      // 저녁: 해는 누런 금빛으로 기울고 그늘의 하늘빛은 보랏빛을 띤 푸른빛으로 남는다(온 화면이 주황으로 물들지 않는다). 밤: 달빛의 푸른빛
+      const sun0 = sun.color.clone(), sun1 = new THREE.Color(SUN_DAY).lerp(new THREE.Color(0xffc48a), warm).lerp(new THREE.Color(0x9db4ff), cool);
+      const top0 = hemi.color.clone(), top1 = new THREE.Color(HEMI_SKY).lerp(new THREE.Color(0xc6c4e4), warm * 0.6).lerp(new THREE.Color(0x8fa3e0), cool);
+      const low0 = hemi.groundColor.clone(), low1 = new THREE.Color(HEMI_GROUND).lerp(new THREE.Color(0xa07a5c), warm * 0.5).lerp(new THREE.Color(0x2a3048), cool);
       return tween(ms, (p) => {
-        cfg.scene.background.lerpColors(from, target, p);
-        hemi.intensity = h0 + (1.1 - 0.6 * dim - h0) * p;
-        sun.intensity = s0 + (1.3 - 1.0 * dim - s0) * p;
-        sun.color.setHex(0xfff1d0).lerp(new THREE.Color(0xff9a5a), warm * p).lerp(new THREE.Color(0x8ea6ff), cool * p);
+        if (run !== skyRun) return; // 더 새 요청이 이어받았다
+        cfg.scene.background.lerpColors(bg0, bg1, p);
+        hemi.intensity = h0 + (h1 - h0) * p;
+        sun.intensity = s0 + (s1 - s0) * p;
+        sun.color.lerpColors(sun0, sun1, p);
+        hemi.color.lerpColors(top0, top1, p);
+        hemi.groundColor.lerpColors(low0, low1, p);
       });
     },
     day: () => acts.sky(sky, 0, 0),
-    dusk: () => acts.sky(0xe8a878, 0.4, 1),
+    dusk: () => acts.sky(0xf0cfa8, 0.16, 0.85), // 저녁: 금빛으로 기울 뿐 어두워지지 않는다(2026-11-14 6B 교정: 0.4만큼 어둡게 했더니 온 화면이 짙은 갈색이었다)
     // 밤: 하늘보다 땅이 화면을 많이 차지해서 땅빛을 더 낮추고 푸르게 한다(2026-11-05 1-11 점검: 밤이 어둡게 보이지 않았다)
     night: () => acts.sky(0x141a30, 0.95, 0, 1800, 0.7),
     // 땅에 엎드림(창 18:2, 24:26이 아닌 '땅에 굽혀' 장면: 33:3, 42:6, 50:18): 무릎을 꿇고 상체와 이마를 땅에 대며 팔을 앞으로 뻗는다.
@@ -249,7 +272,7 @@ export function makeField(cfg) {
     lie: (fig, up = false) => {
       fig.userData.pose = up ? null : 'lie';
       const { rig } = fig.userData;
-      return tween(900, (p) => { const k = up ? 1 - easeOut(p) : easeOut(p); rig.rotation.set(-Math.PI / 2 * k, 0, 0); rig.position.y = 0.3 * k; });
+      return tween(900, (p) => { const k = up ? 1 - easeOut(p) : easeOut(p); rig.rotation.set(-Math.PI / 2 * k, 0, 0); rig.position.y = 0.16 * k; poseFigure(fig); }); // 등을 대고 눕는다(몸 두께의 절반만큼 뜬다)
     },
     // 껴안는다(창 33:4, 45:14). 마주 다가가 서로 몸을 기울여 안고 잠시 함께 흔들린 뒤 바로 선다.
     embrace: async (a, b, ms = 1600) => {
@@ -313,7 +336,8 @@ export function makeField(cfg) {
       animateFigure(fig, m.speed, dt, t, 1.3);
     }
     for (const fig of Object.values(people)) {
-      if (!fig.visible || movers.has(fig) || fig.userData.pose) continue;
+      if (!fig.visible || movers.has(fig)) continue;
+      if (fig.userData.pose) { poseFigure(fig); continue; } // 자세를 잡은 인물: 스테이지가 준 숙임·낮춤을 허리와 다리에 옮긴다
       if (fig.userData.faceYaw !== undefined) turnFigure(fig, fig.userData.faceYaw, dt * 0.5);
       animateFigure(fig, 0, dt, t, 1.3);
     }
@@ -373,6 +397,72 @@ export function makeField(cfg) {
       block(p, 0.35 * s);
       placed++;
     }
+    dress();
+  }
+
+  // 땅의 결(2026-11-14 새 공용 3D): 한 가지 색의 원판으로 보이지 않게 얼룩(밟힌 흙과 마른 자리), 잔돌, 풀포기를 흩는다.
+  // 장식이라 막지 않고(충돌 없음), 재질별로 합쳐 그리는 횟수는 네 번이다. 얼룩은 깊이를 쓰지 않아 스테이지가 그 위에 놓는 길·물·바닥을 가리지 않는다.
+  // 잔돌과 풀은 가장자리 쪽에만, 무대·소품·인물 자리(keep)와 장애물을 비켜 둔다. 나무와 따로 난수를 써서 나무의 자리는 전과 같다.
+  function dress() {
+    const rnd = seeded(seed * 7919 + 13);
+    const base = earth, green = new THREE.Color(ground).g > new THREE.Color(ground).r * 1.02;
+    const tone = (hex, k, extra) => new THREE.MeshStandardMaterial({ color: base.clone().lerp(new THREE.Color(hex), k), flatShading: true, roughness: 1, ...extra });
+    const stone = tone(0xb9ad98, 0.75, { roughness: 0.86 }), tuft = tone(green ? 0x66803f : 0xa8955c, 0.65, { roughness: 0.88 });
+    const bush = tone(0x5f7442, 0.8, { roughness: 0.84 }), cypress = tone(0x3f5638, 0.9, { roughness: 0.84 });
+    const free = (p, r) => !colliders.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < c.r + r) && ![start, ...keep].some((k) => p.distanceTo(k) < r + 1.2) && !Object.values(stages).some((s) => p.distanceTo(s.c) < s.r + r);
+    const spot = (inner) => { const a = rnd() * Math.PI * 2, r = (inner + Math.sqrt(rnd()) * (1 - inner)) * (radius - 0.6); return V(Math.cos(a) * r, Math.sin(a) * r); };
+    const g = new THREE.Group();
+    // 땅(props.js makeLand): 걷는 땅과 바깥이 한 장으로 이어지고 멀어질수록 완만한 언덕으로 솟는다. 들어온 자리에서 무대까지의 길과
+    // 무대 둘레는 밟혀서 밝다. 이 땅이 예전의 둥근 판(floor)을 대신한다(판은 숨긴다). 걷는 범위(radius)와 충돌은 그대로다.
+    // 스테이지가 땅을 직접 고치면(구덩이, 물에 잠긴 땅) cfg.outer를 false로 주어 예전 판을 그대로 쓴다.
+    const outer = cfg.outer !== false;
+    const land = outer ? makeLand({
+      radius, color: base, seed,
+      paths: Object.values(stages).map((s) => [start, s.c]),
+      clear: Object.values(stages).map((s) => ({ x: s.c.x, z: s.c.z, r: s.r + 0.3 })),
+    }) : null;
+    if (land) { floor.visible = false; group.add(land); }
+    const high = (x, z) => land?.userData.height(x, z) ?? 0;
+    // 가장자리와 그 너머: 걸을 수 있는 땅의 끝을 덤불과 드문 바위가 알리고, 뒤쪽 언덕에는 사이프러스가 선다.
+    // 화면 앞쪽(카메라 쪽, +x +z)은 낮고 작게 둔다(장면을 가리지 않게)
+    for (let i = 0; outer && i < 40; i++) {
+      const a = rnd() * Math.PI * 2, r = radius + 0.5 + rnd() * 4, x = Math.cos(a) * r, z = Math.sin(a) * r, front = x + z > radius * 0.6;
+      if (i % 4 === 0) {
+        const s = (front ? 0.16 : 0.22) + rnd() * 0.25, m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0).scale(1.2, 0.7, 1), stone);
+        m.position.set(x, high(x, z) + s * 0.3, z);
+        m.rotation.y = rnd() * 6;
+        g.add(m);
+      } else {
+        const s = (front ? 0.22 : 0.36) + rnd() * 0.4, m = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0).scale(1.3, 0.75, 1.1), bush);
+        m.position.set(x, high(x, z) + s * 0.45, z);
+        g.add(m);
+      }
+    }
+    for (let i = 0; outer && i < 22; i++) { // 뒤쪽 언덕의 사이프러스와 덤불 무리(멀리 있는 것일수록 작게 보인다)
+      const a = Math.PI * (1 + rnd() * 0.5) + (rnd() - 0.5) * 0.9, r = radius + 6 + rnd() * 26, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const h = 2 + rnd() * 1.8, c = new THREE.Mesh(new THREE.ConeGeometry(0.3 + rnd() * 0.14, h, 6), cypress);
+      c.position.set(x, high(x, z) + h / 2 - 0.1, z);
+      g.add(c);
+    }
+    for (let i = 0; i < 26; i++) { // 잔돌
+      const p = spot(0.5), s = 0.05 + rnd() * 0.1;
+      if (!free(p, 0.3)) continue;
+      const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0).scale(1, 0.6, 1), stone);
+      m.position.set(p.x, s * 0.3, p.z);
+      m.rotation.y = rnd() * 6;
+      g.add(m);
+    }
+    for (let i = 0; i < (green ? 34 : 16); i++) { // 풀포기(풀밭이면 푸르고 많게, 흙땅이면 마른 빛으로 드물게)
+      const p = spot(0.5);
+      if (!free(p, 0.3)) continue;
+      for (let j = 0; j < 3; j++) {
+        const h = 0.14 + rnd() * 0.14, m = new THREE.Mesh(new THREE.ConeGeometry(0.035 + rnd() * 0.02, h, 4), tuft);
+        m.position.set(p.x + (rnd() - 0.5) * 0.16, h / 2, p.z + (rnd() - 0.5) * 0.16);
+        m.rotation.z = (rnd() - 0.5) * 0.4;
+        g.add(m);
+      }
+    }
+    group.add(bake(g));
   }
 
   return {

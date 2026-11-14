@@ -1,0 +1,41 @@
+{
+    "at":  "2026-11-14T07:18:02.6474425Z",
+    "scope":  "approved art reference; earlier PC failure, mobile check and same-camera-code PC repeat pass; unresolved conditional framing, not whole-game acceptance",
+    "files":  [
+                  {
+                      "file":  "approved-art-A.png",
+                      "bytes":  3093690,
+                      "sha256":  "1fcb8119ab328a4f311b259c53172165defb9f5c5019838c2937112e0dc1427d"
+                  },
+                  {
+                      "file":  "well-pc-known-failure.png",
+                      "bytes":  1095787,
+                      "sha256":  "79cd6c26d74e671a1c86bea3a8c419ca6b97ab2332958d308f175d3cfa3ba3f7"
+                  },
+                  {
+                      "file":  "well-mobile-last-check.png",
+                      "bytes":  1227451,
+                      "sha256":  "02717508623946219f3359d35f60dce40ecb68f470f7bf9078f03626ce06bebe"
+                  },
+                  {
+                      "file":  "well-pc-known-failure.json",
+                      "bytes":  1702,
+                      "sha256":  "9b55cfb6ea6ceb34b81af812fd61256137fa69b45a27e07f7b503dc63c30b4fd"
+                  },
+                  {
+                      "file":  "well-mobile-last-check.json",
+                      "bytes":  1702,
+                      "sha256":  "9951beb18e1f2b942d3eee0cc6685002a7814fd3d66ef51fe0e41c6a10429fd2"
+                  },
+                  {
+                      "file":  "well-pc-repeat-pass.png",
+                      "bytes":  1087493,
+                      "sha256":  "36594c908b6a9558a65050c600eb2fa33e1385ac5c73d59b0191b9267247fcf9"
+                  },
+                  {
+                      "file":  "well-pc-repeat-pass.json",
+                      "bytes":  3384,
+                      "sha256":  "f0bbfed1a20351d2729fc5b2cecfa5d1aea04980cf826529ad2b749fb03faba7"
+                  }
+              ]
+}

@@ -1,7 +1,7 @@
 // 에덴 동산(창 2~3장)의 세계. 모든 모양은 props.js의 공용 부품을 쓴다.
 import * as THREE from 'three';
 import {
-  PAL, mat, makeTree, makeAnimal, makeBird, makeFigure, dressFigure, animateFigure, turnFigure,
+  PAL, mat, makeLand, makeTree, makeAnimal, makeBird, makeFigure, dressFigure, animateFigure, poseFigure, handOf as figHand, turnFigure,
   makeLightPillar, makeSpiritLight, makeSerpent, makeAngel, makeBridge, makeThornBush, makeFruit, animateAnimal,
 } from './props.js';
 import { tween, easeOut } from './anim.js';
@@ -167,13 +167,19 @@ export function makeEden(scene) {
   const rand = seeded(20261101);
   const group = new THREE.Group();
   const sky = C(0xbfe6ff);
-  const hemi = new THREE.HemisphereLight(0xf4ffe8, 0x6b5a3a, 1.15);
-  const sun = new THREE.DirectionalLight(0xfff1d0, 1.3);
-  sun.position.set(-6, 12, 5);
+  // 빛(2026-11-14 6B, field.js와 같은 언어): 그늘은 푸른 하늘빛이 채우고 볕은 따뜻한 햇빛이 화면 왼쪽 앞 위에서 비춘다. 밝기의 값은 전과 같다
+  const hemi = new THREE.HemisphereLight(0xd4e6f4, 0x9aa27a, 1.15);
+  const sun = new THREE.DirectionalLight(0xfff0d8, 1.3);
+  sun.position.set(-4, 9, 8);
   group.add(hemi, sun);
 
   const ground = new THREE.Mesh(new THREE.CylinderGeometry(13, 14.5, 2, 20), mat(PAL.grass));
   ground.position.y = -1;
+  // 동산의 땅(props.js makeLand): 한 가지 색의 판 위에, 풀빛이 부드럽게 번지고 흙의 결이 있는 땅을 덮는다. 동산은 강과 바다에 둘린 섬이라
+  // 바깥 언덕은 두지 않는다(far 2: 판의 가장자리까지만). 걷는 높이와 충돌, 강과 다리는 그대로다
+  const turf = makeLand({ radius: 11, color: 0x8ea466, seed: 23, far: 2 });
+  turf.position.y = 0.004;
+  group.add(turf);
   const sea = new THREE.Mesh(new THREE.CylinderGeometry(32, 32, 0.4, 32), mat(PAL.water));
   sea.position.y = -0.6;
   group.add(ground, sea);
@@ -202,7 +208,7 @@ export function makeEden(scene) {
   }
 
   // 샘과 네 강(창 2:10)
-  const riverM = mat(0x4f8fd0, { emissive: 0x2f6fb5, emissiveIntensity: 0.25 });
+  const riverM = mat(PAL.water, { emissive: PAL.water, emissiveIntensity: 0.16 }); // 깊은 물빛(색표의 물, 원색 파랑을 쓰지 않는다)
   const pool = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.08, 10), riverM);
   pool.position.copy(SPLIT).setY(0.03);
   group.add(pool);
@@ -386,7 +392,7 @@ export function makeEden(scene) {
 
   // ---------- 연출 ----------
   const v = new THREE.Vector3();
-  const handOf = (fig) => { fig.updateMatrixWorld(true); return fig.localToWorld(v.set(0.36, 0.8, 0.22)).clone(); };
+  const handOf = (fig) => figHand(fig); // 오른손의 실제 자리(새 몸의 손끝, props.js)
   // 바라보기: 기본은 천천히 돌아선다. instant면 바로 돌린다(손 위치를 바로 써야 할 때).
   const face = (fig, p, instant = false) => {
     const yaw = Math.atan2(p.x - fig.position.x, p.z - fig.position.z);
@@ -467,7 +473,7 @@ export function makeEden(scene) {
       face(adam, EVE_SPOT);
       adam.userData.pose = 'lie';
       const { rig } = adam.userData;
-      await tween(1400, (p) => { rig.rotation.set(-Math.PI / 2 * easeOut(p), 0, 0); rig.position.y = 0.3 * p; });
+      await tween(1400, (p) => { rig.rotation.set(-Math.PI / 2 * easeOut(p), 0, 0); rig.position.y = 0.16 * p; }); // 몸 두께의 절반만큼 뜬다
     },
     // 창 2:21~22 옆구리에서 나온 빛이 하와의 모습이 된다(화면 전환 없이).
     formEve: async () => {
@@ -488,7 +494,7 @@ export function makeEden(scene) {
       pillar.visible = false;
       // 아담이 깨어 일어난다
       const { rig } = adam.userData;
-      await tween(1000, (p) => { rig.rotation.x = -Math.PI / 2 * (1 - easeOut(p)); rig.position.y = 0.3 * (1 - p); });
+      await tween(1000, (p) => { rig.rotation.x = -Math.PI / 2 * (1 - easeOut(p)); rig.position.y = 0.16 * (1 - p); });
       adam.userData.pose = null;
       face(adam, eve.position);
     },
@@ -719,7 +725,8 @@ export function makeEden(scene) {
       }
     }
     for (const fig of [adam, eve]) {
-      if (!fig.visible || fig === walking || movers.has(fig) || fig.userData.pose === 'lie') continue;
+      if (!fig.visible || fig === walking || movers.has(fig)) continue;
+      if (fig.userData.pose === 'lie') { poseFigure(fig); continue; } // 누운 몸은 굽히지 않고 통째로 둔다
       if (fig.userData.faceYaw !== undefined) turnFigure(fig, fig.userData.faceYaw, dt * 0.5);
       animateFigure(fig, 0, dt, t, NPC_REF);
     }

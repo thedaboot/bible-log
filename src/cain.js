@@ -2,7 +2,7 @@
 // 창 4:8은 멀리서 비추고 쓰러지는 모습까지만 보인다(docs/standards/quests-and-staging.md "연출").
 import * as THREE from 'three';
 import {
-  PAL, mat, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, collapseFigure, turnFigure, makeLightPillar, makeSpiritLight,
+  PAL, mat, makeLand, makeTree, makeAnimal, animateAnimal, makeFigure, animateFigure, poseFigure, handOf as figHand, collapseFigure, turnFigure, makeLightPillar, makeSpiritLight,
 } from './props.js';
 import { tween, easeOut } from './anim.js';
 import { CAIN, FLOCK } from './data/cain.js';
@@ -94,15 +94,18 @@ export function makeCain(scene) {
   const rand = seeded(20261102);
   const group = new THREE.Group();
   const sky = new THREE.Color(0xc9e4f2);
-  const hemi = new THREE.HemisphereLight(0xf4f8e0, 0x6b5a3a, 1.1);
-  const sun = new THREE.DirectionalLight(0xfff1d0, 1.3);
-  sun.position.set(-6, 12, 5);
+  // 빛(2026-11-14 6B, field.js와 같은 언어): 그늘은 푸른 하늘빛, 볕은 화면 왼쪽 앞 위에서 오는 따뜻한 햇빛. 밝기의 값은 전과 같다
+  const hemi = new THREE.HemisphereLight(0xcfdff2, 0xa0946e, 1.1);
+  const sun = new THREE.DirectionalLight(0xfff0d8, 1.3);
+  sun.position.set(-4, 9, 8);
   group.add(hemi, sun);
 
   // 에덴 동쪽 들판: 동산보다 마른 풀빛(창 3:17~18 수고하여 일구는 땅)
+  // 땅(props.js makeLand): 걷는 땅과 바깥이 한 장으로 이어지고 멀리 낮은 언덕으로 솟는다. 예전의 둥근 판은 숨긴다(걷는 범위와 충돌은 그대로)
   const ground = new THREE.Mesh(new THREE.CylinderGeometry(13, 14.5, 2, 20), mat(0x8fae5a));
   ground.position.y = -1;
-  group.add(ground);
+  ground.visible = false;
+  group.add(ground, makeLand({ radius: 11, color: 0xa3a878, seed: 44 }));
 
   // 가인의 밭: 갈아 놓은 흙과 곡식 줄
   const soil = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.06, 3.2), mat(PAL.soil));
@@ -233,9 +236,9 @@ export function makeCain(scene) {
   sheaf.visible = false;
   // 창 4:15 가인에게 주신 표: 이마의 작은 빛
   const mark = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), new THREE.MeshBasicMaterial({ color: PAL.holy }));
-  mark.position.set(0, 1.42, 0.2);
+  mark.position.set(0, 1.42, 0.27);
   mark.visible = false;
-  cain.userData.rig.add(mark);
+  cain.userData.headG.add(mark); // 머리의 틀(예전 머리 좌표, props.js): 이마 앞
   // 가인이 덮은 흙더미(각색). 창 4:10 "피가 땅에서 울부짖는다"에서 은은히 빛난다(emissive).
   const moundMat = mat(PAL.soil, { emissive: PAL.holy, emissiveIntensity: 0 });
   const mound = new THREE.Group();
@@ -261,7 +264,7 @@ export function makeCain(scene) {
     return new Promise((resolve) => movers.set(fig, { to: to.clone().setY(0), speed, resolve, best: Infinity, stuck: 0 }));
   }
   const face = (fig, p) => { fig.userData.faceYaw = Math.atan2(p.x - fig.position.x, p.z - fig.position.z); };
-  const handOf = (fig) => { fig.updateMatrixWorld(true); return fig.localToWorld(new THREE.Vector3(0.36, 0.8, 0.22)); };
+  const handOf = (fig) => figHand(fig); // 오른손의 실제 자리(새 몸의 손끝, props.js)
   let stage = null;
   let carry = null; // 가인이 손에 든 곡식 단
   let follow = null; // 관찰자를 따라오는 어린양 { target }
@@ -279,13 +282,15 @@ export function makeCain(scene) {
     pen: (an) => pen(an, sheep.indexOf(an)),
     // 저녁과 아침: 하늘과 빛이 노을빛으로 물들었다가 돌아온다(막간 앞뒤).
     dusk: (on) => {
+      // 지금 값에서 목표로 옮긴다(field.js acts.sky와 같은 방식: 어느 상태에서 불러도 색과 밝기가 튀지 않는다)
+      const k = on ? 1 : 0;
       const from = scene.background.clone(), to = on ? new THREE.Color(0xe8a878) : sky;
+      const h0 = hemi.intensity, s0 = sun.intensity, c0 = sun.color.clone(), c1 = new THREE.Color(0xfff1d0).lerp(new THREE.Color(0xff9a5a), k);
       return tween(1800, (p) => {
         scene.background.lerpColors(from, to, p);
-        const k = on ? p : 1 - p;
-        hemi.intensity = 1.1 - 0.4 * k;
-        sun.intensity = 1.3 - 0.6 * k;
-        sun.color.setHex(0xfff1d0).lerp(new THREE.Color(0xff9a5a), k);
+        hemi.intensity = h0 + (1.1 - 0.4 * k - h0) * p;
+        sun.intensity = s0 + (1.3 - 0.6 * k - s0) * p;
+        sun.color.lerpColors(c0, c1, p);
       });
     },
     // 제물 준비: 어린양이 관찰자를 따라온다 / 아벨 곁 돌무더기 앞에 선다
@@ -522,7 +527,8 @@ export function makeCain(scene) {
       animateFigure(fig, m.speed, dt, t, 1.3);
     }
     for (const fig of Object.values(people)) {
-      if (!fig.visible || movers.has(fig) || fig.userData.pose) continue;
+      if (!fig.visible || movers.has(fig)) continue;
+      if (fig.userData.pose) { poseFigure(fig); continue; } // 자세를 잡은 인물: 숙임·낮춤을 허리와 다리에 옮긴다
       if (fig.userData.faceYaw !== undefined) turnFigure(fig, fig.userData.faceYaw, dt * 0.5);
       animateFigure(fig, 0, dt, t, 1.3);
     }

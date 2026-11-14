@@ -245,9 +245,9 @@ export default {
     // ---------- 인물 ----------
     const joseph = F.person('joseph', { hair: 'short', hairColor: 0x3e2a1e, outfit: 'robe', outfitColor: 0xf1ead8 }, JOSEPH_GR);
     const gold = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.04, 4, 10), mat(PAL.gold));
-    gold.rotation.x = Math.PI / 2;
-    gold.position.y = 1.22;
-    joseph.userData.rig.add(gold); // 금 사슬(창 41:42)
+    gold.rotation.x = Math.PI / 2 - 0.4;
+    gold.position.set(0, 1.02, 0.05);
+    joseph.userData.chestG.add(gold); // 금 사슬(창 41:42): 가슴의 틀(예전 목·가슴 좌표, props.js)에 걸어 목에서 가슴으로 늘어진다
     const LOOKS = [[0x231a16, 0x9a6b45], [0x3e2a1e, 0x7f8a4a], [0x6b4428, 0xd8c3a0], [0x231a16, 0x5a4a3a], [0x3e2a1e, 0x8a6a4a]];
     const IDS = ['reuben', 'brother1', 'brother2', 'judah', 'brother4']; // 르우벤, 시므온, 레위, 유다, 단
     const brothers = LOOKS.map(([h, c], i) => F.person(IDS[i], { hair: 'short', hairColor: h, beard: 'long', outfit: 'shepherd', outfitColor: c }, SD(-6.9 + i * 0.75, 3.4)));
@@ -261,9 +261,10 @@ export default {
     const scribe = egyptian('scribe', SCRIBE);
     const rope = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.035, 4, 10), mat(0x8a6a3a));
     rope.rotation.x = Math.PI / 2;
-    rope.position.y = 0.85;
+    rope.position.y = 1.1; // 새 몸의 팔꿈치 높이: 두 팔과 몸통을 함께 두른다(몸통처럼 앞뒤로 납작하게)
+    rope.scale.set(1.17, 0.9, 1);
     rope.visible = false;
-    simeon.userData.rig.add(rope);
+    simeon.userData.upper.add(rope);
 
     Object.assign(F, { joseph, brothers, reuben, simeon, judah, benjamin, jacob, steward, servant, scribe, sacks, donkeys, rowSacks, bundles, cup, spills, robes, rope, cellGate, portions, wagons, goshenTent });
     F.spots = {

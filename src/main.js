@@ -38,11 +38,19 @@ renderer.localClippingEnabled = true; // 가죽옷이 발밑부터 차오르는 
 document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+// 시점(2026-11-14 6B): 낮은 원근 시점. 같은 실제 부품을 높은 직교 시점·중간 원근 시점과 나란히 그려 본 실제 렌더에서 골랐다
+// (runtime/ui-overhaul/framing-premise.md). 내려다보는 각은 22도, 화각은 가로 화면 30도·세로 화면 57도(같은 거리에서 가로 범위가 들어오게).
+// 건물의 높이, 사람과 우물의 앞뒤, 먼 지형이 읽힌다. 카메라는 이것 하나다(직교 시점은 쓰지 않는다).
+const camera = new THREE.PerspectiveCamera(30, 1, 0.5, 260);
 scene.add(camera); // 카메라에 붙인 물체(창조의 별)도 그려지게 한다
-const CAM_OFFSET = new THREE.Vector3(10, 12, 10);
+// 보는 방향(길이는 쓰지 않는다. 카메라와 보는 점 사이의 거리는 applyView가 viewSize에서 정한다)
+const CAM_OFFSET = new THREE.Vector3(10, 5.7, 10);
+const SKY_OFFSET = new THREE.Vector3(10, 12, 10); // 창조의 일곱 날: 하늘과 땅 전체를 위에서 내려다본다(40도)
 const ROOM_OFFSET = new THREE.Vector3(10, 4, 10); // 꾸미기 방: 카메라를 낮춰 캐릭터를 정면에 가깝게 본다
 let camOffset = CAM_OFFSET;
+let camDist = 20;
+const CAM_LIFT = 0.9; // 보는 점의 높이: 발밑이 아니라 사람의 가슴께가 화면 가운데에 온다
+const camLook = new THREE.Vector3();
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
 const ORIGIN = new THREE.Vector3();
 const camTarget = new THREE.Vector3();
@@ -61,6 +69,7 @@ let turntable = false; // 꾸미는 동안 캐릭터를 천천히 돌려 뒷모�
 // 그림자: 지금 장면의 해(DirectionalLight) 하나만 그림자를 드리운다. 그림자 틀은 카메라가 보는 곳을 따라다닌다.
 // 새로 생긴 메시도 그림자를 주고받게, 장면을 가끔 훑어 표시한다(반투명·빛나는 것은 드리우지 않는다).
 let sunOf = null, sunLight = null, shadowScan = 0;
+const shadowAim = new THREE.Vector3();
 const SHADOW_SIZE = COARSE ? 1024 : 2048;
 function tendShadows(dt) {
   const L = land() ?? (heaven.group.visible ? heaven : dressingRoom.visible ? { group: dressingRoom } : creation);
@@ -80,10 +89,12 @@ function tendShadows(dt) {
     shadowScan = 0;
   }
   if (sunLight) {
-    const half = Math.max(11, viewSize * 0.95);
+    const half = Math.max(16, viewSize * 1.3); // 낮은 원근 시점은 멀리까지 보인다: 그림자 틀을 넓게 잡는다
     const cam = sunLight.shadow.camera;
     if (cam.right !== half) { cam.left = -half; cam.right = half; cam.top = half; cam.bottom = -half; cam.near = 1; cam.far = 90; cam.updateProjectionMatrix(); }
-    sunLight.target.position.copy(camTarget).setY(0);
+    // 그림자 틀의 가운데: 보는 점에서 화면 안쪽(카메라에서 먼 쪽)으로 조금 나간 자리. 낮은 시점은 보는 점 뒤쪽 땅이 화면에 더 많이 들어온다
+    camera.getWorldDirection(shadowAim).setY(0).normalize().multiplyScalar(half * 0.4);
+    sunLight.target.position.copy(camTarget).setY(0).add(shadowAim);
     sunLight.position.copy(sunLight.target.position).addScaledVector(sunLight.userData.dir, 40);
   }
   shadowScan -= dt;
@@ -102,28 +113,48 @@ function tendShadows(dt) {
 // 천국 모습 고르기 창(옆 창, 휴대폰은 아래 시트)이 떠 있는 동안 내 캐릭터가 창에 가리지 않게 장면을 민다
 let wideShot = false;
 function sideView(on) { viewShift = on ? { x: 0.2, y: 0.2 } : null; resize(); }
+// 읽는 거리(2026-11-14 6B): viewSize는 "보는 점의 거리에서 화면에 들어오는 범위"다. 사람이 작게 흩어진 넓은 지도로 보이지 않게
+// 가로 화면은 세로 범위를 viewSize의 0.74배로, 세로 화면은 가로 범위를 viewSize의 0.6배로 잡고, 원근 카메라가 그 범위가 들어오는 거리에 선다.
+// 창조의 일곱 날과 큰 구조물 전체를 보이는 장면(wide)은 전체를 봐야 해서 그대로다. 대사가 떠 있는 동안에는 조금 더 다가간다(zoom, tick이 부드럽게 옮긴다).
+let zoom = 1;
+const viewOff = { x: 0, y: 0 };
 function resize() {
   // 화면 크기는 배치 기준 영역(layout viewport)으로 잰다. innerWidth·innerHeight는 확대되면 줄어들어, 두 번 탭으로 화면이
   // 커진 순간 캔버스가 작게 다시 그려져 아래에 빈 바탕이 드러났다(2026-11-13 F83). 확대 자체도 막는다(base.css touch-action, 아래 입력).
-  const w = document.documentElement.clientWidth || innerWidth, h = document.documentElement.clientHeight || innerHeight, aspect = w / h;
+  const w = document.documentElement.clientWidth || innerWidth, h = document.documentElement.clientHeight || innerHeight;
+  applyView(w, h);
+  renderer.setSize(w, h, false); // 보이는 크기는 CSS(100%)가 정한다
+}
+// 카메라가 보는 범위만 다시 잡는다(캔버스 크기는 건드리지 않는다: 대사 때 다가가는 동안 프레임마다 부른다)
+function applyView(w = document.documentElement.clientWidth || innerWidth, h = document.documentElement.clientHeight || innerHeight) {
+  const aspect = w / h;
   // 세로 화면(휴대폰): 높이 기준으로만 넓히면 가로로 보이는 폭이 데스크톱의 3분의 1로 줄어 대상이 화면 밖으로 나가고,
   // 가로 폭을 viewSize 전체로 맞추면 인물이 너무 작아진다(2026-11-02 사용자 캡처 S01). 가로 폭을 viewSize의 0.72배로 두고
   // 화면 밖 목표는 가장자리 화살표가 가리킨다. 창조의 일곱 날만 하늘과 땅 전체를 봐야 해서 viewSize 전체 폭이다.
   // 큰 구조물 전체를 보이는 장면(방주 등, g.cam의 wide)도 세로 화면에서 양 끝이 잘리지 않게 넓게 본다(2026-11-03, S22부터 남은 문제)
-  const fitW = creation ? 1 : wideShot ? 1.15 : 0.72;
-  const view = aspect < 1 ? Math.max(viewSize * 1.35, (viewSize * fitW) / aspect) : viewSize;
-  camera.left = (-view * aspect) / 2;
-  camera.right = (view * aspect) / 2;
-  camera.top = view / 2;
-  camera.bottom = -view / 2;
+  const whole = creation || wideShot; // 전체를 봐야 하는 장면
+  const size = viewSize * (creation ? 1 : zoom);
+  const fitW = creation ? 1 : wideShot ? 1.15 : 0.6;
+  // view: 보는 점의 거리에서 화면에 들어오는 세로 범위(세계 단위). 원근 카메라는 이 범위가 들어오는 거리에 선다
+  const view = aspect < 1 ? Math.max(size * (whole ? 1.35 : 1.12), (size * fitW) / aspect) : size * (whole ? 1 : 0.74);
+  // 화각: 세로 화면의 땅 장면은 넓게(57도) 잡아 가로 화면과 비슷한 거리에 선다. 가까이 보는 꾸미기 방과 창조는 좁게(얼굴과 몸이 휘지 않게)
+  camera.fov = aspect < 1 ? (camOffset === CAM_OFFSET && !creation ? 57 : 36) : 30;
+  camera.aspect = aspect;
+  camDist = view / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  // 창조의 별(카메라에 붙어 먼 뒤쪽 z -90에 깔린다, creation.js): 화면을 다 덮게 화각과 화면비에 맞춰 넓힌다
+  if (creation) {
+    const half = 90 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.max(1, aspect);
+    creation.stars.scale.set(Math.max(1, half / 24), Math.max(1, half / 24), 1);
+  }
   // 메뉴·패널이 없을 때도 대사 창이 덮는 쪽을 피해 장면을 민다: 세로 화면은 위로(가로 화면은 데스크톱처럼 그대로)
   // 낮은 가로 화면(높이 30rem 이하)은 대사 창이 아래 40% 안팎을 덮어 인물이 획득 알림 높이에 걸렸다(2026-11-03 1-5 캡처). 장면을 10% 위로 민다
   const lowLand = aspect >= 1 && h <= 480;
   const shift = viewShift ?? (aspect < 1 ? { x: 0, y: 0.05 } : lowLand ? { x: 0, y: 0.1 } : null);
-  if (shift) camera.setViewOffset(w, h, aspect >= 1 ? shift.x * w : 0, aspect < 1 || (lowLand && !viewShift) ? shift.y * h : 0, w, h);
+  viewOff.x = shift && aspect >= 1 ? shift.x : 0; // 장면을 민 만큼(화면 크기에 대한 비). 구도 맞추기(frameFit)가 화면의 실제 가운데를 알 때 쓴다
+  viewOff.y = shift && (aspect < 1 || (lowLand && !viewShift)) ? shift.y : 0;
+  if (shift) camera.setViewOffset(w, h, viewOff.x * w, viewOff.y * h, w, h);
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
-  renderer.setSize(w, h, false); // 보이는 크기는 CSS(100%)가 정한다
 }
 addEventListener('resize', resize);
 addEventListener('orientationchange', () => setTimeout(resize, 250));
@@ -176,6 +207,8 @@ function edgeArrow() {
   const tgt = waypoint.target;
   if (!tgt || mode !== 'walk') { el.hidden = true; return; }
   edgeTmp.set(tgt.x, (tgt.y ?? 0) + 1, tgt.z).project(camera);
+  // 원근 카메라: 목표가 카메라 뒤에 있으면 화면 좌표가 뒤집혀 나온다. 바로잡아 목표가 있는 쪽을 가리키게 한다(z가 1보다 크면 화면 밖으로 친다)
+  if (edgeTmp.z > 1) { edgeTmp.x = -edgeTmp.x; edgeTmp.y = -edgeTmp.y; }
   const w = document.documentElement.clientWidth, h = document.documentElement.clientHeight, m = 36;
   // 표시가 설 수 있는 사각형: 화면에서 안전 영역을 뺀 뒤 변마다 m만큼 더 들인다(2026-11-14: 전에는 화면 끝에서 m만 띄워
   // 844×390 가로 화면에서 표시가 아래 안전 영역을 넘었다). 안전 영역이 0이면 전과 같은 자리다. 세로·가로 화면이 같은 계산을 쓴다.
@@ -434,6 +467,8 @@ function questFind({ title, targets, text, radius = 1.6, onFound, hold = 0, hold
 let angelFollow = false;
 let angelAway = null; // 막간 상대: 대천사가 이 인물의 반대쪽(관찰자 뒤)에 서서 둘 사이를 가리지 않는다
 const angelGoal = new THREE.Vector3();
+// 대천사가 서는 자리(관찰자 기준): 화면 오른쪽으로 1.27, 화면 안쪽(카메라에서 먼 쪽)으로 0.5. (+x, +z)가 카메라 쪽이다
+const ANGEL_SIDE = new THREE.Vector3(0.55, 0, -1.25);
 function moveAngel(dt, t) {
   // 도전 자리 곁에서는 그 자리의 반대쪽에 선다(2026-11-05: 1-10 기둥 등 도전 소품을 대천사가 가렸다)
   const away = angelAway ?? (ch?.near ? { position: ch.near.pos } : null);
@@ -442,10 +477,12 @@ function moveAngel(dt, t) {
     const side = Math.sign((player.position.x - away.position.x) - (player.position.z - away.position.z)) || 1;
     angelGoal.set(side, 0, -side).setLength(1.4).add(player.position);
     angel.position.lerp(angelGoal, Math.min(1, dt * 2.5));
-  } else if (angelFollow && angel.position.distanceTo(player.position) > 1.4) {
-    // (+x, +z)는 카메라 쪽이라 관찰자를 가린다. 화면 오른쪽 옆인 (+x, -z)에 선다.
-    angelGoal.copy(player.position).add(new THREE.Vector3(1, 0, -1));
-    angel.position.lerp(angelGoal, Math.min(1, dt * 2.5));
+  } else if (angelFollow) {
+    // 화면에서 관찰자의 오른쪽 뒤(조금 먼 쪽)에 선다: 카메라에서 더 멀어서 대천사의 몸과 날개가 관찰자를 덮지 않는다.
+    // (2026-11-14 6B 교정: 전에는 1.4보다 멀어질 때만 따라가서, 관찰자가 비켜 서면 대천사가 제자리에 남아 관찰자 앞을 가렸다.
+    //  이제 늘 설 자리로 간다. 거리를 좁혀서 풀지 않는다) 설 자리에 거의 닿으면 멈춘다(제자리에서 떨지 않게)
+    angelGoal.copy(ANGEL_SIDE).add(player.position);
+    if (angel.position.distanceTo(angelGoal) > 0.08) angel.position.lerp(angelGoal, Math.min(1, dt * 2.5));
   }
   angel.children.forEach((c) => (c.position.y += Math.sin(t * 2) * 0.002)); // 둥실거림
   angel.lookAt(player.position.x, angel.position.y, player.position.z);
@@ -462,7 +499,7 @@ function descendAngel() {
 function placeCompanions(at) {
   player.position.copy(at);
   vel.set(0, 0, 0);
-  angel.position.copy(at).add(new THREE.Vector3(1, 0, -1));
+  angel.position.copy(at).add(ANGEL_SIDE);
   player.visible = angel.visible = true;
   angelFollow = true;
   camFollow = player.position;
@@ -570,8 +607,8 @@ async function runCreation(fromDay = 1) {
 //  옷 모양 → 발밑부터 새 옷이 차오른다 / 피부·옷 색·머리색·빛깔 → 새 색이 위에서 아래로 물든다
 //  머리 모양·수염 → 머리에 빛 알갱이가 모였다 흩어지며 새 모양이 나온다 / 소품 → 빛이 손으로 날아와 소품이 된다
 //  키 → 부드럽게 늘고 준다 / 나를 감싸는 빛 → 발밑 고리가 새 색으로 퍼진다 / 무작위 → 이 효과들이 차례로
-const PART_HEIGHT = { hair: 1.4, beard: 1.15 };
-const HAND = new THREE.Vector3(0.4, 0.6, 0.2); // 빛 구슬이 날아가는 손 자리: props.js HOLD의 내린 손(LOW)과 앞 손(FRONT) 사이(2026-11-03 꾸미기 조합)
+const PART_HEIGHT = { hair: 1.6, beard: 1.45 }; // 새 몸(props.js BODY)의 머리와 턱 높이
+const HAND = new THREE.Vector3(0.3, 0.9, 0.35); // 빛 구슬이 날아가는 손 자리: props.js HOLD의 내린 손(LOW)과 앞 손(FRONT) 사이(2026-11-03 꾸미기 조합)
 const glow = (color, opacity = 0.95) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
 const hexOf = (key, id) => (LOOK.earth[key] ?? LOOK.heaven[key])?.find((o) => o.id === id)?.hex;
 let finishWipe = null; // 진행 중인 차오름/물듦을 바로 끝내는 함수(빨리 연달아 고를 때)
@@ -947,6 +984,51 @@ function talk(lines, ctx, opts = {}) {
 }
 // 말하는 인물 비추기(2026-11-03 사용자 F23·F32 "대화 중 아담·노아가 화면 밖"): 대사가 떠 있는 동안 말하는 인물이 화면 밖이거나
 // 대사 창 뒤로 내려가면, 그 대사가 끝날 때까지 인물과 관찰자 사이를 비춘다(한 번 잡으면 놓지 않아 카메라가 흔들리지 않는다).
+// 사건의 구도(2026-11-14 6B 교정, runtime/ui-overhaul/framing-premise.md): 초점 한 점을 화면 가운데에 두는 것으로는 사람이 읽히지 않았다
+// (관찰자가 대사 그늘 밑에 서고, 걷지 않는 대사 중에는 보정이 없었다). 그래서 점이 아니라 그 사건의 사람들(관찰자, 대천사, 말하는 사람)의
+// 몸 전체가 "쓸 수 있는 영역"(위의 목표·알림과 아래의 대사·조작을 뺀 가운데)에 들어오게 한다.
+//  - 스테이지가 준 초점(camFocus, 없으면 두 사람 사이나 관찰자)이 기준이다. 사람들이 영역 안에 있으면 초점을 그대로 둔다.
+//  - 벗어난 만큼만 초점을 옮긴다. 사람들 사이가 영역보다 넓으면 가운데에 두고, 넘치는 만큼만 물러난다(fitZoom, 최대 1.45배).
+//  - 걷는 중과 대사 중(mode 'none')에 같은 계산을 쓴다. 사람들이 서 있는 동안 값이 변하지 않아 구도가 흔들리지 않고,
+//    말하는 사람이 바뀔 때마다 다시 겨누지 않는다(말하는 사람은 영역 안에 넣을 사람으로만 센다).
+const camR = new THREE.Vector3(), camU = new THREE.Vector3(), camF = new THREE.Vector3(), camWant = new THREE.Vector3(), camAt = new THREE.Vector3();
+let fitZoom = 1;
+function frameFit(base) {
+  camR.setFromMatrixColumn(camera.matrixWorld, 0);
+  camU.setFromMatrixColumn(camera.matrixWorld, 1);
+  camF.setFromMatrixColumn(camera.matrixWorld, 2).negate(); // 카메라가 보는 방향
+  const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), tanH = tanV * camera.aspect;
+  const talk = !$('dialog').hidden, tall = camera.aspect < 1;
+  // 쓸 수 있는 영역(화면 좌표: 가운데 0, 가장자리 ±1). 대사가 떠 있으면 아래를 더 비운다(글자 뒤의 그늘까지). 장면을 민 만큼(viewOff) 옮겨 잰다
+  const ox = viewOff.x * 2, oy = viewOff.y * 2;
+  const x0 = -0.9 + ox, x1 = 0.9 + ox;
+  const y0 = -1 + 2 * (talk ? (tall ? 0.3 : 0.36) : 0.16) - oy, y1 = 1 - 2 * (tall ? 0.17 : 0.13) - oy;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, n = 0;
+  // 카메라가 base를 볼 때 그 사람의 발과 머리가 화면의 어디에 오는지(원근: 멀수록 가운데로 모이고 작아진다)
+  const take = (fig, height, half) => {
+    if (!fig?.visible) return;
+    camAt.copy(fig.position).sub(base);
+    camAt.y -= CAM_LIFT; // 보는 점은 base에서 CAM_LIFT만큼 위다
+    const side = camAt.dot(camR), up = camAt.dot(camU), z = Math.max(1, camDist + camAt.dot(camF)), zTop = Math.max(1, z + height * camF.y);
+    const sx = side / (z * tanH), w = half / (z * tanH);
+    minX = Math.min(minX, sx - w); maxX = Math.max(maxX, sx + w);
+    minY = Math.min(minY, up / (z * tanV)); maxY = Math.max(maxY, (up + height * camU.y) / (zTop * tanV));
+    n++;
+  };
+  take(player, 1.8 * (player.userData.height ?? 1), 0.4);
+  if (angelFollow) take(angel, 2, 0.6);
+  if (talk && speaker !== player) take(speaker, 1.8, 0.4);
+  if (!n) { fitZoom = 1; return base; }
+  const spanX = maxX - minX, spanY = maxY - minY, roomX = x1 - x0, roomY = y1 - y0;
+  // 물러나야 하는 만큼: 지금 화면에서 넘치는 비에 지금 실제로 물러나 있는 정도(zoom ÷ 기본 배율)를 곱한다.
+  // 배율이 옮겨 가는 중에도 같은 값이 나와서 다가갔다 물러났다 하지 않는다
+  const need = Math.max(spanX / roomX, spanY / roomY) * (zoom / (talk ? 0.88 : 1));
+  fitZoom = need > 1.02 ? Math.min(1.45, need) : 1;
+  const ex = spanX > roomX ? (minX + maxX) / 2 - (x0 + x1) / 2 : minX < x0 ? minX - x0 : maxX > x1 ? maxX - x1 : 0;
+  const ey = spanY > roomY ? (minY + maxY) / 2 - (y0 + y1) / 2 : minY < y0 ? minY - y0 : maxY > y1 ? maxY - y1 : 0;
+  // 화면에서 벗어난 만큼을 보는 점의 거리에서의 길이로 바꿔 초점을 옮긴다
+  return ex || ey ? camWant.copy(base).addScaledVector(camR, ex * camDist * tanH).addScaledVector(camU, ey * camDist * tanV) : base;
+}
 let speaker = null, speakerFrame = null;
 const figOf = (who) => { const L = land(); return L?.people?.[who] ?? (L && L === eden ? { adam: eden.adam, eve: eden.eve }[who] : null) ?? null; };
 const ndc = new THREE.Vector3();
@@ -965,11 +1047,11 @@ function speakerFocus() {
 // 열매 단계로 열린 선택지(need)에는 그 열매 이름과 새싹 표시를 단다. key/번호마다 열매는 한 번만 자란다.
 // 인물이 카메라에서 나무·바위 같은 물체에 가려졌는지(머리 높이로 광선을 쏜다). 막간 상대가 가려져 있으면 관찰자 곁으로 데려온다(2026-11-05)
 function hidden(fig, L) {
-  // 직교 카메라라 광선은 카메라가 보는 방향과 나란하다: 머리에서 카메라 쪽으로 30만큼 물러난 곳에서 머리로 쏜다
-  const head = fig.position.clone().setY(fig.position.y + 1.2);
-  const fwd = camera.getWorldDirection(new THREE.Vector3());
-  raycaster.set(head.clone().addScaledVector(fwd, -30), fwd);
-  raycaster.far = 30 - 0.4;
+  // 원근 카메라: 카메라 자리에서 인물의 머리로 광선을 쏜다(머리 앞 0.4까지)
+  const head = fig.position.clone().setY(fig.position.y + 1.5);
+  const dir = head.clone().sub(camera.position), far = dir.length();
+  raycaster.set(camera.position, dir.normalize());
+  raycaster.far = far - 0.4;
   const hit = raycaster.intersectObject(L.group, true).find((h) => h.object.visible && !isPart(h.object, fig) && !isPart(h.object, player) && !isPart(h.object, angel) && !h.object.material?.transparent);
   raycaster.far = Infinity;
   return !!hit;
@@ -2072,9 +2154,21 @@ function tick() {
     if (dragX !== null || held('KeyQ', 'KeyE')) practiced('look', dt);
   }
   tapped.clear();
-  camTarget.lerp(speakerFocus() ?? camFocus ?? (camPair && pairPoint.copy(camPair[0].position).lerp(camPair[1].position, 0.5).setY(0)) ?? camFollow, Math.min(1, dt * 4));
-  camera.position.copy(camTarget).add(camTmp.copy(camOffset).applyAxisAngle(Y_AXIS, camAngle));
-  camera.lookAt(camTarget);
+  // 대사가 떠 있는 동안 조금 다가가고(말하는 사람과 표정이 읽히게), 끝나면 물러난다. 멈춤 중에는 dt가 0이라 그대로 선다
+  // 지상 장면(land)에서는 사건의 구도를 맞춘다(frameFit): 스테이지의 초점이 기준이고, 사람들의 몸이 쓸 수 있는 영역에 들어오게 옮기거나 물러난다.
+  // 천국·창조·꾸미기처럼 땅이 없는 장면은 전과 같다(말하는 사람이 화면 밖이면 그쪽을 본다)
+  const fit = land() && mode !== 'orbit' && !titleView;
+  const aim = camFocus ?? (camPair && pairPoint.copy(camPair[0].position).lerp(camPair[1].position, 0.5).setY(0)) ?? camFollow;
+  const want = fit ? frameFit(aim) : speakerFocus() ?? aim;
+  if (!fit) fitZoom = 1;
+  const zoomTo = (!creation && !titleView && !$('dialog').hidden ? 0.88 : 1) * fitZoom;
+  if (Math.abs(zoomTo - zoom) > 0.002) { zoom += (zoomTo - zoom) * Math.min(1, dt * 2.5); applyView(); }
+  camTarget.lerp(want, Math.min(1, dt * 4));
+  // 보는 점은 초점에서 CAM_LIFT만큼 위(사람의 가슴께)이고, 카메라는 보는 방향으로 camDist만큼 떨어져 선다. 창조는 위에서 전체를 본다
+  camLook.copy(camTarget);
+  if (!creation) camLook.y += CAM_LIFT;
+  camera.position.copy(camLook).add(camTmp.copy(creation ? SKY_OFFSET : camOffset).applyAxisAngle(Y_AXIS, camAngle).setLength(camDist));
+  camera.lookAt(camLook);
   tendShadows(dt);
   if ($('title').hidden) renderer.render(scene, camera); // 첫 화면은 그린 풍경이 덮고 있어 3D를 그리지 않는다
   requestAnimationFrame(tick);
@@ -2082,7 +2176,7 @@ function tick() {
 
 // 개발 서버에서만: 브라우저 점검용으로 캐릭터와 세계에 접근한다(배포 빌드에는 빠진다).
 // run은 쉼터의 걸어서 닿는 자리를 지우고 시작한다(지도에서 들어갈 때와 같다).
-if (import.meta.env.DEV) globalThis.__dev = { player, get heaven() { return heaven; }, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, auto: false, run: (id) => { stopWalk(); $('title').hidden = true; refreshHud(); showHud(true); titleView = false; viewShift = null; resize(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`), challenge: (o) => runChallenge(o), stop: () => stopWalk(), hidden: (fig) => hidden(fig, land()), goNext: () => { if (mode !== 'walk') return; if (holdQuest?.cur) holdQuest.p = 1; else if (aimPos) { player.position.copy(aimPos).add(new THREE.Vector3(0.6, 0, 0.6)); land()?.collide(player.position, 0.35); } } }; // goNext: 키보드 점검(R3)에서 걷는 거리만 건너뛴다
+if (import.meta.env.DEV) globalThis.__dev = { player, get heaven() { return heaven; }, get eden() { return eden; }, get cain() { return cain; }, get mode() { return mode; }, get state() { return state; }, interlude: () => runInterlude(INTERLUDE, 'eden/interlude'), cainInterlude: () => runInterlude(CAIN_INTERLUDE, 'cain/interlude'), get field() { return field; }, get camera() { return camera; }, get renderer() { return renderer; }, get angel() { return angel; }, get waypoint() { return waypoint; }, auto: false, run: (id) => { stopWalk(); $('title').hidden = true; refreshHud(); showHud(true); titleView = false; viewShift = null; resize(); startAt(id); }, interludeOf: (id) => runInterlude(STAGE_MODS[id].data.interlude, `${id}/interlude`), challenge: (o) => runChallenge(o), stop: () => stopWalk(), hidden: (fig) => hidden(fig, land()), goNext: () => { if (mode !== 'walk') return; if (holdQuest?.cur) holdQuest.p = 1; else if (aimPos) { player.position.copy(aimPos).add(new THREE.Vector3(0.6, 0, 0.6)); land()?.collide(player.position, 0.35); } } }; // goNext: 키보드 점검(R3)에서 걷는 거리만 건너뛴다
 
 scene.background = new THREE.Color(0xfdf3d8);
 player.position.set(0, 0, -3);

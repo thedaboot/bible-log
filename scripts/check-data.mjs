@@ -12,7 +12,7 @@ import { makeEden, collide, EDEN_RADIUS, EDEN_START, RIVER_SEGMENTS, BRIDGES, ST
 import { load, save, reach, newState, openNext, cleanResume } from '../src/save.js';
 import { makeCain, collide as cainCollide, stepAsideSpots as cainAside, STAGES as CAIN_STAGES } from '../src/cain.js';
 import { makeCreation, skyState } from '../src/creation.js';
-import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
+import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS, BODY, makeFigure, earthSpec, poseFigure } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
 import { layout } from '../src/map.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL, CHALLENGE } from '../src/data/growth.js';
@@ -226,6 +226,31 @@ assert.equal(load(null), null);
       .map((f) => f.slice(0, -3));
     assert.deepEqual(givers, it.use ? [it.use.stage] : [], `${it.id}: 쓰는 곳(use)과 스테이지 코드가 다름`);
     if (it.use) assert.ok(CHAPTERS.some((c) => c.id === it.use.stage) && typeof it.use.how === 'string' && it.use.how, `${it.id}: 쓰는 곳·쓰는 법 오류`);
+  }
+  // 새 몸(2026-11-14 props.js BODY): 옷 × 머리 모양, 소품 하나하나에서 몸의 경계가 유한하고, 발이 땅에 닿고, 키가 어른의 비례 안에 있다.
+  // 손에 든 소품은 손의 무리(userData.held)에 그 이름으로 붙는다. 앉기·무릎 꿇기에서 몸이 땅 아래로 꺼지지 않는다.
+  {
+    const box = new THREE.Box3();
+    const look = (extra) => earthSpec({ ...DEFAULT_EARTH, ...extra });
+    const measure = (spec) => { const fig = makeFigure(spec); fig.updateMatrixWorld(true); box.setFromObject(fig); return { fig, min: box.min.clone(), max: box.max.clone() }; };
+    const finite = (b) => [b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z].every(Number.isFinite);
+    for (const o of LOOK.earth.outfit) for (const h of LOOK.earth.hair) {
+      const b = measure(look({ outfit: o.id, hair: h.id })), at = `${o.id}·${h.id}`;
+      assert.ok(finite(b), `${at}: 몸의 경계가 유한하지 않음`);
+      assert.ok(b.min.y > -0.02 && b.min.y < 0.05, `${at}: 발이 땅에서 뜨거나 묻힘(${b.min.y.toFixed(3)})`);
+      assert.ok(Math.abs(b.max.y - BODY.top) < 0.14, `${at}: 키가 비례를 벗어남(${b.max.y.toFixed(3)})`);
+      assert.ok(b.max.x - b.min.x < 1 && b.max.z - b.min.z < 1, `${at}: 몸이 너무 넓음`);
+    }
+    for (const it of ITEMS) {
+      const key = SLOT_KEY[slotOf(it)], b = measure(look({ [key]: it.id }));
+      assert.ok(finite(b) && b.min.y > -0.06 && b.max.y < 2.5, `${it.id}: 소품을 단 몸의 경계 오류(${b.min.y.toFixed(2)}~${b.max.y.toFixed(2)})`);
+      if (key === 'item' && it.id !== 'lamb') assert.equal(b.fig.userData.held?.name, it.id, `${it.id}: 손의 무리에 붙지 않음`);
+    }
+    const { fig } = measure({ ...look({}), aura: undefined }); // 발밑의 빛 고리 없이(고리는 몸을 낮추면 함께 내려간다)
+    const low = (pose, y, x) => { fig.userData.pose = pose; fig.userData.rig.position.y = y; fig.userData.rig.rotation.x = x; poseFigure(fig); fig.updateMatrixWorld(true); box.setFromObject(fig); return box.min.y; };
+    assert.ok(low('sit', -0.34, 0) > -0.03, '앉은 발이 땅 아래로 내려감');
+    assert.ok(low('bow', -0.34, 1.15) > -0.2 && finite(box), '엎드린 몸이 땅 아래로 꺼짐');
+    assert.ok(low(null, 0, 0.35) > -0.02, '절할 때 발이 땅에서 떨어지거나 묻힘');
   }
   // 상점: 달란트가 모자라면 못 사고, 사면 달란트가 줄고 갖게 되며, 두 번 사지 않는다
   s.talents = 10;

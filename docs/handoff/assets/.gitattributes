@@ -1,0 +1,2 @@
+# Keep captured JSON bytes stable for the provenance hashes on Windows checkouts.
+*.json -text

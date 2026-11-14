@@ -320,7 +320,7 @@ export default {
 
   build(scene) {
     const F = makeField({
-      scene, seed: 6141, start: START, sky: 0xc4dceb, radius: RADIUS,
+      scene, seed: 6141, start: START, sky: 0xc4dceb, radius: RADIUS, outer: false, // 물에 잠기는 땅: 공용 땅(바깥 언덕)을 쓰지 않는다
       stages: {
         door: { c: toCam(DOOR, 1.8), r: 2.4 },
         foot: { c: toCam(FOOT, 1.4), r: 2.6 },

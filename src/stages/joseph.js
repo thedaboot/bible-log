@@ -120,7 +120,7 @@ export default {
 
   build(scene) {
     const F = makeField({
-      scene, seed: 3923, start: START, sky: 0xe8dcc0, ground: 0xb8aa70,
+      scene, seed: 3923, start: START, sky: 0xe8dcc0, ground: 0xb8aa70, outer: false, // 구덩이를 판 땅(아래에서 판을 직접 고친다): 공용 땅을 쓰지 않는다
       stages: { pit: { c: toCam(PIT, 2.2), r: 2 }, hall: { c: toCam(JSPOT, 1), r: 1.5 } },
       trees: 0,
     });
@@ -399,7 +399,7 @@ export default {
     const pharaoh = F.person('pharaoh', EGYPT(0xf4efe0, { outfit: 'linen' }), THRONE);
     const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.3, 6), mat(PAL.gold));
     crown.position.set(0, 1.62, 0);
-    pharaoh.userData.rig.add(crown);
+    pharaoh.userData.headG.add(crown); // 머리의 틀(예전 머리 좌표, props.js): 정수리 위
     pharaoh.position.y = top + 0.1;
     pharaoh.userData.fixY = true;
     pharaoh.userData.pose = 'sit';
@@ -785,7 +785,7 @@ export default {
       const chain = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 4, 12), mat(PAL.gold, { emissive: PAL.gold, emissiveIntensity: 0.3 }));
       chain.position.set(0, 0.98, 0.06);
       chain.rotation.x = Math.PI / 2 - 0.45;
-      joseph.userData.rig.add(chain);
+      joseph.userData.chestG.add(chain); // 가슴의 틀(예전 가슴 좌표, props.js)
     })();
     // 그동안 버금 수레가 길에서 대전 앞으로 들어와 선다
     chariot.visible = true;

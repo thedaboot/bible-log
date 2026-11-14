@@ -7,7 +7,7 @@
 // 장막은 안이 들여다보이게 지붕을 뒤쪽 처마만 남기고 걷었다. 휘장으로 이삭의 방(오른쪽)과 리브가의 방(왼쪽)을 나눈 것은 각색이다.
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
-import { PAL, mat, makeAngel, makeSack, makeCloud, setArms } from '../props.js';
+import { PAL, mat, makeAngel, makeSack, makeCloud, setArms, dye as clothTone } from '../props.js';
 import { tween, easeOut, easeBack } from '../anim.js';
 import data from '../data/bethel.js';
 
@@ -278,9 +278,9 @@ export default {
     esau.visible = false;
     // 에서의 활(창 27:3 화살통과 활): 등에 멘다
     const bow = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.025, 4, 12, Math.PI), mat(PAL.bark));
-    bow.position.set(0.05, 0.85, -0.3);
+    bow.position.set(0.04, 1.08, -0.2); // 새 몸의 등 뒤
     bow.rotation.set(0, Math.PI / 2, Math.PI / 2);
-    esau.userData.rig.add(bow);
+    esau.userData.upper.add(bow);
     const isaac = F.person('isaac', { hair: 'short', hairColor: 0xd8d4cc, beard: 'long', outfit: 'robe', outfitColor: 0x8f7a5a }, ISAAC);
     const rebekah = F.person('rebekah', { hair: 'braid', hairColor: 0x5a4434, outfit: 'robe', outfitColor: 0xb8452f }, R_ROOM);
     // 눈이 어두운 이삭(창 27:1): 눈을 흐린 빛으로
@@ -289,12 +289,13 @@ export default {
     isaac.userData.rig.position.y = -0.32;
     // 야곱의 옷(색이 바뀌는 재질)과 염소 가죽(창 27:16 손과 목)
     const robe = [];
-    jacob.userData.rig.traverse((o) => { if (o.isMesh && o.material.color?.getHex() === LINEN) robe.push(o.material); });
+    // 옷 재질은 원래 색(userData.hex)으로 찾는다: 화면의 색은 props.js가 차분하게 누른 빛이라 값이 다르다
+    jacob.userData.rig.traverse((o) => { if (o.isMesh && o.material.userData?.hex === LINEN && !robe.includes(o.material)) robe.push(o.material); });
     const goatM = mat(GOAT);
-    const skins = jacob.userData.arms.map((arm) => { const s = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.2, 0.17), goatM); s.position.y = -0.36; arm.add(s); return s; });
+    const skins = jacob.userData.arms.map((arm) => { const s = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.22, 0.115), goatM); s.position.y = -0.44; arm.add(s); return s; }); // 아래팔과 손등
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.23, 0.1, 8), goatM);
     neck.position.y = 1.05;
-    jacob.userData.rig.add(neck);
+    jacob.userData.chestG.add(neck); // 가슴의 틀(예전 목 좌표, props.js): 목 둘레
     skins.push(neck);
     skins.forEach((s) => (s.visible = false));
     const goats = [0, 1, 2].map((i) => F.animal('ram', [0x2e2620, 0x4a3a2e, 0x2a2420][i], 0.75, GOATS.clone().add(V(i * 0.8 - 0.8, (i % 2) * 0.7)), { roam: 0.8 }));
@@ -317,7 +318,8 @@ export default {
     const { F } = g;
     const { camp, goats, jacob, esau, isaac, rebekah, rocks, ladder, steps, rails, climbers, pillow, stars, robe, skins, stew, lentils, bowl, dish, esauDish, clothes, bundle, kids } = F;
     const L = data.lines;
-    const dye = (to, ms = 900) => { const c0 = robe[0].color.clone(), c1 = new THREE.Color(to); return tween(ms, (p) => robe.forEach((m) => m.color.copy(c0).lerp(c1, p))); };
+    // 다른 옷감의 색도 같은 차분한 빛(props.js dye)으로 옮긴다
+    const dye = (to, ms = 900) => { const c0 = robe[0].color.clone(), c1 = clothTone(to); return tween(ms, (p) => robe.forEach((m) => m.color.copy(c0).lerp(c1, p))); };
     const skinsOn = (on) => { skins.forEach((s) => (s.visible = true)); return tween(600, (p) => skins.forEach((s) => s.scale.setScalar(Math.max(0.01, on ? easeBack(p) : 1 - p)))).then(() => { if (!on) skins.forEach((s) => (s.visible = false)); }); };
     const place = (obj, p, y = 0.08, ms = 400) => { const from = obj.position.clone(), to = p.clone().setY(y); return tween(ms, (k) => obj.position.lerpVectors(from, to, easeOut(k))); };
 

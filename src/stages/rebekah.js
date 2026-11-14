@@ -3,7 +3,7 @@
 // → 리브가의 대답과 이삭의 들 → 퀴즈(창 24:27)
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
-import { PAL, mat, makeWell } from '../props.js';
+import { PAL, mat, makeWell, makeHouse, stoneMat } from '../props.js';
 import { tween, easeOut } from '../anim.js';
 import data from '../data/rebekah.js';
 
@@ -34,16 +34,13 @@ export default {
       trees: 9, treeKinds: ['palm', 'round'], keep: [...CAMELS.map(([c]) => c), ...TROUGHS, ...POURS, GATE, FIELD],
     });
     F.put(makeWell(), WELL, 0.95);
-    // 나홀의 성: 흙벽돌 집들
-    for (const [dx, dz, s] of [[0, 0, 1.2], [-2, 1.4, 0.9], [1.5, -2, 1]]) {
-      const house = new THREE.Mesh(new THREE.BoxGeometry(1.5 * s, 1.1 * s, 1.5 * s), mat(0xd2b48a));
-      F.put(house, HOUSE.clone().add(V(dx, dz)), 1 * s);
-      house.position.y = 0.55 * s;
-    }
+    // 나홀의 성: 흙벽돌과 석회암으로 지은 집들(props.js makeHouse: 난간 지붕, 나무 문, 바깥 계단). 문은 우물 쪽(+x)을 본다.
+    // 자리와 막는 반지름은 전과 같다(2026-11-14 6B: 전에는 사람보다 낮은 상자였다)
+    for (const [dx, dz, s, c] of [[0, 0, 1.2, 0xdccfb6], [-2, 1.4, 0.9, 0xd2c2a4], [1.5, -2, 1, 0xd8c8aa]]) F.put(makeHouse(s, c), HOUSE.clone().add(V(dx, dz)), 1 * s);
     // 물구유와 낙타: 낙타는 무릎을 꿇은 듯 낮게 둔다(창 24:11)
     // 구유는 바닥과 네 벽만 두어 속이 빈다. 물(water)은 바닥에서 벽 위까지 높이가 차오른다(level 0~1).
     const camels = [];
-    const stone = mat(0x8a7a62);
+    const stone = stoneMat(0xc4b8a0); // 석회암을 깎은 구유(props.js의 석회암 결)
     CAMELS.forEach(([at, s], i) => {
       const trough = new THREE.Group();
       trough.position.copy(TROUGHS[i]);
@@ -61,8 +58,8 @@ export default {
       const camel = F.animal('camel', 0xc8a070, 1, at, { still: true });
       camel.userData.yaw = s > 0 ? -Math.PI / 4 : Math.PI * 0.75; // 화면 가로로 서서 옆모습(혹과 긴 목)이 보인다
       camel.userData.kneel = 0.66; // 성 밖 우물 곁에 무릎을 꿇렸다(창 24:11): 다리를 접고 몸을 낮춘다
-      // 목과 머리(makeAnimal 'camel'의 body 셋째·넷째 부품)를 목 뿌리를 축으로 숙인다(마시기)
-      const [neck, head] = camel.userData.body.children.slice(2, 4);
+      // 목과 머리(makeAnimal 'camel'이 이름을 붙여 둔 부품)를 목 뿌리를 축으로 숙인다(마시기)
+      const neck = camel.userData.body.getObjectByName('neck'), head = camel.userData.body.getObjectByName('head');
       const base = [neck, head].map((o) => ({ o, x: o.position.x, y: o.position.y, rz: o.rotation.z }));
       const bend = (a) => base.forEach(({ o, x, y, rz }) => {
         const dx = x - 0.36, dy = y - 1.04;
@@ -130,7 +127,8 @@ export default {
     //     다 차면 낙타가 고개를 숙여 마신다. 리브가가 곁에서 함께 긷고 붓는다.
     const ORD = ['첫째', '둘째', '셋째'];
     const water = (opacity = 1) => mat(PAL.water, { emissive: PAL.water, emissiveIntensity: 0.3, transparent: opacity < 1, opacity });
-    const jarOf = (fig) => fig.userData.arms?.[1]?.children.find((c) => c.isGroup && c.children.some((m) => m.geometry?.parameters?.radius === 0.17));
+    // 손에 든 물동이의 무리(props.js가 손에 든 소품을 userData.held에 둔다). 주둥이·물빛의 자리는 이 무리의 좌표다
+    const jarOf = (fig) => (fig.userData.held?.name === 'jar' ? fig.userData.held : null);
     let filled = false; // 물동이에 물이 차 있는가(물동이를 다시 들었을 때 물빛을 되살린다)
     const jarWater = (on) => {
       filled = on;

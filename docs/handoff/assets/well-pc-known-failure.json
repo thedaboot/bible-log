@@ -1,0 +1,63 @@
+{
+  "at": "2026-11-14T06:59:22.737Z",
+  "scope": "real scene entries and well introduction after actual keyboard walking, projected rig bounds and renderer counters; not phone FPS or final staging approval",
+  "report": [
+    {
+      "id": "rebekah",
+      "player": {
+        "x0": 550.0156307763052,
+        "x1": 703.5857037764281,
+        "y0": -35.39179039302483,
+        "y1": 278.20710623559484,
+        "behind": false,
+        "height": 1.9908679102497027
+      },
+      "angel": {
+        "x0": 776.4867882901962,
+        "x1": 890.1018365384582,
+        "y0": -28.97833477874152,
+        "y1": 241.71246621309635,
+        "behind": false,
+        "height": 1.7959999864548435
+      },
+      "cast": {
+        "servant": {
+          "x0": 644.9913796356958,
+          "x1": 701.3035289187267,
+          "y0": -47.16379677438961,
+          "y1": 136.38351942764763,
+          "behind": false,
+          "height": 1.6946156630633797
+        },
+        "rebekah": {
+          "x0": 484.4009999407252,
+          "x1": 543.9541681477909,
+          "y0": -90.89741873711047,
+          "y1": 107.2883374688652,
+          "behind": false,
+          "height": 1.981453645507761
+        }
+      },
+      "nearby": [],
+      "readArea": {
+        "top": 0,
+        "bottom": 516.203125
+      },
+      "cameraType": "PerspectiveCamera",
+      "meshes": 246,
+      "invalid": 0,
+      "render": {
+        "frame": 197,
+        "calls": 194,
+        "triangles": 18576,
+        "points": 0,
+        "lines": 0
+      },
+      "memory": {
+        "geometries": 315,
+        "textures": 7
+      },
+      "quest": "\n      목표\n      나홀의 우물\n      늙은 종에게 다가가기\n    "
+    }
+  ]
+}
