@@ -2,13 +2,27 @@
 let instant = false;
 export function setInstant(on) { instant = on; }
 
+// 월드 시간 멈춤(2026-11-14: 멈춤 화면과 기록장이 열린 동안, main.js haltChallenge가 켜고 끈다).
+// tween은 장면의 움직임(걷기 연출, 기다림 field.acts.wait, 등장 효과)에 쓰인다. 멈춘 동안에는 진행값이 제자리에 머물고,
+// 풀리면 멈춘 시간만큼을 빼고 그 자리에서 이어 간다(건너뛰지 않는다). instant(이어하기 앞 연출 건너뛰기)의 계약은 그대로다.
+// 화면 전환(CSS, ui.js fade의 setTimeout)과 기록장의 내 모습 미리보기는 이 시계를 쓰지 않으므로 멈추지 않는다.
+let paused = false, pausedAt = 0, lost = 0;
+const now = () => (paused ? pausedAt : performance.now()) - lost;
+export function setPaused(on) {
+  if (on === paused) return;
+  if (on) pausedAt = performance.now();
+  else lost += performance.now() - pausedAt;
+  paused = on;
+}
+export const isPaused = () => paused;
+
 // ms 동안 fn(0~1)을 매 프레임 호출한다. instant면 바로 fn(1)만 호출한다.
 export function tween(ms, fn) {
   if (instant || ms <= 0) { fn(1); return Promise.resolve(); }
   return new Promise((resolve) => {
-    const start = performance.now();
+    const start = now();
     const step = () => {
-      const p = Math.min(1, (performance.now() - start) / ms);
+      const p = Math.min(1, (now() - start) / ms);
       fn(p);
       if (p < 1) requestAnimationFrame(step);
       else resolve();

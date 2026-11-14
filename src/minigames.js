@@ -41,8 +41,9 @@ function balance({ d, assist, hooks }) {
   const need = 2.4, w = Math.min(0.4, (0.28 / d) * (1 + assist));
   const zone = [0.5 - w / 2, 0.5 + w / 2];
   return {
-    hint: (touch) => `${touch ? '꾹 누르면' : 'Space를 누르면'} 오르고 떼면 내려가요. 금빛에 머물기`,
+    hint: (touch) => `${touch ? '꾹 누르면' : 'Space를 누르면'} 오르고 떼면 내려가요. 가운데에 머물기`, // 알맞은 자리는 늘 가운데다(색 이름으로 부르지 않는다, F72)
     act(down) { held = down; if (down) started = true; },
+    cancel() { held = false; },
     tick(dt) {
       if (!started) return { m, zone, label: '누르면 시작해요' };
       v += ((held ? 1.5 : -1.1) * d + (Math.random() - 0.5) * 1.6 * d) * dt;
@@ -122,6 +123,7 @@ function trace({ pad, d, assist, hooks }) {
     pad: true, arrows: true,
     hint: (touch) => (touch ? '선을 따라 손가락으로 긋기' : '방향키로 선을 따라 긋기'),
     act() {},
+    cancel() { up(); }, // 긋던 손을 뗀 것으로 친다(판정 없음)
     key(code, isDown) {
       const dir = ARROW[code];
       if (!dir) return false;
@@ -202,21 +204,28 @@ function sequence({ pad, d, hooks, symbols = ['1', '2', '3', '4'] }) {
 function catchGame({ pad, d, assist, hooks }) {
   const need = 5, allow = 2;
   const bw = Math.min(70, (54 * (1 + assist)) / Math.sqrt(d));
-  let bx = W / 2, got = 0, lost = 0, spawn = 0.4, held = { L: false, R: false };
+  let bx = W / 2, got = 0, lost = 0, spawn = 0.4, held = { L: false, R: false }, grabbed = null;
   const items = [];
   pad.replaceChildren();
   const layer = node('g', {}, pad);
   const basket = node('rect', { y: H - 16, width: bw, height: 12, class: 'pad__basket' }, pad);
   const place = () => basket.setAttribute('x', bx - bw / 2);
-  const follow = (e) => { if (e.type === 'pointermove' && !e.buttons && e.pointerType !== 'mouse') return; bx = Math.max(bw / 2, Math.min(W - bw / 2, padPoint(pad, e).x)); place(); };
-  const down = (e) => { e.preventDefault(); follow(e); };
+  // 받이를 잡고 끄는 손가락(또는 누른 마우스)이 놀이판 밖으로, 화면 끝까지 나가도 받이는 가장자리까지 따라온다(F92).
+  // 누르는 순간 포인터를 놀이판에 붙잡아 두어 판 밖의 움직임도 받고, 받이 자리는 판 안으로 묶는다.
+  // 뗌·취소·붙잡기를 잃음은 모두 '놓음'이고, 새로 누르면 새로 잡는다. 마우스는 누르지 않고 판 위에서 움직여도 따라온다.
+  const follow = (e) => { bx = Math.max(bw / 2, Math.min(W - bw / 2, padPoint(pad, e).x)); place(); };
+  const down = (e) => { e.preventDefault(); grabbed = e.pointerId; try { pad.setPointerCapture(e.pointerId); } catch { /* 붙잡지 못해도 판 안에서는 따라온다 */ } follow(e); };
+  const move = (e) => { if (grabbed === e.pointerId || (grabbed === null && e.pointerType === 'mouse')) follow(e); };
+  const drop = (e) => { if (!e || e.pointerId === grabbed) grabbed = null; };
   pad.addEventListener('pointerdown', down);
-  pad.addEventListener('pointermove', follow);
+  pad.addEventListener('pointermove', move);
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(ev, drop);
   place();
   return {
     pad: true, arrows: true,
     hint: (touch) => (touch ? '끌어서 옮겨 받기' : '←·→ 키로 옮겨 받기'),
     act() {},
+    cancel() { held.L = held.R = false; drop(); }, // 누르던 방향키와 잡고 있던 손을 놓은 것으로 친다
     key(code, isDown) {
       const dir = ARROW[code];
       if (dir !== 'L' && dir !== 'R') return false;
@@ -245,7 +254,7 @@ function catchGame({ pad, d, assist, hooks }) {
       if (got >= need) { got = 0; lost = 0; items.splice(0).forEach((it) => it.e.remove()); hooks.hit('다 받았어요'); }
       return { m: got / need, zone: [1, 1], fill: true, label: `${got} / ${need} · 놓침 ${lost} / ${allow + 1}` };
     },
-    destroy() { pad.removeEventListener('pointerdown', down); pad.removeEventListener('pointermove', follow); },
+    destroy() { pad.removeEventListener('pointerdown', down); pad.removeEventListener('pointermove', move); for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.removeEventListener(ev, drop); },
   };
 }
 
@@ -254,5 +263,6 @@ export const isPadKind = (kind) => kind in GAMES;
 export function makeGame(kind, opts) {
   const g = GAMES[kind](opts);
   if (opts.hint) g.hint = () => opts.hint; // 장면 말로 안내를 바꾼다(예: '자루를 끌어서 곡식 받기')
-  return { pad: false, arrows: false, key: () => false, destroy() {}, ...g };
+  // cancel(): 멈춤·기록장에서 돌아올 때 부른다. 누르고 있던 것을 판정 없이 놓은 것으로 정리한다(main.js haltChallenge)
+  return { pad: false, arrows: false, key: () => false, cancel() {}, destroy() {}, ...g };
 }

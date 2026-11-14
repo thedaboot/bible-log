@@ -2,23 +2,38 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<!-- 개발 점검용: 머리·소품 픽셀 아이콘을 크게 늘어놓는다 -->
+<!-- 개발 점검용: 선 아이콘(src/glyphs.js)을 모두 늘어놓고, 도감 항목이 어느 그림을 쓰는지 보인다.
+     위쪽은 석회암 벽(기록 공간) 위, 아래쪽은 어두운 장면 위에서의 모습이다. 개발 서버에서 /dev/icon-sheet.html 로 연다. -->
 <link rel="stylesheet" href="/src/tokens.css">
-<link rel="stylesheet" href="/src/style.css">
+<link rel="stylesheet" href="/src/scene.css">
 <style>
-  body { background: #f3ead6; margin: 8px; overflow: auto; }
-  #g { display: grid; grid-template-columns: repeat(12, 110px); gap: 6px; }
-  figure { margin: 0; text-align: center; font: 12px sans-serif; color: #333; }
-  figure div { width: 72px; height: 72px; margin: 0 auto; background: var(--color-light); }
+  html, body { margin: 0; }
+  body { font: 13px / 1.4 var(--hand); color: var(--ink); background: var(--wall); }
+  h2 { margin: 0; padding: 12px 16px 4px; font: 700 15px / 1.4 var(--hand); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px 8px; padding: 8px 16px 20px; }
+  figure { margin: 0; display: grid; justify-items: center; gap: 4px; text-align: center; }
+  figure .ic { width: 44px; height: 44px; }
+  figure small { color: var(--ink-2); }
+  .dark { color: var(--scene-text); background: var(--umber-900); }
+  .dark figure small { color: var(--scene-text-2); }
 </style>
 </head>
 <body>
-<div id="g"></div>
+<h2>모든 그림 (벽 위)</h2>
+<div id="all" class="grid"></div>
+<h2>도감 항목 → 그림 (벽 위)</h2>
+<div id="codex" class="grid"></div>
+<div class="dark">
+  <h2>모든 그림 (장면 위)</h2>
+  <div id="allDark" class="grid"></div>
+</div>
 <script type="module">
-  import { HAIR_ICONS, ITEM_ICONS } from '/src/icons.js';
-  import { LOOK } from '/src/props.js';
-  const all = [...LOOK.earth.hair.map((o) => [o.name, HAIR_ICONS[o.id]]), ...Object.entries(ITEM_ICONS).map(([id, svg]) => [id, svg])];
-  document.getElementById('g').innerHTML = all.map(([n, svg]) => `<figure><div>${svg ?? ''}</div>${n}</figure>`).join('');
+  import { glyph, sprout, GLYPH_NAMES, codexGlyph, codexGlyphName } from '/src/glyphs.js';
+  import { CODEX } from '/src/data/codex.js';
+  const all = GLYPH_NAMES.map((n) => `<figure>${glyph(n)}<span>${n}</span></figure>`).join('') + [0, 1, 2, 3, 4].map((s) => `<figure>${sprout(s)}<span>sprout ${s}</span></figure>`).join('');
+  document.getElementById('all').innerHTML = all;
+  document.getElementById('allDark').innerHTML = all;
+  document.getElementById('codex').innerHTML = CODEX.map((c) => `<figure>${codexGlyph(c.id)}<span>${c.name}</span><small>${codexGlyphName(c.id)}</small></figure>`).join('');
   window.__ready = true;
 </script>
 </body>

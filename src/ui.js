@@ -1,4 +1,3 @@
-import { TALENT, SPROUT } from './icons.js';
 import { SPEAKERS, fill } from './text.js';
 import { LOOK_LABELS } from './props.js';
 import { BOND_LINES } from './growth.js';
@@ -7,7 +6,7 @@ import { isInstant } from './anim.js';
 export const $ = (id) => document.getElementById(id);
 // ↑·↓로 묶음 안의 버튼 포커스를 옮긴다(막간 선택지, 퀴즈 보기, 지도 지점)
 export function moveFocus(box, dir) {
-  const list = [...box.querySelectorAll('button:not(:disabled)')];
+  const list = [...box.querySelectorAll('button:not(:disabled)')].filter((b) => b.getClientRects().length); // 접혀서 안 보이는 단추는 건너뛴다
   if (!list.length) return;
   const i = list.indexOf(document.activeElement);
   const next = i < 0 ? (dir > 0 ? 0 : list.length - 1) : (i + dir + list.length) % list.length;
@@ -17,6 +16,8 @@ export function moveFocus(box, dir) {
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const isTouch = () => matchMedia('(pointer: coarse)').matches;
 const TYPE_MS = 32; // 한 글자가 나오는 간격
+// 열매가 자라 열린 선택지의 잎 표식(새 선 아이콘: 선 하나, 칠한 면 하나)
+const LEAF = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path class="ic__tint" d="M6 19.500c0-8 5-13 13.500-13.500 0 8.500-5 13.500-13.500 13.500z"/><path d="M5 19c0-8 5-13 14-14 0 9-5 14-14 14z"/><path d="M5 19l8-8"/></svg>';
 
 // 대사 목록을 한 줄씩 보여 준다. 글자가 한 자씩 나오고, 그 사이에 누르면 문장을 바로 끝까지 보여 준다.
 // 대사 창 클릭/탭, Space, Enter로 넘긴다.
@@ -134,6 +135,7 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
     const done = (value) => {
       box.hidden = true;
       back.hidden = true;
+      delete box.dataset.choosing;
       $('choices').hidden = true;
       box.removeEventListener('click', onClick);
       back.onclick = null;
@@ -144,6 +146,7 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
       if (choosing) return;
       choosing = true;
       back.hidden = true;
+      box.dataset.choosing = ''; // 고르는 동안에는 '다음' 안내와 ▼를 숨긴다(scene.css)
       const panel = $('choices');
       // 보이는 순서: 말 → 열매로 열린 말 → 괄호 속 몸짓("(말없이 곁에 앉는다)")은 맨 아래. 고른 값은 데이터 순서 번호다.
       const order = choices.map((c, n) => n).sort((a, b) => {
@@ -166,17 +169,15 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
         if (c.mark) {
           const mark = document.createElement('span');
           mark.className = 'choice__mark';
-          mark.innerHTML = SPROUT;
+          mark.innerHTML = LEAF;
           mark.append(c.mark);
           b.append(mark);
         }
         b.onclick = (e) => { e.stopPropagation(); done(n); };
         return b;
       }));
-      // 대사 창 이름표 위에 띄운다(이름표가 대사 창 위로 솟아 있어 그 높이까지 피한다). 대사 창 높이는 대사마다 달라서 그때 잰다.
-      const tag = $('speaker');
-      const top = tag.offsetHeight ? tag.getBoundingClientRect().top : box.getBoundingClientRect().top;
-      panel.style.bottom = `${innerHeight - top + 10}px`;
+      // 대사 바로 위에 띄운다. 대사 높이는 대사마다 달라서 그때 잰다.
+      panel.style.bottom = `${innerHeight - box.getBoundingClientRect().top + 12}px`;
       panel.hidden = false;
       panel.querySelector('button').focus({ preventScroll: true });
     };
@@ -187,6 +188,8 @@ export function say(lines, ctx, { onLine, choices = null } = {}) {
     const render = (instant) => {
       full = pages[p];
       back.hidden = i < 2 && p === 0;
+      // 한 대사가 여러 쪽이면 가운데 점으로 지금 쪽을 보인다
+      $('dialogDots').replaceChildren(...(pages.length > 1 ? pages.map((_, k) => { const d = document.createElement('i'); if (k === p) d.className = 'is-now'; return d; }) : []));
       $('srLine').textContent = `${SPEAKERS[lines[i - 1].who] ? SPEAKERS[lines[i - 1].who] + ': ' : ''}${full}`;
       if (instant === true || reducedMotion()) { paint(full); if (choices && atEnd()) openChoices(); return; }
       // 아직 안 나온 글자(rest)도 숨긴 채 자리를 차지하게 해서, 줄바꿈 위치가 처음부터 고정된다
@@ -341,14 +344,6 @@ export function askLook(current, onChange, { title, text, options, tabs = null, 
       input.onchange = () => { pressed(wrap); choose(key, opt.id); };
       const label = document.createElement('span');
       label.textContent = opt.name;
-      if (opt.icon) { // 미리보기 칩: 그림 위, 이름 아래(S11 "텍스트가 아닌 미리보기 버튼")
-        wrap.classList.add('chip--icon');
-        const pic = document.createElement('span');
-        pic.className = 'chip__icon';
-        pic.innerHTML = opt.icon;
-        wrap.append(pic);
-        label.className = 'chip__name';
-      }
       if (opt.hex !== undefined) {
         wrap.style.setProperty('--swatch', `#${opt.hex.toString(16).padStart(6, '0')}`);
         wrap.title = opt.name;
@@ -632,7 +627,6 @@ export function askQuiz(questions) {
   });
 }
 
-// 화면을 빛으로 덮거나(1) 걷어 낸다(0). 시간은 tokens.css의 --dur-fade와 맞춘다.
 // 창(.modal)을 닫을 때 짧게 흐려지며 작아진 뒤 숨긴다(열 때의 fade-in·pop과 짝)
 export function hideModal(box) {
   if (box.hidden) return;
@@ -648,6 +642,7 @@ if (typeof document !== 'undefined' && typeof ResizeObserver !== 'undefined') {
   }).observe(document.getElementById('dialog'));
 }
 
+// 화면을 빛으로 덮거나(1) 걷어 낸다(0). 기다리는 시간은 tokens.css의 --veil-time(1200ms)과 맞춘다.
 export function fade(to) {
   if (isInstant()) return Promise.resolve(); // 이어하기로 빠르게 지나가는 동안은 덮은 화면 그대로 둔다
   $('fade').style.opacity = String(to);
@@ -656,73 +651,72 @@ export function fade(to) {
 
 // HUD: 레벨·경험치 바·달란트를 화면 왼쪽 위에 늘 보여 준다. 레벨이 오르면 레벨 칸이 커졌다 돌아오고 금빛으로 번쩍인다.
 // 메뉴 버튼은 HUD와 떨어진 오른쪽 아래에 따로 두고, 걷는 중에만 보인다(main.js tick).
-const replay = (node, cls) => { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };
-export function setHud({ level, into, need, talents }, { levelUp = false } = {}) {
-  if (!$('hudTalentIcon').firstChild) $('hudTalentIcon').innerHTML = TALENT;
-  $('hudLv').textContent = level;
-  $('hudXp').style.transform = `scaleX(${into / need})`;
-  $('hudXpTrack').setAttribute('aria-label', `경험치 ${into} / ${need}`);
-  $('hudXpText').textContent = `${Math.floor((into / need) * 100)}%`;
-  rollNumber($('hudTalent'), talents);
-  if (levelUp) replay($('hud'), 'is-levelup');
-}
+// 2026-11-14(docs/design.md "HUD"): 걷는 화면에는 레벨·경험치·달란트를 그리지 않는다. 숫자는 기록장의 성장과 상점 머리에 있다.
+// setHud는 예전 호출 자리를 그대로 받되 화면에는 아무것도 그리지 않는다(레벨이 오르면 main.js가 알림을 띄운다).
+// #hud의 hidden은 "걷는 화면이 켜졌는가"를 뜻한다(main.js tick이 기록장·멈춤 단추를 보일지 정할 때 읽는다).
+export function setHud() {}
 export function showHud(on) { $('hud').hidden = !on; }
 
-// 숫자를 세며 바꾼다(달란트가 늘거나 줄 때). 처음 그릴 때와 움직임 줄이기에서는 바로 바꾼다.
-function rollNumber(node, to) {
-  const from = Number(node.textContent) || 0;
-  cancelAnimationFrame(node._roll);
-  if (from === to || reducedMotion() || !node.isConnected || $('hud').hidden) { node.textContent = to; return; }
-  const start = performance.now();
-  const step = () => {
-    const p = Math.min(1, (performance.now() - start) / 500);
-    node.textContent = Math.round(from + (to - from) * (1 - (1 - p) ** 3));
-    if (p < 1) node._roll = requestAnimationFrame(step);
-  };
-  step();
-}
-
-// 획득 표시: 경험치·달란트가 오르면 HUD의 막대 끝과 달란트 숫자 옆에서 "+5"가 떠올랐다 사라진다.
-// (오른쪽 아래에 줄로 쌓던 획득 기록을 대신한다. 열매·도구·레벨은 배너 toast로 보여 준다.)
+// 얻은 것: 경험치·달란트가 바뀌면 목표 아래에서 "경험치 +5"처럼 한 줄씩 떠올랐다 사라진다(낭독기에도 읽힌다).
+// 열매·도구·레벨·칭호는 알림(toast)으로 보여 준다.
 export function popHud({ xp = 0, talent = 0 } = {}) {
-  const hud = $('hud');
-  if (hud.hidden) return;
-  const base = hud.getBoundingClientRect();
-  const at = (node, text, cls) => {
-    const r = node.getBoundingClientRect();
-    const pop = document.createElement('span');
-    pop.className = `hud__pop ${cls}`;
-    pop.textContent = text;
-    pop.style.left = `${r.right - base.left}px`;
-    pop.style.top = `${r.top - base.top + r.height / 2}px`;
-    pop.addEventListener('animationend', () => pop.remove(), { once: true });
-    hud.append(pop);
+  const box = $('gain');
+  if ($('hud').hidden) return;
+  const line = (text, spend = false) => {
+    const p = document.createElement('p');
+    p.className = `gain__line${spend ? ' gain__line--spend' : ''}`;
+    p.textContent = text;
+    const off = () => p.remove();
+    p.addEventListener('animationend', off, { once: true });
+    setTimeout(off, 2200); // 움직임을 줄였거나 탭이 가려져 animationend가 오지 않을 때
+    box.append(p);
   };
-  if (xp) at($('hudXpTrack'), `+${xp}`, 'hud__pop--xp');
-  if (talent) at($('hudTalent'), `${talent > 0 ? '+' : ''}${talent}`, talent > 0 ? 'hud__pop--talent' : 'hud__pop--spend');
+  if (xp) line(`경험치 +${xp}`);
+  if (talent) line(`달란트 ${talent > 0 ? '+' : '−'}${Math.abs(talent)}`, talent < 0);
 }
 
 // 마침 창(2026-11-02 S29): 스테이지를 마치면 다음 이야기 입장(먼저), 지도, 쉼터 가운데 고른다. 'next' | 'map' | 'home'
 // next가 없으면(마지막 이야기) 다음 칸과 입장 버튼을 숨긴다. Enter는 입장, Esc는 쉼터.
-// 쉼터로 나가기 확인: 나가면 true. 기본 포커스는 '계속하기'(실수로 나가지 않게), Esc는 계속하기.
-export function askQuit() {
-  const box = $('quitBox');
+// 멈춤(2026-11-14): 계속하기 · 기록장 · 쉼터로 나가기. 'resume' | 'log' | 'quit'으로 끝난다.
+// 한 겹뿐이다: 나가기 확인(F26)은 같은 줄에서 펼쳐지고 창을 하나 더 띄우지 않는다(F98).
+// 확인의 기본 포커스는 '계속하기'(실수로 나가지 않게). Esc는 펼친 확인을 접고, 접혀 있으면 계속하기다. M은 기록장.
+// canQuit이 false면(쉼터, 이어하기 자리가 없을 때) '쉼터로 나가기' 줄을 숨긴다.
+export function askPause({ where = '', canQuit = false } = {}) {
+  const box = $('pauseBox');
+  const sure = $('pauseSure');
+  const quit = $('pauseQuit');
+  $('pauseWhere').textContent = where;
+  $('pauseQuitItem').hidden = !canQuit;
+  const fold = (open) => { sure.hidden = !open; quit.setAttribute('aria-expanded', String(open)); (open ? $('quitNo') : quit).focus({ preventScroll: true }); };
+  sure.hidden = true;
+  quit.setAttribute('aria-expanded', 'false');
   box.classList.remove('is-closing');
   box.hidden = false;
-  $('quitNo').focus({ preventScroll: true });
+  $('pauseResume').focus({ preventScroll: true });
   return new Promise((resolve) => {
     const done = (v) => { hideModal(box); removeEventListener('keydown', onKey, true); resolve(v); };
-    const onKey = (e) => { if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); } };
+    const onKey = (e) => {
+      if (e.repeat) return;
+      if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); if (!sure.hidden) fold(false); else done('resume'); }
+      else if (e.code === 'KeyM') { e.preventDefault(); e.stopPropagation(); done('log'); }
+      else if (e.code === 'ArrowDown' || e.code === 'ArrowUp') { e.preventDefault(); moveFocus(box, e.code === 'ArrowDown' ? 1 : -1); }
+    };
     addEventListener('keydown', onKey, true);
-    $('quitNo').onclick = () => done(false);
-    $('quitYes').onclick = () => done(true);
-    box.onclick = (e) => { if (e.target === box) done(false); };
+    $('pauseResume').onclick = () => done('resume');
+    $('pauseLog').onclick = () => done('log');
+    quit.onclick = () => fold(sure.hidden);
+    $('quitNo').onclick = () => done('resume');
+    $('quitYes').onclick = () => done('quit');
+    box.onclick = (e) => { if (e.target === box) done('resume'); };
   });
 }
-export function askClear({ kicker, title, next }) {
+// word: 그 이야기의 말씀({ text, name, ref }, 도감의 말씀 항목). 있으면 가운데에 세운다.
+export function askClear({ kicker, title, next, word = null }) {
   const box = $('clearBox');
   $('clearKicker').textContent = kicker;
   $('clearTitle').textContent = title;
+  $('clearWord').hidden = $('clearRef').hidden = !word;
+  if (word) { $('clearWord').textContent = word.text; $('clearRef').textContent = `${word.name} · ${word.ref}`; }
   $('clearNext').hidden = $('clearGo').hidden = !next;
   if (next) $('clearNextTitle').textContent = next;
   box.classList.remove('is-closing');

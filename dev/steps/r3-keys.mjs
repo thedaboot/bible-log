@@ -1,4 +1,5 @@
 import { SAVE } from './_save.mjs';
+import { playOnce } from './_games.mjs';
 // R3: 마우스 없이 키 입력만으로 첫 화면 → 쉼터 → 메뉴(상태·인벤토리·도감) → 상점 → 지도 → 1-9 스테이지(대사, 막간 숫자 키, 도전 F·Space, 퀴즈 숫자 키) → 완료 창.
 // 걷는 거리만 순간 이동으로 줄인다(자동화 창은 프레임이 느리다). 나머지는 모두 실제 키 입력(CDP keyDown/keyUp)이다.
 const VK = { Enter: 13, Escape: 27, Space: 32, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, Tab: 9, Backspace: 8, BracketLeft: 219, BracketRight: 221 };
@@ -10,7 +11,7 @@ export default async (t) => {
     for (const type of ['keyDown', 'keyUp']) await t.send('Input.dispatchKeyEvent', { type, code, key, windowsVirtualKeyCode: vk, text: type === 'keyDown' ? (key === 'Enter' ? String.fromCharCode(13) : key.length === 1 ? key : undefined) : undefined });
     await t.wait(ms);
   };
-  const act = () => t.ev(`(document.activeElement?.textContent || document.activeElement?.id || document.activeElement?.tagName || '').trim().slice(0, 30)`);
+  const act = () => t.ev(`(document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.id || document.activeElement?.tagName || '').trim().slice(0, 30)`);
   const vis = (id) => t.ev(`!document.getElementById('${id}')?.hidden && getComputedStyle(document.getElementById('${id}')).display !== 'none'`);
   const base = process.env.BASE ?? 'http://127.0.0.1:5174/';
   await t.open(base);
@@ -36,11 +37,14 @@ export default async (t) => {
   await press('KeyM', 'm', 800);
   ok('M으로 메뉴', await vis('menuBox'));
   await press('KeyE', 'e', 500);
-  ok('E로 인벤토리 탭', (await t.ev(`document.querySelector('#menuTabs [aria-selected="true"]')?.textContent`)) === '인벤토리');
-  // 인벤토리: Tab으로 칸에 가서 Enter로 고르고, 다는 버튼을 Enter
-  for (let k = 0; k < 6 && !(await act()).match(/지팡이|목자|비둘기|두건/); k++) await press('Tab', 'Tab', 150);
+  ok('E로 소지품 탭', (await t.ev(`document.querySelector('#menuTabs [aria-selected="true"]')?.textContent`)) === '소지품');
+  // 소지품: Tab으로 꾸미기 갈래를 열고, 실제 소유한 칸에 도달한다.
+  for (let k = 0; k < 12 && (await act()) !== '꾸미기'; k++) await press('Tab', 'Tab', 150);
+  ok('Tab으로 꾸미기 갈래', (await act()) === '꾸미기', await act());
+  await press('Enter', 'Enter', 350);
+  for (let k = 0; k < 12 && !(await t.ev(`document.activeElement?.matches('#menuBody .slot[data-state="owned"]')`)); k++) await press('Tab', 'Tab', 150);
   const cell = await act();
-  ok('Tab으로 꾸미기 칸', cell.length > 0, cell);
+  ok('Tab으로 꾸미기 칸', await t.ev(`document.activeElement?.matches('#menuBody .slot[data-state="owned"]')`), cell);
   await press('KeyE', 'e', 500);
   ok('E로 도감 탭', (await t.ev(`document.querySelector('#menuTabs [aria-selected="true"]')?.textContent`)) === '도감');
   const page0 = await t.ev(`document.querySelector('.pager--book')?.textContent ?? ''`);
@@ -61,6 +65,10 @@ export default async (t) => {
   for (let k = 0; k < 20 && !(await act()).includes('달란트로 사기'); k++) await press('Tab', 'Tab', 150);
   const buy = await act();
   ok('Tab으로 사기 버튼', buy.includes('사기'), buy);
+  const beforeBuy = await t.ev(`({talents:__dev.state.talents, looks:__dev.state.items.looks.length, price:Number(document.activeElement.querySelector('.shop__buynum')?.textContent)})`);
+  await press('Enter', 'Enter', 800);
+  const afterBuy = await t.ev(`({talents:__dev.state.talents, looks:__dev.state.items.looks.length})`);
+  ok('Enter로 실제 구매', beforeBuy.price > 0 && afterBuy.talents === beforeBuy.talents - beforeBuy.price && afterBuy.looks === beforeBuy.looks + 1, JSON.stringify({beforeBuy,afterBuy}));
   await press('Escape', 'Escape', 1500);
 
   // 지도: 빛의 문으로 옮기면 열린다. ←·→로 표지, Enter로 입장
@@ -81,6 +89,7 @@ export default async (t) => {
 
   // 스테이지: Space로 대사를 넘기고, 걷기가 되면 목표로 옮기고, 막간은 숫자 키, 도전은 F·Space, 퀴즈는 숫자 키
   let sawChoice = false, sawChallenge = false, sawQuiz = false, sawClear = false, toolUsed = false;
+  await t.ev(`__dev.speed = 4; 1`);
   for (let k = 0; k < 1500; k++) {
     if (k % 100 === 0) log.push('  진행 ' + (await t.ev(`JSON.stringify({ mode: __dev.mode, q: document.getElementById('questTitle').textContent, line: document.getElementById('line').textContent.slice(0, 20), dlg: !document.getElementById('dialog').hidden })`)));
     if (await vis('clearBox')) { sawClear = true; break; }
@@ -99,7 +108,8 @@ export default async (t) => {
     if (await vis('challenge')) {
       sawChallenge = true;
       if ((await t.ev(`document.getElementById('chLabel').textContent`)).includes('쓰기')) { await press('KeyF', 'f', 800); toolUsed = true; }
-      await press('Space', ' ', 60);
+      const kind = await t.ev(`document.getElementById('challenge').dataset.kind`);
+      await playOnce(t, kind);
       continue;
     }
     // 걷는 중: 다음 목표로 옮긴다(걷기는 위에서 확인함)
@@ -112,10 +122,12 @@ export default async (t) => {
   ok('퀴즈 숫자 키', sawQuiz);
   ok('완료 창', sawClear);
   if (sawClear) {
-    ok('완료 창 첫 포커스 입장', (await act()).includes('입장'), await act());
+    ok('완료 창 첫 포커스 입장', (await act()).includes('입장') && await t.ev(`document.getElementById('clearBox').contains(document.activeElement) && document.activeElement.getClientRects().length > 0`), await act());
     await press('Escape', 'Escape', 3000);
     ok('Esc로 쉼터', (await t.ev(`__dev.state.scene`)) !== 'rebekah' || (await t.ev(`__dev.mode`)) === 'walk');
   }
-  log.push('errs ' + (await t.ev(`JSON.stringify(__errs)`)));
+  const errors = await t.ev(`JSON.stringify(__errs)`);
+  log.push('errs ' + errors);
   console.log(log.join('\n'));
+  if (errors !== '[]' || log.some((line) => line.startsWith('NG '))) process.exitCode = 1;
 };

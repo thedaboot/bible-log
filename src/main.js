@@ -1,8 +1,5 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPixelatedPass } from 'three/addons/postprocessing/RenderPixelatedPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import './style.css';
+import './app.css';
 import { PAL, makeHeaven, makeFigure, dressFigure, lookSpec, animateFigure, turnFigure, makeAngel, makeWaypoint, LOOK, LOOK_TABS, DEFAULT_EARTH, earthSpec, makeDressingRoom, makeBasket, disposeTree } from './props.js';
 import { makeCreation } from './creation.js';
 import { makeEden, EDEN_RADIUS } from './eden.js';
@@ -20,19 +17,23 @@ import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buy
 import { CHALLENGE, CODEX_TITLES } from './data/growth.js';
 import { WORLDS } from './data/chapters.js';
 import { ITEMS, SHOP, STYLES, SLOT_KEY, slotOf } from './data/items.js';
-import { CODEX_ART } from './codex-art.js';
-import { ITEM_ICONS, HAIR_ICONS, EMPTY } from './icons.js';
 import { CODEX } from './data/codex.js';
 import { openMenu, menuIsOpen } from './menu.js';
+import { codexGlyph } from './glyphs.js';
 import { openMap, stageInfo } from './map.js';
-import { tween, easeOut, setInstant } from './anim.js';
+import { tween, easeOut, setInstant, setPaused } from './anim.js';
 import { makeGame, isPadKind } from './minigames.js';
 import {
-  $, isTouch, say, askName, askLook, askClear, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, popHud, askQuit } from './ui.js';
+  $, isTouch, say, askName, askLook, askClear, setQuest, setControls, toast, fade, showDayTitle, waitButton, askQuiz, setGauge, showCard, setHud, showHud, popHud, askPause } from './ui.js';
 
-// ---------- 렌더링: 쿼터뷰 정사영 카메라 + 픽셀화 후처리 ----------
-const renderer = new THREE.WebGLRenderer({ antialias: false });
-renderer.setPixelRatio(1);
+// ---------- 렌더링: 쿼터뷰 정사영 카메라, 원해상도, 부드러운 그림자(2026-11-13 전면 개편: 픽셀화 후처리를 걷어 냈다) ----------
+const COARSE = matchMedia('(pointer: coarse)').matches;
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, COARSE ? 1.5 : 2)); // 휴대폰은 1.5배까지(발열·프레임)
+renderer.toneMapping = THREE.NeutralToneMapping; // 밝은 리넨·빛기둥이 하얗게 타지 않게 윗부분만 눌러 준다(칠한 색은 그대로)
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.localClippingEnabled = true; // 가죽옷이 발밑부터 차오르는 연출(eden.js acts.clothe)
 document.body.prepend(renderer.domElement);
 
@@ -57,20 +58,54 @@ let titleView = true; // 첫 화면: 장면을 천천히 돌린다
 let viewShift = { x: -0.2, y: 0.22 };
 let turntable = false; // 꾸미는 동안 캐릭터를 천천히 돌려 뒷모습까지 보여 준다
 
-const composer = new EffectComposer(renderer);
-const pixelPass = new RenderPixelatedPass(4, scene, camera);
-composer.addPass(pixelPass);
-composer.addPass(new OutputPass());
-function setEdges(on) {
-  pixelPass.normalEdgeStrength = on ? 0.3 : 0;
-  pixelPass.depthEdgeStrength = on ? 0.4 : 0;
+// 그림자: 지금 장면의 해(DirectionalLight) 하나만 그림자를 드리운다. 그림자 틀은 카메라가 보는 곳을 따라다닌다.
+// 새로 생긴 메시도 그림자를 주고받게, 장면을 가끔 훑어 표시한다(반투명·빛나는 것은 드리우지 않는다).
+let sunOf = null, sunLight = null, shadowScan = 0;
+const SHADOW_SIZE = COARSE ? 1024 : 2048;
+function tendShadows(dt) {
+  const L = land() ?? (heaven.group.visible ? heaven : dressingRoom.visible ? { group: dressingRoom } : creation);
+  if (L !== sunOf) {
+    sunOf = L;
+    sunLight = null;
+    L?.group?.traverse((o) => { if (!sunLight && o.isDirectionalLight) sunLight = o; });
+    if (sunLight && !sunLight.userData.dir) {
+      sunLight.userData.dir = sunLight.position.clone().normalize();
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.set(SHADOW_SIZE, SHADOW_SIZE);
+      sunLight.shadow.bias = -0.0006;
+      sunLight.shadow.normalBias = 0.035;
+      sunLight.shadow.radius = 3;
+      sunLight.parent.add(sunLight.target);
+    }
+    shadowScan = 0;
+  }
+  if (sunLight) {
+    const half = Math.max(11, viewSize * 0.95);
+    const cam = sunLight.shadow.camera;
+    if (cam.right !== half) { cam.left = -half; cam.right = half; cam.top = half; cam.bottom = -half; cam.near = 1; cam.far = 90; cam.updateProjectionMatrix(); }
+    sunLight.target.position.copy(camTarget).setY(0);
+    sunLight.position.copy(sunLight.target.position).addScaledVector(sunLight.userData.dir, 40);
+  }
+  shadowScan -= dt;
+  if (shadowScan > 0) return;
+  shadowScan = 0.6;
+  scene.traverse((o) => {
+    if (!o.isMesh || o.userData.sh) return;
+    o.userData.sh = 1;
+    const m = Array.isArray(o.material) ? o.material[0] : o.material;
+    const solid = m && !m.transparent && !m.isMeshBasicMaterial && !(m.emissiveIntensity > 0.6);
+    o.castShadow = !!solid && o.userData.noShadow !== true;
+    o.receiveShadow = !!solid;
+  });
 }
 
 // 천국 모습 고르기 창(옆 창, 휴대폰은 아래 시트)이 떠 있는 동안 내 캐릭터가 창에 가리지 않게 장면을 민다
 let wideShot = false;
 function sideView(on) { viewShift = on ? { x: 0.2, y: 0.2 } : null; resize(); }
 function resize() {
-  const w = innerWidth, h = innerHeight, aspect = w / h;
+  // 화면 크기는 배치 기준 영역(layout viewport)으로 잰다. innerWidth·innerHeight는 확대되면 줄어들어, 두 번 탭으로 화면이
+  // 커진 순간 캔버스가 작게 다시 그려져 아래에 빈 바탕이 드러났다(2026-11-13 F83). 확대 자체도 막는다(base.css touch-action, 아래 입력).
+  const w = document.documentElement.clientWidth || innerWidth, h = document.documentElement.clientHeight || innerHeight, aspect = w / h;
   // 세로 화면(휴대폰): 높이 기준으로만 넓히면 가로로 보이는 폭이 데스크톱의 3분의 1로 줄어 대상이 화면 밖으로 나가고,
   // 가로 폭을 viewSize 전체로 맞추면 인물이 너무 작아진다(2026-11-02 사용자 캡처 S01). 가로 폭을 viewSize의 0.72배로 두고
   // 화면 밖 목표는 가장자리 화살표가 가리킨다. 창조의 일곱 날만 하늘과 땅 전체를 봐야 해서 viewSize 전체 폭이다.
@@ -88,11 +123,25 @@ function resize() {
   if (shift) camera.setViewOffset(w, h, aspect >= 1 ? shift.x * w : 0, aspect < 1 || (lowLand && !viewShift) ? shift.y * h : 0, w, h);
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
-  composer.setSize(w, h);
-  pixelPass.setPixelSize(Math.max(3, Math.round(Math.min(w, h) / 200)));
+  renderer.setSize(w, h, false); // 보이는 크기는 CSS(100%)가 정한다
 }
 addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 250));
+// 확대·밀림 막기(F83·F89): 두 손가락 확대(iOS gesture*), 두 번 누르기 확대, 페이지가 밀린 채 남는 일을 없앤다.
+// 목록 스크롤은 CSS의 pan-y가 맡고, 이름 입력 중(화면 키보드)에는 건드리지 않는다.
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+addEventListener('dblclick', (e) => { if (!e.target.closest?.('input, textarea')) e.preventDefault(); });
+addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+const typing = () => /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName ?? '');
+function settleViewport() {
+  if (typing()) return;
+  if (scrollX || scrollY) scrollTo(0, 0);
+  if (document.scrollingElement && document.scrollingElement.scrollTop) document.scrollingElement.scrollTop = 0;
+  resize();
+}
+globalThis.visualViewport?.addEventListener('resize', settleViewport);
+globalThis.visualViewport?.addEventListener('scroll', settleViewport);
+addEventListener('scroll', settleViewport, { passive: true });
 addEventListener('contextmenu', (e) => { if (!e.target.closest('input, textarea')) e.preventDefault(); }); // 길게 누르기 메뉴(F24)
 resize();
 function setView(size, wide = false) { viewSize = size; wideShot = wide; resize(); }
@@ -105,19 +154,52 @@ const angel = makeAngel();
 const waypoint = makeWaypoint();
 // 목표가 화면 밖이면 화면 가장자리에 목표 쪽을 가리키는 표시를 띄운다(세로 화면에서 목표가 잘 안 보인다)
 const edgeTmp = new THREE.Vector3();
+// 안전 영역(노치·홈 막대)의 실제 값: tokens.css의 --safe-t/r/b/l을 안쪽 여백으로 준 보이지 않는 조각에서 px로 읽는다
+// (env()는 스크립트에서 바로 읽을 수 없다). 매 프레임 읽지 않고 담아 두었다가, 화면 크기·방향이 바뀌면 버리고 다시 읽는다.
+let edgeInset = null, edgeProbe = null;
+function edgeSafe() {
+  if (edgeInset) return edgeInset;
+  if (!edgeProbe) {
+    edgeProbe = document.createElement('div');
+    edgeProbe.setAttribute('aria-hidden', 'true');
+    edgeProbe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l)';
+    document.body.append(edgeProbe);
+  }
+  const cs = getComputedStyle(edgeProbe), px = (v) => parseFloat(v) || 0;
+  edgeInset = { t: px(cs.paddingTop), r: px(cs.paddingRight), b: px(cs.paddingBottom), l: px(cs.paddingLeft) };
+  return edgeInset;
+}
+addEventListener('resize', () => { edgeInset = null; });
+addEventListener('orientationchange', () => { edgeInset = null; setTimeout(() => { edgeInset = null; }, 250); });
 function edgeArrow() {
   const el = $('edgeArrow');
   const tgt = waypoint.target;
   if (!tgt || mode !== 'walk') { el.hidden = true; return; }
   edgeTmp.set(tgt.x, (tgt.y ?? 0) + 1, tgt.z).project(camera);
-  const w = innerWidth, h = innerHeight, m = 36;
+  const w = document.documentElement.clientWidth, h = document.documentElement.clientHeight, m = 36;
+  // 표시가 설 수 있는 사각형: 화면에서 안전 영역을 뺀 뒤 변마다 m만큼 더 들인다(2026-11-14: 전에는 화면 끝에서 m만 띄워
+  // 844×390 가로 화면에서 표시가 아래 안전 영역을 넘었다). 안전 영역이 0이면 전과 같은 자리다. 세로·가로 화면이 같은 계산을 쓴다.
+  let x0, x1, y0, y1;
+  const fit = () => {
+    const s = edgeSafe();
+    x0 = s.l + m; x1 = w - s.r - m; y0 = s.t + m; y1 = h - s.b - m;
+    if (x1 < x0) x0 = x1 = w / 2; // 안전 영역이 화면보다 넓은 드문 경우: 가운데 한 줄로 접는다
+    if (y1 < y0) y0 = y1 = h / 2;
+  };
+  fit();
   let x = ((edgeTmp.x + 1) / 2) * w, y = ((1 - edgeTmp.y) / 2) * h;
-  if (edgeTmp.z < 1 && x > m && x < w - m && y > m && y < h - m) { el.hidden = true; return; }
-  const cx = w / 2, cy = h / 2, a = Math.atan2(y - cy, x - cx);
-  // 화면 가운데에서 목표 쪽으로 뻗은 선이 가장자리(여백 m)와 만나는 점
-  const k = Math.min((w / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (h / 2 - m) / Math.abs(Math.sin(a) || 1e-6));
-  x = cx + Math.cos(a) * k;
-  y = cy + Math.sin(a) * k;
+  const seen = () => edgeTmp.z < 1 && x > x0 && x < x1 && y > y0 && y < y1; // 목표가 그 사각형 안에 보이면 표시가 필요 없다
+  if (seen()) { el.hidden = true; return; }
+  // 숨어 있다가 나타나는 순간에만 안전 영역을 새로 읽는다(크기 변화 없이 값이 바뀐 경우까지 맞춘다)
+  if (el.hidden) { edgeInset = null; fit(); if (seen()) return; }
+  // 화면 가운데에서 목표 쪽으로 뻗은 선이 그 사각형의 가장자리와 만나는 점. 가리키는 방향(a)은 전과 같다
+  const cx = Math.min(x1, Math.max(x0, w / 2)), cy = Math.min(y1, Math.max(y0, h / 2));
+  const a = Math.atan2(y - cy, x - cx), dx = Math.cos(a), dy = Math.sin(a);
+  const kx = dx > 1e-6 ? (x1 - cx) / dx : dx < -1e-6 ? (x0 - cx) / dx : Infinity;
+  const ky = dy > 1e-6 ? (y1 - cy) / dy : dy < -1e-6 ? (y0 - cy) / dy : Infinity;
+  const k = Math.min(kx, ky);
+  x = cx + dx * k;
+  y = cy + dy * k;
   el.hidden = false;
   el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${a}rad)`;
 }
@@ -138,7 +220,7 @@ const tapped = new Set(); // 한 프레임 안에 눌렀다 뗀 키도 그 프�
 let target = null;
 let dragX = null;
 
-addEventListener('keydown', (e) => { keys.add(e.code); tapped.add(e.code); });
+addEventListener('keydown', (e) => { if (e.repeat) return; keys.add(e.code); tapped.add(e.code); });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
@@ -179,7 +261,7 @@ for (const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, (e)
   if (mode === 'walk') practiced('walk', LEARN_SEC); // 탭·드래그를 한 번 쓰면 조작 안내를 닫고 다시 띄우지 않는다
   // 끌지 않고 뗐으면 탭: 누른 자리로 걸어간다
   if (!stick.on && ev === 'pointerup' && mode === 'walk') {
-    const ndc = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    const ndc = new THREE.Vector2((e.clientX / document.documentElement.clientWidth) * 2 - 1, -(e.clientY / document.documentElement.clientHeight) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
     target = raycaster.ray.intersectPlane(groundPlane, new THREE.Vector3());
   }
@@ -265,6 +347,7 @@ let triggers = [];
 function addTrigger(pos, r, cb, soft = false) { const trig = { pos, r, cb, soft }; triggers.push(trig); return trig; }
 function checkTriggers() {
   if (mode !== 'walk') return;
+  if (shelterSpots && heaven.group.visible) for (const sp of shelterSpots) if (sp.cool && player.position.distanceTo(sp.pos) > sp.r + 0.35) sp.cool = false;
   for (const trig of triggers) {
     if (trig.soft && (holdQuest?.cur || ch?.near)) continue; // 퀘스트 진행 중에는 짧은 인사를 미룬다
     if (player.position.distanceTo(trig.pos) < trig.r) {
@@ -390,7 +473,6 @@ function placeCompanions(at) {
 async function runPrologue() {
   showHud(false); // 이야기를 보는 장면: HUD 없이
   scene.background = new THREE.Color(0xfdf3d8);
-  setEdges(true);
   heaven.group.visible = player.visible = true;
   dressFigure(player, lookSpec(state.look));
   setView(12);
@@ -461,7 +543,6 @@ async function runCreation(fromDay = 1) {
     for (const step of CREATION.days[day]) if (step.act) await creation.acts[step.act]();
   }
   setInstant(false);
-  setEdges(fromDay > 1); // 빛이 생기기 전(창 1:2)에는 물의 윤곽선도 보이지 않게 한다
   await fade(0);
 
   if (fromDay === 1) await say(CREATION.start, state);
@@ -471,7 +552,6 @@ async function runCreation(fromDay = 1) {
     showDayTitle(DAY_NAMES[day]);
     for (const step of CREATION.days[day]) {
       if (step.say) await say(step.say, state);
-      if (step.act === 'light') setEdges(true);
       if (step.act) await creation.acts[step.act]();
     }
     mode = 'orbit';
@@ -608,13 +688,12 @@ const dressWith = (spec) => (look, key) => dressFx(key, look, () => { finishWipe
 // ---------- 꾸미기 방: 처음 땅에 내려가기 전, 지상에서의 모습을 전용 화면에서 고른다 ----------
 // 손에 드는 물건(item)은 인벤토리에서 고르므로 꾸미기 화면(무작위 포함)에서 뺀다.
 // 지상 꾸미기: 소품 세 자리는 가진 것만 보인다(없음 + 가진 꾸미기·도구)
-// 머리 모양과 소품은 글자 대신 미리보기 그림 칩으로 보인다(S11)
+// 머리 모양과 소품은 이름으로 고르고, 모습은 곁의 인물에서 바로 본다(예전 미리보기 그림 칩은 2026-11-14에 걷었다)
 const earthOptions = () => Object.fromEntries(Object.entries(LOOK.earth).map(([k, list]) => {
-  if (['item', 'waist', 'head'].includes(k)) return [k, list.filter((o) => canHold(state, o.id)).map((o) => ({ ...o, icon: ITEM_ICONS[o.id] ?? EMPTY }))];
+  if (['item', 'waist', 'head'].includes(k)) return [k, list.filter((o) => canHold(state, o.id))];
   // 상점 머리·옷(STYLES)은 산 뒤에만 보인다
   const sold = (o) => !STYLES.some((s) => s.id === o.id) || state.items.looks.includes(o.id);
-  if (k === 'hair') return [k, list.filter(sold).map((o) => ({ ...o, icon: HAIR_ICONS[o.id] }))];
-  if (k === 'outfit') return [k, list.filter(sold)];
+  if (k === 'hair' || k === 'outfit') return [k, list.filter(sold)];
   return [k, list];
 }));
 async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submit = '이 모습으로 내려가기' } = {}) {
@@ -625,7 +704,6 @@ async function runDressingRoom({ kicker = '에덴으로 내려가기 전', submi
   dressingRoom.visible = player.visible = true;
   showHud(false); // 꾸미기 화면에서는 HUD를 숨긴다
   scene.background = new THREE.Color(0xf6efe2);
-  setEdges(true);
   player.position.set(0, 0, 0);
   player.rotation.y = Math.PI / 4;
   camFollow = new THREE.Vector3(0, 0.75, 0); // 발밑이 아니라 몸 가운데를 본다
@@ -667,7 +745,6 @@ async function runEden(from = 'eden') {
   eden = makeEden(scene);
   scene.add(eden.group);
   scene.background = eden.sky.clone();
-  setEdges(true);
   setView(13);
   camAngle = 0;
   walkRadius = EDEN_RADIUS;
@@ -717,18 +794,125 @@ async function showMenu() {
   if (mode !== 'walk' || menuIsOpen()) return;
   mode = 'none';
   target = null;
-  // 손에 들기: 지상에서만(천국 모습에는 손에 드는 물건이 없다). 빛이 손으로 날아와 물건이 된다(dressFx 'item').
+  haltChallenge(true); // 기록장이 열린 동안에도 도전은 얼어 있다(멈춤과 같은 경계)
+  // 손에 들기: 지상에서만(천국 모습에는 손에 드는 물건이 없다).
   // 소품은 손·허리·머리 세 자리(data/items.js slot). id가 'none'이면 key 자리를 비운다.
+  // 기록장이 열린 동안 월드의 tween은 서 있다(haltChallenge). 빛이 손으로 날아오는 연출(dressFx 'item')을 걸면 기록장을 닫은 뒤에야
+  // 물건이 바뀌고, 여러 번 바꾸면 빛이 한꺼번에 날아온다. 그래서 여기서는 연출 없이 바로 입힌다(전에도 연출은 기록장 뒤에서 끝났다).
   const onHold = state.earthLook && land() ? (id, key = 'item') => {
     state.earthLook = { ...state.earthLook, [key]: id };
     save(state);
-    dressWith(earthSpec)(state.earthLook, 'item');
+    dressWith(earthSpec)(state.earthLook, null);
   } : null;
-  // 스테이지 중(지상 장면)에만 '쉼터로 나가기'. 쉼터에서는 보이지 않는다
-  let quitting = false;
-  const onQuit = land() && state.resume ? () => { quitting = true; } : null;
-  await openMenu(state, { stage: chapterOf(state.scene), onHold, onQuit });
-  if (quitting && await askQuit()) {
+  // '쉼터로 나가기'는 멈춤 화면에 있다(showPause). 기록장에는 두지 않는다
+  // 여정: 기록장에서 여정 지도를 연다. 스테이지 중에는 보기만 하고, 쉼터에서는 빛의 문처럼 입장할 수 있다.
+  // 지도를 닫으면 연 곳(기록장, 보던 갈래)으로 돌아온다(닫으면 연 자리로, F99와 같은 약속). 입장을 고르면 그 스테이지로 간다.
+  let tab = 'status', back = false;
+  for (;;) {
+    let route = false;
+    const opened = openMenu(state, {
+      tab, stage: chapterOf(state.scene), onHold, preview: makePreview,
+      onRoute: () => { route = true; tab = document.querySelector('#menuTabs [aria-selected="true"]')?.dataset.id ?? tab; }, // 보던 갈래를 기억한다
+    });
+    if (back) $('menuTabs').querySelector('[data-id="route"]')?.focus({ preventScroll: true }); // 지도에서 돌아오면 초점은 여정 단추에
+    await opened;
+    if (!route) break; // 기록장을 닫았다: 걷던 자리로
+    const id = await openMap(state, { view: !!land() });
+    if (id) {
+      haltChallenge(false);
+      setQuest(null);
+      await fade(1);
+      stopWalk();
+      startAt(id);
+      return;
+    }
+    back = true;
+  }
+  haltChallenge(false);
+  mode = 'walk';
+}
+// 내 모습 무대(기록장의 소지품, 상점): 걷는 인물과 같은 팩토리(makeFigure·earthSpec)로 만든 인물을 작은 화면에 세운다.
+// host 안에 캔버스를 넣고 { set(look), dispose() }를 돌려준다. 그림이나 사진이 아니라 같은 3D 인물이다.
+function makePreview(host, look) {
+  const view = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  view.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  view.toneMapping = THREE.NeutralToneMapping;
+  view.toneMappingExposure = 1.05;
+  view.domElement.className = 'model__view';
+  view.domElement.setAttribute('aria-hidden', 'true');
+  host.append(view.domElement);
+  const stage = new THREE.Scene();
+  stage.add(new THREE.HemisphereLight(0xfff8e7, 0xb9a6d8, 1.2));
+  const key = new THREE.DirectionalLight(0xfff4dc, 1.3);
+  key.position.set(2.5, 4, 3);
+  stage.add(key);
+  const cam = new THREE.PerspectiveCamera(26, 1, 0.1, 50);
+  cam.position.set(0, 1.1, 6.4);
+  cam.lookAt(0, 0.92, 0);
+  let worn = JSON.stringify(look);
+  const fig = makeFigure(earthSpec(look));
+  fig.rotation.y = Math.PI / 7;
+  stage.add(fig);
+  // 카메라를 인물과 걸친 것 전체에 맞춘다: 무대의 가로세로 비(가로 화면의 무대는 폭 6rem으로 좁다)와 인물·소품의 실제 테두리를 재서,
+  // 세로와 가로 가운데 더 빠듯한 쪽이 다 들어오는 거리에 선다. 긴 소품(금 등잔대, 일곱 별)이나 큰 키에서도 팔·발·소품이 잘리지 않는다.
+  // 서 있는 동안 팔과 몸이 조금 움직이므로 여유를 둔다. 무대 크기가 바뀔 때와 입힌 것이 바뀔 때마다 다시 맞춘다.
+  const bounds = new THREE.Box3(), mid = new THREE.Vector3(), ext = new THREE.Vector3();
+  const frame = () => {
+    fig.updateWorldMatrix(true, true);
+    bounds.setFromObject(fig);
+    if (bounds.isEmpty()) return;
+    bounds.getCenter(mid);
+    bounds.getSize(ext);
+    const halfH = (ext.y / 2) * 1.14 + 0.06; // 머리 위·발밑 여유
+    const halfW = (Math.max(ext.x, ext.z) / 2) * 1.28 + 0.08; // 팔·손에 든 것의 흔들림까지
+    const tan = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+    const dist = Math.max(halfH / tan, halfW / (tan * cam.aspect)) + Math.max(ext.x, ext.z) / 2; // 테두리의 앞면에서 잰 거리
+    cam.position.set(mid.x, mid.y, mid.z + dist);
+    cam.lookAt(mid);
+    cam.far = dist + 30;
+    cam.updateProjectionMatrix();
+  };
+  const size = () => {
+    const w = host.clientWidth, h = host.clientHeight;
+    if (!w || !h) return;
+    view.setSize(w, h, false);
+    cam.aspect = w / h;
+    frame();
+  };
+  const ro = new ResizeObserver(size);
+  ro.observe(host);
+  let alive = true, last = performance.now(), t = 0;
+  const loop = (now) => {
+    if (!alive) return;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    t += dt;
+    animateFigure(fig, 0, dt, t);
+    view.render(stage, cam);
+    requestAnimationFrame(loop);
+  };
+  size();
+  requestAnimationFrame(loop);
+  return {
+    set(next) { const s = JSON.stringify(next); if (s === worn) return; worn = s; dressFigure(fig, earthSpec(next)); frame(); },
+    dispose() { alive = false; ro.disconnect(); disposeTree(fig); view.dispose(); view.domElement.remove(); },
+  };
+}
+// 멈춤(2026-11-14, docs/design.md "기록장과 멈춤"): 걷는 중에만 연다. Esc나 오른쪽 위 멈춤 단추.
+// 계속하기 · 기록장 · 쉼터로 나가기(스테이지 중에만). 나가기 확인은 멈춤 안에서 펼쳐진다(창을 더 띄우지 않는다, F98).
+let pausing = false;
+async function showPause() {
+  if (mode !== 'walk' || menuIsOpen() || pausing) return;
+  pausing = true;
+  mode = 'none';
+  target = null;
+  haltChallenge(true); // 멈춘 동안 도전의 진행·판정·보상을 세운다
+  const here = CHAPTERS.find((ch) => ch.id === chapterOf(state.scene));
+  // 어디에서 멈췄는지: 지상 스테이지면 '1-9 · 우물가의 리브가', 그 밖(쉼터·천국)은 '쉼터'
+  const pick = await askPause({ where: land() && here && here.id !== 'heaven' ? `${stageNo(here.id)} · ${here.title}` : '쉼터', canQuit: !!land() && !!state.resume });
+  pausing = false;
+  haltChallenge(false); // 돌아옴: 하던 시도는 판정 없이 취소하고 눌림을 남기지 않는다
+  if (pick === 'quit') {
     // 지금 자리까지 남기고 쉼터로 간다(F56: 지도·첫 화면의 이어하기로 돌아온다). 걷던 퀘스트·도전의 기다림은 stopWalk가 풀어 그 자리에서 멈춘다
     keepSpot();
     stopWalk();
@@ -740,10 +924,18 @@ async function showMenu() {
     return;
   }
   mode = 'walk';
+  if (pick === 'log') showMenu();
 }
 $('menuBtn').onclick = showMenu;
+$('pauseBtn').onclick = showPause;
 const chapterOf = (scene) => CHAPTERS.find((ch) => ch.points.some((p) => p.id === scene))?.id;
-addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat && !menuIsOpen()) showMenu(); });
+// 스테이지 번호: 본 이야기는 '1-9', 곁길은 '샛길'(지도·완료·멈춤·첫 화면이 같은 말을 쓴다)
+const stageNo = (id) => (CHAPTERS.find((ch) => ch.id === id)?.side ? '샛길' : `1-${WORLDS[0].stages.filter((s) => !CHAPTERS.find((ch) => ch.id === s)?.side).indexOf(id) + 1}`);
+addEventListener('keydown', (e) => {
+  if (e.repeat || menuIsOpen() || pausing) return;
+  if (e.code === 'KeyM') showMenu();
+  if (e.code === 'Escape' && mode === 'walk' && !e.defaultPrevented && $('dexCard').hidden) { e.preventDefault(); showPause(); } // 도감 카드를 닫는 Esc와 겹치지 않게
+});
 
 // 에덴의 대사: 말하는 인물이 고개를 끄덕이며 들썩인다(eden.acts.speak).
 function talk(lines, ctx, opts = {}) {
@@ -871,7 +1063,7 @@ async function runEdenGarden() {
       camFocus = null;
       const { kind } = a.animal.userData;
       const entry = CODEX.find((c) => c.id === `creature/${kind}`);
-      await showCard({ title: entry.name, text: entry.fact, ref: entry.ref, count: `${n} / ${total}`, pic: CODEX_ART[entry.id] });
+      await showCard({ title: entry.name, text: entry.fact, ref: entry.ref, count: `${n} / ${total}`, pic: codexGlyph(entry.id) }); // 그 항목의 뜻을 읽을 수 있는 공용 그림(glyphs.js CODEX_GLYPH)
       a.animal.userData.calm = false;
       reward(`eden/animal/${kind}`, 'animal', `creature/${kind}`);
     },
@@ -1020,7 +1212,6 @@ async function runCain() {
   cain = makeCain(scene);
   scene.add(cain.group);
   scene.background = cain.sky.clone();
-  setEdges(true);
   setView(13);
   camAngle = 0;
   walkRadius = CAIN_RADIUS;
@@ -1166,6 +1357,28 @@ async function runCain() {
 // 자리마다 hits번 성공하면 끝난다. 실패해도 감점 없이 다시 한다. 열매가 자라 있으면 금빛 구간이 넓어진다(assistOf).
 // spot.tool이 있으면 먼저 F로 도구를 써야 행동할 수 있다(예: 물동이에 물 긷기). 다 끝나면 도구를 하나 쓴다(useTool).
 let ch = null;
+// 멈춤·기록장이 열려 있는 동안 도전은 얼어 있다(2026-11-14, 도전 여덟 가지 공통 경계).
+// 얼어 있는 동안: 표시·진행·판정·보상·장면 콜백(onHold)이 멈추고, 그동안의 누름과 뗌은 판정 없이 버린다
+// (전에는 멈춤 중에도 꾹 누르기의 진행이 흐르고, 멈춤 중에 Space를 떼면 판정이 일어나 진행이 0으로 돌아갔다).
+// 돌아올 때: 하던 시도는 취소한다. 누르고 있던 것은 모두 놓은 것으로 정리하고(꾹 누르기는 0부터 다시), 실패로 치지 않는다.
+// 같은 경계가 월드도 세운다(2026-11-14 실측: 멈춤 4초 동안 마을 사람이 1.8m 걸었다). halted인 동안 tick은 장면 갱신
+// (걷기, 대천사, 스테이지·창조·에덴·들판의 update, 자동 플레이)을 부르지 않고 월드 시간(worldT)도 흐르지 않으며,
+// anim.js의 tween도 제자리에 머문다(setPaused). 풀리면 그 자리에서 이어 간다. 대사·연출의 mode 'none'은 얼리지 않는다:
+// 멈춤 화면(showPause)과 기록장(showMenu, 거기서 연 지도 포함)이 열려 있는 동안만이다. 화면 전환과 미리보기는 계속 움직인다.
+let halted = false;
+function haltChallenge(on) {
+  if (halted === on) return;
+  halted = on;
+  setPaused(on);
+  if (on || !ch) return;
+  ch.holding = false;
+  if (ch.kind === 'hold') ch.m = 0;
+  ch.beatPressed = false;
+  ch.hist.length = 0; // 멈추기 전의 표시 자리로 판정하지 않는다
+  ch.game?.cancel();
+  keys.clear();
+  tapped.clear();
+}
 const GRACE_MS = 150; // 도전 판정 여유: 누르기 전 이 시간 안에 표시가 금빛 구간에 있었으면 성공(터치·화면 지연)
 // 난도(2026-11-03 사용자 F18 "갈수록 어렵게"): 성공할 때마다, 그리고 같은 스테이지의 다음 도전(tier)일수록 구간이 좁아지고 표시가 빨라진다.
 // 성공 k번째: 속도 ×(1 + 0.12k), 구간 ×(1 − 0.08k). tier: 속도 ×(1 + 0.15·tier), 구간 ×(1 − 0.1·tier). 구간은 기본의 0.5배, 속도는 1.8배에서 멈춘다.
@@ -1220,7 +1433,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     const miss = (sp, text = missText) => { label(text); flash('is-miss'); onMiss?.(sp); };
     const act = async () => {
       const sp = ch?.near;
-      if (!sp || mode !== 'walk' || ch.busy) return;
+      if (halted || !sp || mode !== 'walk' || ch.busy) return;
       if (!sp.ready) { label(`${isTouch() ? '' : 'F 키로 '}${toolName} 먼저 쓰기`); flash('is-miss'); return; }
       if (ch.game) { ch.game.act(true); return; }
       if (kind === 'hold') { ch.holding = true; ch.m = 0; return; }
@@ -1245,6 +1458,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     };
     // 꾹 누르기: 손을 떼는 순간 판정한다
     const release = () => {
+      if (halted) return; // 멈춘 동안의 뗌은 판정하지 않는다(돌아올 때 haltChallenge가 정리한다)
       if (ch?.game) { ch.game.act(false); return; }
       if (kind !== 'hold' || !ch?.holding) return;
       ch.holding = false;
@@ -1280,8 +1494,8 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     };
     const useIt = async () => {
       const sp = ch?.near;
-      if (!sp || !sp.tool || sp.ready || mode !== 'walk' || ch.busy) return;
-      if (!state.items.tools.includes(tool)) { label(`${toolName}이 없어요`); return; }
+      if (halted || !sp || !sp.tool || sp.ready || mode !== 'walk' || ch.busy) return;
+      if (!state.items.tools.includes(tool)) { label(`${josa(toolName, '이', '가')} 없어요`); return; } // '물동이이'가 되지 않게 조사를 이름에 맞춘다
       sp.ready = true;
       ch.busy = true;
       mode = 'none';
@@ -1291,12 +1505,12 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
       flash('is-hit');
     };
     const onKey = (e) => {
-      if (mode !== 'walk' || e.repeat) return;
+      if (halted || mode !== 'walk' || e.repeat) return;
       if (ch.game && ch.near?.ready && ch.game.key(e.code, true)) { e.preventDefault(); return; }
       if (e.code === 'Space') { e.preventDefault(); act(); }
       if (e.code === 'KeyF') { e.preventDefault(); useIt(); }
     };
-    const onKeyUp = (e) => { if (ch?.game?.key(e.code, false)) return; if (e.code === 'Space') release(); };
+    const onKeyUp = (e) => { if (halted) return; if (ch?.game?.key(e.code, false)) return; if (e.code === 'Space') release(); };
     ch = { left, near: null, m: 0, dir: 1, zone: [0, 0], speed, radius, verb, hits, act, onKey, onKeyUp, panel, busy: false, msg: '', msgT: 0, toolName, hist: [],
       kind, onHold, beats: BEATS, combo: 0, beatPressed: false, holding: false, release: () => release(), miss: (sp, text) => miss(sp, text),
       auto: () => { if (ch.near) succeed(ch.near, '좋아요!'); } }; // auto: 개발용 자동 플레이(한 번 성공)
@@ -1337,6 +1551,7 @@ function endChallenge() {
 // 막대 표시가 오가고, 금빛 구간에 들어오면 패널이 금빛으로 바뀐다. 목표 곁에 있을 때만 보인다.
 function challengeTick(dt) {
   if (!ch) return;
+  if (halted) { ch.panel.hidden = true; return; } // 멈춤·기록장 중: 표시·진행·판정·onHold 모두 멈춘다
   let near = null, nd = Infinity;
   for (const sp of ch.left) { const d = sp.pos.distanceTo(player.position); if (d < ch.radius && d < nd) { nd = d; near = sp; } }
   ch.near = near;
@@ -1381,7 +1596,7 @@ function challengeTick(dt) {
   $('chMark').style.transform = `translateX(${ch.m * $('chTrack').clientWidth}px)`;
   ch.panel.classList.toggle('is-gold', near.ready && ch.m >= ch.zone[0] && ch.m <= ch.zone[1]);
   ch.msgT -= dt;
-  const how = ch.kind === 'rhythm' ? ` · 박자 ${ch.combo} / ${ch.beats}` : ch.kind === 'hold' && !ch.holding ? ' · 꾹 눌렀다 금빛에서 떼기' : '';
+  const how = ch.kind === 'rhythm' ? ` · 박자 ${ch.combo} / ${ch.beats}` : ch.kind === 'hold' && !ch.holding ? ' · 꾹 눌렀다 알맞을 때 떼기' : '';
   $('chLabel').textContent = ch.msgT > 0 ? ch.msg : near.ready ? `${ch.verb} ${near.n} / ${near.hits ?? ch.hits}${how}` : `${isTouch() ? '' : 'F 키로 '}${ch.toolName || '도구'} 쓰기`;
 }
 
@@ -1399,7 +1614,6 @@ async function runStage(id) {
   field = mod.build(scene);
   scene.add(field.group);
   scene.background = field.sky.clone();
-  setEdges(true);
   setView(13);
   camAngle = 0;
   walkRadius = field.radius;
@@ -1553,9 +1767,14 @@ async function afterStage(id) {
   const cur = stageInfo(state, id);
   const next = nextStage(id);
   const label = (info) => { const n = WORLDS[0].stages.filter((s) => !stageInfo(state, s).ch.side).indexOf(info.ch.id); return info.ch.side ? '샛길' : `1-${n + 1}`; };
-  const pick = await askClear({ kicker: `${label(cur)} · 완료`, title: cur.ch.title, next: next && `${label(next)} ${next.ch.title}` });
-  if (pick === 'next' && next) { await fade(1); startAt(next.ch.points[0].id); return; }
-  if (pick === 'map') {
+  // 마침 창에서 고를 때까지 머문다. 지도를 열었다가 X로 닫으면 지도만 닫히고 마침 창으로 돌아온다(2026-11-13 F99: 닫으면 쉼터로 가 버렸다)
+  // 완료 화면 가운데에 그 이야기의 말씀을 세운다(도감의 말씀 항목 가운데 첫째: 사실 한 줄, 이름, 장절)
+  const w = CODEX.find((c) => c.stage === id && c.id.startsWith('word/'));
+  const word = w ? { text: w.fact, name: w.name, ref: w.ref } : null;
+  for (;;) {
+    const pick = await askClear({ kicker: `${label(cur)} · 완료`, title: cur.ch.title, next: next && `${label(next)} ${next.ch.title}`, word });
+    if (pick === 'next' && next) { await fade(1); startAt(next.ch.points[0].id); return; }
+    if (pick !== 'map') break;
     const pid = await openMap(state);
     if (pid) { await fade(1); startAt(pid); return; }
   }
@@ -1565,6 +1784,7 @@ async function afterStage(id) {
 
 // ---------- 쉼터: 천국을 넓힌 광장. 스테이지를 마치면 돌아오고, 이어하기도 여기서 시작한다 ----------
 // 빛의 문 → 월드 지도, 기록대 → 도감, 상점 천사 → 상점. 걸어서 닿으면 열리고, 닫으면 한 걸음 물러난다.
+let shelterSpots = null; // 쉼터의 걸어서 닿는 자리(닫은 뒤 벗어났는지 본다)
 async function runShelter() {
   stopWalk();
   refreshHud();
@@ -1575,7 +1795,6 @@ async function runShelter() {
   if (field) { scene.remove(field.group); disposeTree(field.group); field = null; }
   if (basket) { player.remove(basket); basket = null; }
   scene.background = new THREE.Color(0xfdf3d8);
-  setEdges(true);
   heaven.group.visible = true;
   dressFigure(player, lookSpec(state.look));
   setView(12);
@@ -1598,7 +1817,7 @@ async function runShelter() {
     } },
     { pos: heaven.bookPos, r: 1.4, open: async () => { await openMenu(state, { only: 'codex', stage: chapterOf(state.scene) }); return false; } },
     { pos: heaven.shopPos, r: 1.6, open: async () => {
-      await openMenu(state, { only: 'shop', onBuy: (id) => {
+      await openMenu(state, { only: 'shop', preview: makePreview, onBuy: (id) => {
         const it = SHOP.find((i) => i.id === id);
         if (!buyLook(state, id)) return false;
         // 산 것은 바로 지상 모습에 입힌다(다음 땅에 내려가면 보인다). 소품은 그 자리(손·허리·머리)에 단다(2026-11-05 F52 "구매한 소품을 바로 입을 수 있어요")
@@ -1614,6 +1833,7 @@ async function runShelter() {
     } },
   ];
   const arm = (sp) => addTrigger(sp.pos, sp.r, async () => {
+    if (sp.cool) { arm(sp); return; } // 닫은 직후: 아직 그 자리 안이면 다시 열지 않는다(벗어나면 tick이 푼다)
     mode = 'none';
     // 탭으로 정한 목적지가 문 한가운데라 닫은 뒤 다시 걸어 들어가 지도가 또 열렸다(S10). 목적지·조이스틱·눌린 키를 지운다.
     target = null;
@@ -1625,10 +1845,13 @@ async function runShelter() {
     // 한 걸음 물러나 다시 닿을 수 있게 한다
     const away = new THREE.Vector3().subVectors(player.position, sp.pos).setY(0);
     if (away.lengthSq() < 1e-6) away.set(0, 0, -1); // 정확히 그 자리에 서 있으면 광장 안쪽으로
-    player.position.copy(sp.pos).add(away.setLength(sp.r + 0.5));
+    player.position.copy(sp.pos).add(away.setLength(sp.r + 0.6));
+    vel.set(0, 0, 0);
+    sp.cool = true;
     mode = 'walk';
     arm(sp);
   });
+  shelterSpots = spots;
   spots.forEach(arm);
   waypoint.set(heaven.gatePos);
   // 쉼터에서 할 일: 빛의 문에서 다음 이야기를 고른다(상점 천사·동행 인물은 곁에 가면 말을 건다)
@@ -1683,6 +1906,7 @@ function resumeStage() {
 let stageSnap = null;
 function startAt(id) {
   stageSnap = id === 'prologue' ? null : JSON.parse(JSON.stringify(state));
+  shelterSpots = null;
   mark = 0;
   questDepth = 0;
   if (id === 'resume') return resumeStage();
@@ -1730,7 +1954,14 @@ function showTitle() {
     // 첫 화면은 고를 것만: 저장이 있으면 가장 자주 누르는 '이어하기'를 맨 위에 둔다
     menu.replaceChildren();
     // 이어하기: 스테이지 중간에 나갔으면 그 자리부터(F57), 아니면 쉼터에서 시작한다
-    if (saved) menu.append(button('이어하기', begin(() => { state = saved; if (saved.resume) startAt('resume'); else runShelter(); })));
+    if (saved) {
+      const go = button('이어하기', begin(() => { state = saved; if (saved.resume) startAt('resume'); else runShelter(); }));
+      // 어디서 이어지는지를 곁에 적는다: 스테이지 중간이면 '1-9 우물가의 리브가', 아니면 '쉼터', 그리고 레벨.
+      // 단추의 글자는 '이어하기' 그대로 둔다(점검 스크립트가 글자로 찾는다). 곁 글은 data-where를 scene.css가 그린다
+      const at = saved.resume && CHAPTERS.find((ch) => ch.id === chapterOf(saved.resume.id));
+      go.dataset.where = `${at ? `${stageNo(at.id)} ${at.title}` : '쉼터'} · 레벨 ${levelOf(saved.xp).level}`;
+      menu.append(go);
+    }
     menu.append(button('처음부터', begin(() => { state = newState(saved); dressFigure(player, lookSpec(state.look)); runPrologue(); })));
     if (saved?.name) menu.append(button('모습 바꾸기', showLooks)); // 천국 꾸미기를 마친 사용자만
     if (saved) menu.append(button('도감', () => openMenu(saved, { only: 'codex', stage: chapterOf(saved.scene) }).then(() => menu.querySelector('button').focus({ preventScroll: true }))));
@@ -1790,27 +2021,38 @@ function showTitle() {
 // ---------- 루프 ----------
 const clock = new THREE.Clock();
 let menuMode = null;
+// 월드 시간: 장면에 넘기는 t. 프레임 시간(dt)을 쌓아 만든다. 멈춤·기록장 중(halted)에는 흐르지 않고, 풀리면 멈춘 자리에서 이어진다
+// (전에는 clock.elapsedTime을 그대로 넘겨서, dt만 세우면 풀릴 때 t가 멈춘 시간만큼 건너뛰었다).
+let worldT = 0;
 function tick() {
   // 개발 서버에서만: __dev.speed로 게임 시간을 앞당긴다(자동화 창은 초당 2프레임 안팎이라 걷기가 매우 느리다)
-  const dt = Math.min(clock.getDelta(), 0.05) * (ff ? FF_SPEED : import.meta.env.DEV ? globalThis.__dev?.speed ?? 1 : 1);
+  const frame = Math.min(clock.getDelta(), 0.05) * (ff ? FF_SPEED : import.meta.env.DEV ? globalThis.__dev?.speed ?? 1 : 1);
+  const live = !halted; // 멈춤·기록장이 열려 있으면 월드는 서 있다(haltChallenge). 대사·연출 중(mode 'none')은 여기에 해당하지 않는다
+  const dt = live ? frame : 0;
+  worldT += dt;
   const canMenu = mode === 'walk' && !$('hud').hidden;
-  if (canMenu !== menuMode) { menuMode = canMenu; $('menuBtn').hidden = !canMenu; } // 메뉴 버튼은 걷는 중에만 보인다
-  const t = clock.elapsedTime;
-  movePlayer(dt, t);
-  if (turntable) player.rotation.y += dt * 0.8;
-  moveAngel(dt, t);
-  checkTriggers();
-  aimNearest?.();
+  if (canMenu !== menuMode) { menuMode = canMenu; $('menuBtn').hidden = $('pauseBtn').hidden = !canMenu; } // 기록장·멈춤 단추는 걷는 중에만 보인다
+  const t = worldT;
+  if (live) {
+    movePlayer(dt, t);
+    if (turntable) player.rotation.y += dt * 0.8;
+    moveAngel(dt, t);
+    checkTriggers();
+    aimNearest?.();
+  }
   waypoint.update(t, player.position);
   edgeArrow();
-  creation?.update(dt, t);
-  eden?.update(dt, t, player.position);
-  cain?.update(dt, t, player.position);
-  field?.update(dt, t, player.position);
+  if (live) {
+    // 장면 갱신은 dt 0으로 부르지 않고 아예 건너뛴다(dt로 나누는 계산이 있어도 안전하게)
+    creation?.update(dt, t);
+    eden?.update(dt, t, player.position);
+    cain?.update(dt, t, player.position);
+    field?.update(dt, t, player.position);
+  }
   challengeTick(dt);
-  if (ff || import.meta.env.DEV) autoTick(dt);
+  if (live && (ff || import.meta.env.DEV)) autoTick(dt);
   holdTick(dt);
-  if (heaven.group.visible) heaven.pillar.userData.pulse(t);
+  if (live && heaven.group.visible) heaven.pillar.userData.pulse(t);
   if (titleView) camAngle += dt * 0.06;
   if (mode === 'orbit') {
     camAngle += (held('KeyE') - held('KeyQ')) * dt * 1.5 + dt * 0.05;
@@ -1820,7 +2062,8 @@ function tick() {
   camTarget.lerp(speakerFocus() ?? camFocus ?? (camPair && pairPoint.copy(camPair[0].position).lerp(camPair[1].position, 0.5).setY(0)) ?? camFollow, Math.min(1, dt * 4));
   camera.position.copy(camTarget).add(camTmp.copy(camOffset).applyAxisAngle(Y_AXIS, camAngle));
   camera.lookAt(camTarget);
-  composer.render();
+  tendShadows(dt);
+  if ($('title').hidden) renderer.render(scene, camera); // 첫 화면은 그린 풍경이 덮고 있어 3D를 그리지 않는다
   requestAnimationFrame(tick);
 }
 
@@ -1838,9 +2081,9 @@ tick();
 // 첫 화면에 쓰는 글꼴을 먼저 불러온 뒤 화면을 보여 준다(새로고침 때 기본 글꼴로 그렸다가 바뀌는 깜빡임을 막는다).
 // 네트워크가 느리면 1.5초 뒤에는 그냥 보여 준다.
 const fontsReady = Promise.all([
-  document.fonts.load('48px Galmuri11', '바이블로그'),
+  document.fonts.load('700 48px "Gowun Batang"', '바이블로그'),
   document.fonts.load('600 20px "Pretendard Variable"', '처음부터 이어하기 돌아가기'),
-  document.fonts.load('500 17px "Pretendard Variable"', '천국의 부르심을 받아 태초부터 이어진 성경의 순간들을 직접 보고 기록합니다'),
+  document.fonts.load('400 17px "Gowun Batang"', '태초부터, 성경의 순간을 걷다.'),
 ]).catch(() => {});
 Promise.race([fontsReady, new Promise((r) => setTimeout(r, 1500))]).then(() => {
   document.documentElement.classList.add('is-ready');

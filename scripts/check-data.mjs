@@ -18,7 +18,7 @@ import { layout } from '../src/map.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL, CHALLENGE } from '../src/data/growth.js';
 import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook, codexDone } from '../src/growth.js';
 import { ITEMS, STYLES, SHOP, SLOT_KEY, slotOf } from '../src/data/items.js';
-import { ITEM_ICONS, HAIR_ICONS } from '../src/icons.js';
+import { hasGlyph, codexGlyphName } from '../src/glyphs.js';
 import { STAGE_MODS } from '../src/stages/index.js';
 import { pagesOf, MAX_LINES, BOUND, NUMERAL } from '../src/ui.js';
 
@@ -167,7 +167,7 @@ assert.equal(load(null), null);
 {
   for (const it of ITEMS) {
     assert.ok(LOOK.earth[SLOT_KEY[slotOf(it)]].some((o) => o.id === it.id && o.name === it.name), `${it.id}: ${slotOf(it)} 자리에 그릴 수 없음`);
-    assert.ok(ITEM_ICONS[it.id], `${it.id}: 아이콘 없음`);
+    assert.ok(hasGlyph(it.id), `${it.id}: 그림 없음(src/glyphs.js)`);
     assert.ok(REF.test(it.ref) && it.note, `${it.id}: 장절·설명 오류`);
     assert.ok(['tool', 'look'].includes(it.kind), `${it.id}: 종류 오류`);
   }
@@ -231,9 +231,15 @@ assert.equal(load(null), null);
   // 상점 머리·옷(F06): 지상 모습에 같은 id가 있고, 그림·장절·값이 있고, 사기 전에는 갖지 않으며 사면 갖는다
   for (const st of STYLES) {
     assert.ok(LOOK.earth[st.kind].some((o) => o.id === st.id && o.name === st.name), `${st.id}: 지상 ${st.kind}에 없음`);
-    assert.ok((st.kind === 'hair' ? HAIR_ICONS : ITEM_ICONS)[st.id] && REF.test(st.ref) && st.price > 0, `${st.id}: 그림·장절·값 오류`);
+    assert.ok(hasGlyph(st.id) && REF.test(st.ref) && st.price > 0, `${st.id}: 그림·장절·값 오류`);
   }
-  for (const o of LOOK.earth.hair) assert.ok(HAIR_ICONS[o.id], `${o.id}: 머리 그림 없음`);
+  // 도감 항목마다 뜻을 읽을 수 있는 그림이 이어져 있다(glyphs.js CODEX_GLYPH). 피조물·장소·물건이 갈래 그림으로만 떨어지지 않게,
+  // 갈래 그림을 쓰는 것은 인물(사람 그림 하나), 말씀(두루마리), 그리고 들·땅 같은 장소(지도)뿐이다.
+  for (const c of CODEX) {
+    const name = codexGlyphName(c.id), kind = c.id.split('/')[0];
+    assert.ok(hasGlyph(name), `${c.id}: 도감 그림 없음(${name})`);
+    if (kind === 'creature' || kind === 'item') assert.ok(name !== 'pouch' && (name !== 'beast' || kind === 'creature'), `${c.id}: 갈래 그림만 있음`);
+  }
   { const t = newState(); t.talents = 999; assert.ok(!ownsLook(t, 'locks') && buyLook(t, 'locks') && ownsLook(t, 'locks') && t.talents === 879, '상점 머리 사기 오류'); }
   assert.ok(SHOP.every((x, i) => !i || SHOP[i - 1].price <= x.price), '상점 진열이 값 순서가 아님');
   console.log(`OK: 손에 드는 물건 점검 통과(도구 ${ITEMS.length - looks.length}개, 꾸미기 ${looks.length}개)`);

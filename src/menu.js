@@ -1,4 +1,4 @@
-// 메뉴: 상태 창(레벨, 성령의 열매 레이더 차트, 닮은 인물)과 도감(장별 페이지, 다섯 분류, 칸마다 세 상태).
+// 기록장: 성장(레벨, 성령의 열매 나무, 닮은 인물), 소지품, 도감(장별 쪽, 다섯 갈래, 항목마다 세 상태), 그리고 상점.
 // 게임 중에는 걷는 중에만 열고, 첫 화면에서는 도감만 연다. 규칙은 docs/standards/ui.md "메뉴".
 import { $, isTouch, hideModal } from './ui.js';
 import { SPIRIT, SPIRIT_STAGES, slotsAt, CODEX_TITLES } from './data/growth.js';
@@ -6,9 +6,13 @@ import { CODEX, CODEX_TABS } from './data/codex.js';
 import { CHAPTERS } from './data/chapters.js';
 import { josa } from './text.js';
 import { levelOf, stageOf, likeness, codexState, ownsLook } from './growth.js';
-import { TALENT, ITEM_ICONS, CODEX_ICONS, HAIR_ICONS } from './icons.js';
-import { CODEX_ART } from './codex-art.js';
+import { glyph, sprout, codexGlyph } from './glyphs.js'; // 선 아이콘(화면의 그림은 모두 glyphs.js에서 나온다)
 import { ITEMS, SHOP, SLOTS, SLOT_KEY, slotOf } from './data/items.js';
+
+const COIN = glyph('coin');
+// 도감 항목의 그림: 그 항목의 뜻을 읽을 수 있는 공용 그림(glyphs.js CODEX_GLYPH). 아직 만나지 않은 항목은 갈래 그림만 보인다
+const artOf = (c) => codexGlyph(c.id);
+const kindArt = (c) => glyph('', c.id.split('/')[0]);
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -84,102 +88,96 @@ function refocus(key) {
   t?.focus({ preventScroll: true });
 }
 
-// 레이더 차트: 아홉 축, 값은 단계(씨앗 0 ~ 결실 4). 씨앗도 안쪽 첫 고리에 찍히게 (단계+1)/5로 그린다.
-export function radarPoints(stages, R = 1) {
-  return stages.map((s, i) => {
-    const a = -Math.PI / 2 + (i / stages.length) * Math.PI * 2;
-    const r = ((s + 1) / SPIRIT_STAGES.length) * R;
-    return [Math.cos(a) * r, Math.sin(a) * r];
-  });
-}
-function radar(stages) {
-  const R = 100, n = stages.length, top = SPIRIT_STAGES.length - 1;
-  const box = svg('svg', { viewBox: '-150 -128 300 252', class: 'radar__svg', role: 'img', 'aria-labelledby': 'radarTitle' });
-  box.append(Object.assign(svg('title', { id: 'radarTitle' }), { textContent: '성령의 열매 아홉 가지의 단계' }));
-  const ring = (k) => radarPoints(Array(n).fill(k), R).map((p) => p.join(',')).join(' ');
-  for (let k = 0; k <= top; k++) box.append(svg('polygon', { points: ring(k), class: 'radar__grid' }));
-  radarPoints(Array(n).fill(top), R).forEach(([x, y]) => box.append(svg('line', { x1: 0, y1: 0, x2: x, y2: y, class: 'radar__axis' })));
-  const pts = radarPoints(stages, R);
-  box.append(svg('polygon', { points: pts.map((p) => p.join(',')).join(' '), class: 'radar__shape' }));
-  pts.forEach(([x, y]) => box.append(svg('circle', { cx: x, cy: y, r: 4, class: 'radar__dot' })));
-  radarPoints(Array(n).fill(top), R * 1.18).forEach(([x, y], i) => {
-    const anchor = Math.abs(x) < 8 ? 'middle' : x > 0 ? 'start' : 'end';
-    const t = svg('text', { x, y: y + 5, 'text-anchor': anchor, class: 'radar__label' });
-    t.textContent = SPIRIT[i].name;
-    box.append(t);
-  });
-  return box;
-}
-
-// 스탯 칸: 아이콘, 이름, 큰 숫자와 단위(게임의 능력치 칸처럼)
-function statTile(icon, name, value, unit) {
-  const t = el('div', 'stat');
-  const i = el('span', 'stat__icon');
-  i.innerHTML = icon;
-  const v = el('p', 'stat__value');
-  v.append(el('span', 'stat__num', value), el('span', 'stat__unit', unit));
-  t.append(i, ...(name ? [el('p', 'stat__name', name)] : []), v);
-  return t;
-}
-
+// 가지 끝 자리(가로 100 × 세로 78): 줄기 하나에 가지가 세 단으로 뻗는다. 한 단에 셋(왼쪽·줄기 위·오른쪽)이라
+// 싹 그림·이름·누르는 자리가 어느 폭에서도 서로 가리지 않는다(시안에서 일곱 크기로 확인한 배치).
+const TWIG = [[16, 14], [50, 9], [84, 14], [16, 38], [50, 33], [84, 38], [16, 62], [50, 57], [84, 62]];
+// 성장(2026-11-14, 예전 상태 창): 나는 누구인가(레벨 고리·칭호·이름·경험치·달란트) → 무엇이 자랐나(열매 나무) → 누구를 닮았나.
+// 레이더 차트를 세 단 가지의 나무로 바꿨다. 열매의 뜻풀이는 지어 넣지 않는다(이름, 개역개정 낱말, 단계만).
 function statusView(state) {
   const lv = levelOf(state.xp);
-  const wrap = el('div', 'menu-status');
+  const wrap = el('div', 'me menu-status');
 
-  const card = el('section', 'profile');
-  const badge = el('p', 'profile__lv');
-  badge.append(el('span', 'profile__lvword', 'Lv.'), el('span', 'profile__lvnum', lv.level));
-  const who = el('div', 'profile__who');
-  who.append(el('p', 'quest__label', lv.title), el('p', 'profile__name', state.name || '관찰자'));
-  // 도감 완성 칭호(CODEX_TITLES): 월드 도감을 다 채우면 이름 아래에 붙는다
-  for (const [w, t] of Object.entries(CODEX_TITLES)) if (state.claimed.includes(`${w}/codex`)) who.append(el('p', 'profile__badge', `${t.title} (${t.ref})`));
-  const xp = el('div', 'profile__xp');
-  const bar = el('span', 'gauge__track profile__track');
-  const fill = el('span', 'gauge__fill');
-  fill.style.transform = `scaleX(${lv.into / lv.need})`;
-  bar.append(fill);
-  bar.setAttribute('role', 'img');
-  bar.setAttribute('aria-label', `경험치 ${lv.into} / ${lv.need}`);
-  const xpText = el('p', 'profile__xptext');
-  xpText.append(el('span', 'profile__xpname', '경험치'), el('span', 'profile__xpnum', `${lv.into} / ${lv.need}`));
-  xp.append(xpText, bar);
-  card.append(badge, who, xp);
-  const stats = el('div', 'stats');
-  stats.append(statTile(TALENT, null, state.talents, '달란트')); // 인벤토리 칸 수는 인벤토리 탭에서 보인다
-  wrap.append(card, stats);
+  const id = el('section', 'me__id');
+  const ring = el('div', 'me__ring');
+  ring.setAttribute('role', 'img');
+  ring.setAttribute('aria-label', `레벨 ${lv.level}, 경험치 ${lv.into} / ${lv.need}`);
+  const c = 2 * Math.PI * 21;
+  ring.innerHTML = `<svg viewBox="0 0 48 48" aria-hidden="true"><circle class="me__track" cx="24" cy="24" r="21"/><circle class="me__fill" cx="24" cy="24" r="21" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - lv.into / lv.need)}"/></svg>`;
+  ring.append(el('small', null, '레벨'), el('b', null, lv.level));
+  const who = el('div', 'me__who');
+  who.append(el('p', 'label', lv.title));
+  // 도감 완성 칭호(CODEX_TITLES): 월드 도감을 다 채우면 칭호 곁에 붙는다
+  for (const [w, t] of Object.entries(CODEX_TITLES)) if (state.claimed.includes(`${w}/codex`)) who.append(el('p', 'label me__badge', `${t.title} (${t.ref})`));
+  who.append(el('h3', 'me__name', state.name || '관찰자'));
+  const facts = el('p', 'me__facts');
+  const fact = (name, value) => { const s = el('span', null, `${name} `); s.append(el('b', null, value)); return s; };
+  facts.append(fact('경험치', `${lv.into} / ${lv.need}`), fact('다음 레벨까지 경험치', lv.need - lv.into), fact('달란트', state.talents));
+  who.append(facts);
+  id.append(ring, who);
+  wrap.append(id);
 
   const stages = SPIRIT.map((s) => stageOf(state.spirit[s.id]));
-  const fruits = el('section', 'fruits');
-  fruits.append(el('p', 'quest__label', '성령의 열매 · 갈 5:22~23'));
-  const fig = el('figure', 'radar');
-  fig.append(radar(stages));
-  fruits.append(fig);
-  // 한 줄 요약: 가장 많이 자란 열매. 아홉 칸 표는 화면에서 빼고(레이더와 같은 내용) 화면 읽기용으로만 남긴다.
   const top = Math.max(...stages);
-  const grown = SPIRIT.filter((_, i) => stages[i] === top && top > 0).map((s) => s.name);
-  fruits.append(el('p', 'fruits__summary', grown.length ? `가장 자란 열매: ${grown.join(', ')} · ${SPIRIT_STAGES[top]}` : '아홉 열매 모두 씨앗이에요. 걸으며 키워 가요.'));
-  const list = el('ul', 'fruit-list sr-only');
+  let pick = Math.max(0, stages.indexOf(top)); // 처음에는 가장 자란 열매를 고른다
+  const grove = el('section', 'grove');
+  const head = el('div', 'grove__head');
+  head.append(el('h3', 'label', '성령의 열매'), el('span', 'verse', '갈 5:22~23'));
+  const tree = el('div', 'tree');
+  const twigs = SPIRIT.map((_, i) => { const [x, y] = TWIG[i]; return x === 50 ? '' : `<path class="tree__twig" vector-effect="non-scaling-stroke" data-stage="${stages[i]}" d="M50 ${y + 13}C${50 + (x - 50) * 0.45} ${y + 13} ${x + (50 - x) * 0.3} ${y + 8} ${x} ${y}"/>`; }).join('');
+  tree.innerHTML = `<svg viewBox="0 0 100 78" preserveAspectRatio="none" aria-hidden="true"><path class="tree__ground" vector-effect="non-scaling-stroke" d="M34 77c6-1.5 26-1.5 32 0"/><path class="tree__trunk" vector-effect="non-scaling-stroke" d="M50 77V9"/>${twigs}</svg>`;
+  const about = el('div', 'grove__about');
+  about.setAttribute('aria-live', 'polite');
+  const paint = () => {
+    const s = SPIRIT[pick], st = stages[pick];
+    const name = el('p', 'grove__name', s.name);
+    if (s.old !== s.name) name.append(el('small', null, `개역개정 ${s.old}`));
+    const steps = el('p', 'grove__steps');
+    steps.setAttribute('role', 'img');
+    steps.setAttribute('aria-label', `${SPIRIT_STAGES[st]} 단계`);
+    SPIRIT_STAGES.forEach((w, k) => steps.append(el('span', k === st ? 'is-now' : k < st ? 'is-past' : '', w)));
+    about.replaceChildren(name, steps, el('p', 'grove__text', st < SPIRIT_STAGES.length - 1 ? `다음 단계: ${SPIRIT_STAGES[st + 1]}` : ''));
+    tree.querySelectorAll('.bud').forEach((b, i) => b.setAttribute('aria-pressed', String(i === pick)));
+  };
   SPIRIT.forEach((s, i) => {
-    const li = el('li', 'fruit-list__item');
-    li.dataset.stage = stages[i];
-    li.append(el('span', 'fruit-list__name', s.name), el('span', 'fruit-list__stage', SPIRIT_STAGES[stages[i]]));
-    if (s.old !== s.name) li.append(el('span', 'fruit-list__old', s.old));
-    list.append(li);
+    const [x, y] = TWIG[i];
+    const b = button('bud', '', () => { pick = i; paint(); }, `${s.name}, ${SPIRIT_STAGES[stages[i]]}`, `fruit:${s.id}`);
+    b.dataset.stage = stages[i];
+    b.style.left = `${x}%`;
+    b.style.top = `${(y / 78) * 100}%`;
+    b.innerHTML = sprout(stages[i]);
+    b.append(el('span', null, s.name));
+    tree.append(b);
   });
-  fruits.append(list);
-  wrap.append(fruits);
+  paint();
+  // 한 줄 요약: 가장 많이 자란 열매
+  const grown = SPIRIT.filter((_, i) => stages[i] === top && top > 0).map((s) => s.name);
+  grove.append(head, tree, about, el('p', 'grove__top fruits__summary', grown.length ? `가장 자란 열매: ${grown.join(', ')} · ${SPIRIT_STAGES[top]}` : '아홉 열매 모두 씨앗이에요. 걸으며 키워 가요.'));
+  wrap.append(grove);
 
   const like = likeness(state);
-  const box = el('section', 'likeness');
-  box.append(el('p', 'quest__label', '닮은 인물'));
-  // F44: 그림·이름·두 열매 꼬리표 머리줄 아래에 그 인물이 한 일(장절)과 닮은 점을 한 줄씩
+  const box = el('section', 'like likeness');
+  box.append(el('p', 'label', '닮은 인물'));
+  // F44: 이름·두 열매 꼬리표·장절 아래에 그 인물이 한 일과 닮은 점을 한 줄씩
   if (like) {
-    const id = `person/${like.who}`;
-    const tags = like.fruits.map((f) => [SPIRIT.find((s) => s.id === f).name, 'slot']);
-    box.append(detailHead(CODEX_ART[id], CODEX.find((c) => c.id === id).name, tags, like.ref), el('p', 'inv__fact', like.deed), el('p', 'likeness__text', like.text));
+    const tags = el('p', 'like__tags');
+    for (const f of like.fruits) { const t = el('span', 'state'); t.dataset.s = 'on'; t.innerHTML = glyph('leaf'); t.append(SPIRIT.find((s) => s.id === f).name); tags.append(t); }
+    tags.append(el('span', 'verse', like.ref));
+    box.append(el('h3', 'like__name', CODEX.find((x) => x.id === `person/${like.who}`).name), tags, el('p', 'inv__fact', like.deed), el('p', 'likeness__text', like.text));
   } else box.append(el('p', 'likeness__text', '열매가 자라면 닮은 성경 인물을 알려 드릴게요.'));
   wrap.append(box);
   return wrap;
+}
+// 이름이 한 줄에 들어가지 않으면 두 줄로 고르게 나눈다: 가운데에 가까운 띄어쓰기가 있으면 거기서, 없으면 글자 수의 가운데에서.
+// 글자를 자르거나 줄이지 않는다(끝에 한 글자만 남지 않게). 화면에 붙은 뒤에 잰다. 낭독기에는 이름 전체를 한 번에 읽힌다
+function twoLines(node) {
+  const text = node.textContent;
+  const lh = parseFloat(getComputedStyle(node).lineHeight);
+  if (!lh || node.getBoundingClientRect().height < lh * 1.5) return;
+  const ch = [...text], mid = ch.length / 2;
+  const gaps = ch.map((x, i) => (x === ' ' ? i : -1)).filter((i) => i > 0 && Math.abs(i - mid) <= ch.length * 0.25).sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid));
+  const at = gaps.length ? gaps[0] : Math.ceil(mid);
+  node.replaceChildren(ch.slice(0, at).join('').trim(), document.createElement('br'), ch.slice(at).join('').trim());
+  node.setAttribute('aria-label', text);
 }
 
 // 인벤토리: 도구(칸을 차지하고 쓰면 사라짐)와 꾸미기(레벨로 열림). 칸을 고르면 아래 설명 칸에 이름·장절·설명과 손에 들기 버튼이 나온다.
@@ -191,6 +189,10 @@ function inventoryView(state, ctx) {
   const worn = (it) => (state.earthLook?.[keyOf(it)] ?? 'none') === it.id;
   const VERB = { hand: ['손에 들기'], waist: ['허리에 차기'], head: ['머리에 쓰기'] };
   const wrap = el('div', 'inv');
+  // 내 모습 무대: 걷는 인물과 같은 인물을 세운다(main.js가 만들어 준다). 지상 모습을 아직 고르지 않았으면 두지 않는다
+  const stage = el('div', 'model');
+  const model = ctx.mount && state.earthLook ? ctx.mount(stage, state.earthLook) : null;
+  stage.hidden = !model;
   const cats = el('div', 'inv__cats');
   const box = el('div', 'codex__box');
   let picked = null;
@@ -199,12 +201,12 @@ function inventoryView(state, ctx) {
     const d = el('div', 'inv__detail');
     if (!it) {
       d.append(ctx.kind === 'tool'
-        ? howList([['도전', '도전 과제가 있는 스테이지에서 받을 수 있어요'], ['사용', '사용할 곳에서 다 사용되면 사라져요']], '인벤토리는 레벨이 오르면 늘어나요.')
+        ? howList([['도전', '도전 과제가 있는 스테이지에서 받을 수 있어요'], ['사용', '쓸 곳에서 다 쓰면 사라져요']], '도구 자리는 레벨이 오르면 늘어나요.')
         : howList([['레벨', '레벨을 달성하면 받아요'], ['완료', '스테이지를 완료하면 받아요'], ['상점', '쉼터의 상점에서 달란트로 살 수 있어요']]));
       return d;
     }
     const owned = it.kind === 'tool' ? state.items.tools.includes(it.id) : ownsLook(state, it.id);
-    const how = it.level ? `Lv.${it.level}에 열려요` : it.stage ? `${josa(CHAPTERS.find((c) => c.id === it.stage)?.title ?? '', '을', '를')} 완료하면 받아요` : `상점에서 ${it.price} 달란트`;
+    const how = it.level ? `레벨 ${it.level}에 열려요` : it.stage ? `${josa(CHAPTERS.find((c) => c.id === it.stage)?.title ?? '', '을', '를')} 완료하면 받아요` : `상점에서 ${it.price} 달란트`;
     const tags = [[it.kind === 'tool' ? '도구' : SLOTS[slotOf(it)], 'slot']];
     if (worn(it)) tags.push(['착용 중', 'ok']);
     else if (!owned) tags.push(['잠김', 'lock']);
@@ -218,8 +220,8 @@ function inventoryView(state, ctx) {
       else act.append(button('btn inv__hold', verb, () => { ctx.onHold(it.id, keyOf(it)); render(); }, null, 'inv:hold'));
     }
     // 아직 못 얻은 꾸미기는 형체만 보인다(2026-11-03 사용자 F27 "미리보기도 안 되게, 형체만"). 이름·장절·설명도 얻은 뒤에 보인다
-    if (!owned) { d.classList.add('is-locked'); d.append(detailHead(ITEM_ICONS[it.id], '? ? ?', tags), act); return d; }
-    d.append(detailHead(ITEM_ICONS[it.id], it.name, tags, it.ref), el('p', 'inv__note', it.note), act);
+    if (!owned) { d.classList.add('is-locked'); d.append(detailHead(glyph('lock'), '? ? ?', tags), act); return d; }
+    d.append(detailHead(glyph(it.id), it.name, tags, it.ref), el('p', 'inv__note', it.note), act);
     return d;
   };
 
@@ -229,14 +231,15 @@ function inventoryView(state, ctx) {
     b.setAttribute('aria-pressed', String(picked === it.id));
     if (worn(it)) b.dataset.held = '';
     const icon = el('span', 'slot__icon');
-    icon.innerHTML = ITEM_ICONS[it.id];
+    icon.innerHTML = owned ? glyph(it.id) : glyph('lock'); // 아직 못 얻은 것은 자물쇠만(F27: 형체도 이름도 얻은 뒤에)
     // 잠긴 칸: 여는 길(레벨·스테이지·상점)을 짧게
-    b.append(icon, el('span', 'slot__name', owned ? it.name : it.level ? `Lv.${it.level}` : it.stage ? `${stageLabel(it.stage)} 완료` : '상점'));
+    b.append(icon, el('span', 'slot__name', owned ? it.name : it.level ? `레벨 ${it.level}` : it.stage ? `${stageLabel(it.stage)} 완료` : '상점'));
     if (worn(it)) b.append(el('span', 'slot__badge', SLOTS[slotOf(it)]));
     return b;
   };
 
   const render = (dir = 0) => {
+    model?.set(state.earthLook); // 들거나 내려놓은 것이 무대의 인물에도 바로 보인다
     const view = el('div', 'codex__page');
     const head = el('p', 'codex__count');
     let grid;
@@ -271,7 +274,7 @@ function inventoryView(state, ctx) {
     b.setAttribute('aria-pressed', String(c.id === ctx.kind));
     cats.append(b);
   }
-  wrap.append(cats, box);
+  wrap.append(stage, cats, box);
   render();
   return wrap;
 }
@@ -287,19 +290,17 @@ function codexCell(state, c, no, picked, onPick) {
   b.dataset.state = st;
   b.setAttribute('aria-pressed', String(picked === c.id));
   const pic = el('span', 'codex__pic');
-  pic.innerHTML = st === 'met' ? artOf(c) : CODEX_ICONS[c.id.split('/')[0]] ?? '';
+  pic.innerHTML = st === 'met' ? artOf(c) : kindArt(c);
   b.append(el('span', 'codex__no', String(no).padStart(3, '0')), pic, el('span', 'codex__name', st === 'met' ? c.name : st === 'missed' ? '? ? ?' : '?'));
   if (st !== 'met') b.setAttribute('aria-label', st === 'missed' ? '놓친 항목' : '아직 못 만난 항목');
   li.append(b);
   return li;
 }
-// 항목 그림(codex-art.js, F02). 없으면 분류 그림
-const artOf = (c) => CODEX_ART[c.id] ?? CODEX_ICONS[c.id.split('/')[0]] ?? '';
 // 고른 항목의 설명: 만난 항목은 이름·사실·장절·메모, 놓친 칸은 다시 찾을 곳
 function codexDetail(state, c) {
   const d = el('div', 'inv__detail codex__detail');
   const st = codexState(state, c);
-  const pic = st === 'met' ? artOf(c) : CODEX_ICONS[c.id.split('/')[0]];
+  const pic = st === 'met' ? artOf(c) : kindArt(c);
   if (st === 'met') d.append(detailHead(pic, c.name, [], c.ref), el('p', 'inv__fact', c.fact), el('p', 'codex__memo', c.memo));
   else if (st === 'missed') d.append(detailHead(pic, '? ? ?', [['놓침', 'lock']]), el('p', 'inv__note', `${CHAPTERS.find((ch) => ch.id === c.stage)?.title ?? ''}에서 다시 찾아보세요.`));
   else d.append(detailHead(pic, '?'), el('p', 'inv__note', '이야기를 걸으며 만나 보세요.'));
@@ -311,25 +312,37 @@ export const menuIsOpen = () => !!open;
 
 // 상점(쉼터의 상점 천사): 달란트로 꾸미기를 산다. 칸과 설명 칸은 인벤토리와 같은 모양이다.
 function shopView(state, ctx) {
-  const wrap = el('div', 'inv');
+  const wrap = el('div', 'inv shop');
+  // 내 모습 무대: 고른 물품을 걷는 인물과 같은 인물에 대 본다(사기 전에는 '입어 보기', 산 뒤에는 입은 모습)
+  const stage = el('div', 'model');
+  const model = ctx.mount && state.earthLook ? ctx.mount(stage, state.earthLook) : null;
+  stage.hidden = !model;
+  const keyOfShop = (it) => (it.kind === 'hair' || it.kind === 'outfit' ? it.kind : SLOT_KEY[slotOf(it)]);
+  // 입고 있는지: 산 소품은 손·허리·머리 자리에, 머리 모양·옷은 그 항목에 들어간다(main.js 사기)
+  const wornNow = (it) => { const k = it.kind === 'hair' || it.kind === 'outfit' ? it.kind : SLOT_KEY[slotOf(it)]; return state.earthLook?.[k] === it.id; };
   const purse = el('p', 'shop__purse');
   const icon = el('span', 'shop__coin');
-  icon.innerHTML = TALENT;
+  icon.innerHTML = COIN;
   purse.append(el('span', 'shop__greet', '달란트로 꾸미기 용품을 살 수 있어요'), icon, el('span', 'stat__num', state.talents), el('span', 'stat__unit', '달란트'));
   const box = el('div', 'codex__box');
   let picked = null;
   const render = () => {
     purse.querySelector('.stat__num').textContent = state.talents;
+    const trying = SHOP.find((i) => i.id === picked);
+    model?.set(trying ? { ...state.earthLook, [keyOfShop(trying)]: trying.id } : state.earthLook);
+    stage.dataset.try = trying && !ownsLook(state, trying.id) ? `입어 보기 · ${trying.name}` : '';
     const view = el('div', 'codex__page');
     const grid = el('div', 'slots');
     for (const it of SHOP) {
       const owned = ownsLook(state, it.id);
       const b = button('slot', '', () => { picked = it.id; render(); }, null, `slot:${it.id}`);
       b.dataset.state = owned ? 'owned' : 'sale';
+      if (!owned && state.talents < it.price) b.dataset.short = ''; // 달란트가 모자란 물품: 값이 흐리게 보인다
       b.setAttribute('aria-pressed', String(picked === it.id));
+      b.setAttribute('aria-label', owned ? `${it.name}, ${wornNow(it) ? '착용 중' : '가짐'}` : `${it.name}, ${it.price} 달란트`);
       const ic = el('span', 'slot__icon');
-      ic.innerHTML = ITEM_ICONS[it.id] ?? HAIR_ICONS[it.id];
-      b.append(ic, el('span', 'slot__name', it.name), el('span', 'slot__price', owned ? '가짐' : `${it.price}`));
+      ic.innerHTML = glyph(it.id);
+      b.append(ic, el('span', 'slot__name', it.name), el('span', 'slot__price', owned ? (wornNow(it) ? '착용 중' : '가짐') : `${it.price}`));
       grid.append(b);
     }
     const it = SHOP.find((i) => i.id === picked);
@@ -341,27 +354,34 @@ function shopView(state, ctx) {
       const kind = it.kind === 'hair' ? '머리 모양' : it.kind === 'outfit' ? '옷' : SLOTS[slotOf(it)];
       // 버튼은 값만 보인다(2026-11-03 사용자 F37 "~달란트로 사기보다는 ~달란트만"). 화면 읽기는 "60 달란트로 사기"
       const buy = button('btn inv__hold shop__buy', owned ? '가짐' : '', () => { if (ctx.onBuy(it.id)) render(); }, owned ? null : `${it.price} 달란트로 사기`, 'shop:buy');
-      if (!owned) { const coin = el('span', 'shop__buycoin'); coin.innerHTML = TALENT; buy.append(coin, el('span', 'shop__buynum', it.price), el('span', 'stat__unit', '달란트')); }
+      if (!owned) { const coin = el('span', 'shop__buycoin'); coin.innerHTML = COIN; buy.append(coin, el('span', 'shop__buynum', it.price), el('span', 'stat__unit', '달란트')); }
       buy.disabled = owned || state.talents < it.price;
       act.append(buy);
-      d.append(detailHead(ITEM_ICONS[it.id] ?? HAIR_ICONS[it.id], it.name, [[kind, 'slot'], ...(owned ? [['가짐', 'ok']] : [])], it.ref), el('p', 'inv__note', it.note), act);
+      d.append(detailHead(glyph(it.id), it.name, [[kind, 'slot'], ...(owned ? [[wornNow(it) ? '착용 중' : '가짐', 'ok']] : [])], it.ref), el('p', 'inv__note', it.note), act);
     }
     view.append(grid, d);
     swap(box, view, 0);
   };
-  wrap.append(purse, box);
+  wrap.append(purse, stage, box);
   render();
   return wrap;
 }
 
 // opts.only: 'codex'면 첫 화면처럼 도감만, 'shop'이면 상점만 연다. opts.stage: 처음 펼칠 장 id.
-export function openMenu(state, { tab = 'status', only = null, stage = null, onHold = null, onBuy = null, onQuit = null } = {}) {
+// 기록장(2026-11-14, 예전 메뉴): 성장 · 소지품 · 도감 · 여정. 탭의 id(status·inventory·codex)는 그대로다.
+// preview(host, look): 내 모습 무대를 만들어 { set(look), dispose() }를 돌려준다(main.js가 걷는 인물과 같은 팩토리로 만든다).
+// onRoute: '여정'을 누르면 기록장을 닫고 부른다(여정 지도를 연다). 없으면 여정 단추를 두지 않는다.
+export function openMenu(state, { tab = 'status', only = null, stage = null, onHold = null, onBuy = null, onQuit = null, preview = null, onRoute = null } = {}) {
   if (open) return open.promise;
   const box = $('menuBox');
   const tabsEl = $('menuTabs');
   const body = $('menuBody');
-  const TABS = only ? [] : [{ id: 'status', name: '상태' }, { id: 'inventory', name: '인벤토리' }, { id: 'codex', name: '도감' }];
-  const inv = { kind: 'tool', onHold };
+  const TABS = only ? [] : [{ id: 'status', name: '성장' }, { id: 'inventory', name: '소지품' }, { id: 'codex', name: '도감' }];
+  // 무대는 화면을 다시 그릴 때와 닫을 때 치운다(작은 3D 화면을 남겨 두지 않는다)
+  const stages = [];
+  const mount = preview ? (host, look) => { const p = preview(host, look); stages.push(p); return p; } : null;
+  const unmount = () => stages.splice(0).forEach((p) => p.dispose());
+  const inv = { kind: 'tool', onHold, mount };
   if (only) tab = only;
   let chapter = Math.max(0, BOOK_CHAPTERS.findIndex((ch) => ch.id === stage));
   let cat = 'person', page = 0;
@@ -369,8 +389,9 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
 
   // 탭 막대는 한 번만 만들고, 고른 탭과 밑줄 막대만 옮긴다(막대가 미끄러져 옮겨 간다).
   tabsEl.hidden = !TABS.length;
-  $('menuTitle').hidden = !only;
+  $('menuTitle').hidden = false; // 벽의 머리줄: 갈래가 있으면 지금 갈래의 이름(paintTabs), 없으면 상점·도감의 이름
   $('menuTitle').textContent = only === 'shop' ? '천국 상점' : '바이블로그 도감';
+  box.dataset.only = only ?? '';
   if (TABS.length) {
     tabsEl.replaceChildren(...TABS.map((t) => {
       const b = button('tab', t.name, () => setTab(t.id));
@@ -381,8 +402,15 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
     const line = el('span', 'look__tabline');
     line.style.setProperty('--tabs', TABS.length);
     tabsEl.append(line);
+    // 여정: 갈래가 아니라 여정 지도로 가는 길이다(Q·E로 도는 갈래에는 넣지 않는다)
+    if (onRoute) {
+      const r = button('tab tab--route', '여정', () => { close(); onRoute(); });
+      r.dataset.id = 'route';
+      tabsEl.append(r);
+    }
   }
   const paintTabs = () => {
+    if (TABS.length) $('menuTitle').textContent = TABS.find((t) => t.id === tab).name;
     tabsEl.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === tab)));
     const line = tabsEl.querySelector('.look__tabline');
     if (line) line.style.transform = `translateX(${TABS.findIndex((t) => t.id === tab) * 100}%)`;
@@ -462,8 +490,11 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
 
   const render = (dir = 0) => {
     paintTabs();
-    const view = tab === 'status' ? statusView(state) : tab === 'inventory' ? inventoryView(state, inv) : tab === 'shop' ? shopView(state, { onBuy }) : codexView();
+    unmount();
+    const view = tab === 'status' ? statusView(state) : tab === 'inventory' ? inventoryView(state, inv) : tab === 'shop' ? shopView(state, { onBuy, mount }) : codexView();
+    body.dataset.tab = tab; // 갈래마다 배치가 다르다(record.css)
     swap(body, view, dir);
+    body.querySelectorAll('.me__name').forEach(twoLines);
   };
   const setTab = (id) => {
     if (id === tab) return;
@@ -480,6 +511,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
   const promise = new Promise((r) => (resolve = r));
   const close = () => {
     hideModal(box);
+    unmount();
     removeEventListener('keydown', onKey, true);
     open = null;
     resolve();

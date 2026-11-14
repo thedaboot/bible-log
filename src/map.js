@@ -80,7 +80,10 @@ function drawPath(svg, box, stages, cells, marks, COLS, done) {
 
 const STATUS = { soon: '준비 중', locked: '잠김', open: '', cleared: '완료' }; // 열림은 글자로 적지 않는다(밝은 표지가 열림이다)
 
-export function openMap(state) {
+// view: 보기만 한다(기록장의 '여정'에서 스테이지 중에 열 때). 입장·이어하기 단추 대신 어디서 들어가는지 알린다
+// (스테이지 입장은 쉼터의 빛의 문에서만 한다, docs/design.md "기록장과 멈춤").
+// (옵션 이름은 view 그대로 받고, 안에서는 readOnly로 부른다. 아래 paint의 DOM 변수 view에 가려져 늘 참이 되던 것을 막는다)
+export function openMap(state, { view: readOnly = false } = {}) {
   const box = $('mapBox');
   const world = WORLDS[0]; // shortcut: 월드가 하나뿐이다. 출애굽기를 만들 때 월드 넘기기를 더한다.
   let n = 0;
@@ -129,6 +132,7 @@ export function openMap(state) {
       const go = el('div', 'map__go');
       if (it.status === 'soon') go.append(el('p', 'map__note', '아직 만드는 중이에요.'));
       else if (it.status === 'locked') go.append(el('p', 'map__note', '앞 이야기를 마치면 열려요.'));
+      else if (readOnly) go.append(el('p', 'map__note', '입장은 쉼터의 빛의 문에서 해요.'));
       else {
         // 버튼(2026-11-05 F55·F56): 중간에 나왔으면 '이어하기'와 '처음부터', 완료한 스테이지는 '처음부터', 처음이면 '입장'.
         // 창조의 날, 에덴의 '타락과 추방' 같은 중간 지점 버튼은 두지 않는다(언제나 첫 지점부터, 이어하기가 나간 자리를 맡는다)

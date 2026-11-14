@@ -2,98 +2,118 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>바이블로그</title>
     <!-- 파비콘: 펼친 성경과 빛, 더다붓 로고에서 가져온 분홍 하트(public/, Codex 이미지 생성으로 그림) -->
     <link rel="icon" href="./favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" href="./favicon-32.png" sizes="32x32" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-    <meta name="theme-color" content="#2b1d14" />
-    <!-- 부팅용 최소 스타일: CSS와 글꼴이 준비되기 전에는 빛 화면만 보인다. 색은 tokens.css의 --color-light와 같다. -->
+    <meta name="theme-color" content="#2a211b" />
+    <!-- 부팅용 최소 스타일: CSS와 글꼴이 준비되기 전에는 빛 화면만 보인다. 색은 tokens.css의 --veil-color와 같다. -->
     <style>
-      html, body { margin: 0; height: 100%; background: oklch(98% 0.022 92); }
+      html, body { margin: 0; height: 100%; background: oklch(97% 0.016 90); }
       html:not(.is-ready) body > :not(#fade) { visibility: hidden; }
-      #fade { position: fixed; inset: 0; z-index: 20; pointer-events: none; background: oklch(98% 0.022 92); }
+      #fade { position: fixed; inset: 0; z-index: 20; pointer-events: none; background: oklch(97% 0.016 90); }
     </style>
   </head>
   <body>
     <main id="title" class="title">
+      <!-- 첫 화면 풍경: 그린 삽화다(실시간 3D 화면이 아니다). 출처는 docs/standards/art-3d.md "에셋" -->
+      <picture>
+        <source media="(max-width: 600px) and (orientation: portrait)" srcset="./assets/title-landscape.webp" />
+        <img class="title__art" src="./assets/title-landscape.webp" alt="" width="1672" height="941" decoding="async" fetchpriority="high" />
+      </picture>
       <div class="title__veil" aria-hidden="true"></div>
       <div class="title__block">
-        <h1 class="title__name reveal" style="--i: 0"><img class="title__mark" src="./icon-128.png" alt="" width="128" height="128" />바이블로그</h1>
-        <p class="title__lede reveal" style="--i: 1">태초부터, 성경의 순간을 걷다.</p>
-        <nav id="menu" class="menu reveal" style="--i: 2" aria-label="시작 메뉴"></nav>
+        <h1 class="title__name">바이블로그</h1>
+        <p class="title__lede">태초부터, 성경의 순간을 걷다.</p>
+        <nav id="menu" class="menu" aria-label="시작 메뉴"></nav>
       </div>
     </main>
 
-    <header id="hud" class="hud" hidden>
-      <p class="hud__lv" aria-live="polite"><span class="hud__lvword">Lv.</span><span id="hudLv">1</span></p>
-      <div class="hud__xp">
-        <span class="gauge__track hud__track" role="img" id="hudXpTrack"><span id="hudXp" class="gauge__fill"></span></span>
-        <span id="hudXpText" class="hud__xptext"></span>
-      </div>
-      <p class="hud__talent"><span id="hudTalentIcon" class="hud__icon"></span><span id="hudTalent" class="hud__num">0</span><span class="hud__unit">달란트</span></p>
-    </header>
-    <button id="menuBtn" class="menu-btn" type="button" aria-keyshortcuts="M" title="메뉴 (M)" hidden><span class="menu-btn__icon" aria-hidden="true"></span><span class="menu-btn__label">메뉴</span><kbd class="menu-btn__key">M</kbd></button>
+    <!-- 걷는 화면: 지금 할 일 한 줄(#quest)과 기록장·멈춤뿐이다. 레벨·경험치·달란트는 기록장의 성장과 상점에 있다(docs/design.md "HUD").
+         #hud는 그리지 않는다. hidden 속성이 "걷는 화면이 켜졌는가"를 뜻해 main.js가 계속 쓴다 -->
+    <div id="hud" class="hud" hidden></div>
+    <div class="scene-shade" aria-hidden="true"></div>
+    <div class="scene-btns">
+      <button id="menuBtn" class="tap" type="button" aria-keyshortcuts="M" aria-label="기록장" title="기록장 (M)" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path class="ic__tint" d="M4 8c3-1 5.500-.8 8 .8V19c-2.500-1.600-5-1.800-8-.8z"/><path d="M3 6.500c3-1.200 6-1.200 9 .6 3-1.800 6-1.800 9-.6V18c-3-1.200-6-1.200-9 .6-3-1.800-6-1.800-9-.6z"/><path d="M12 7.100v11.500"/></svg></button>
+      <button id="pauseBtn" class="tap" type="button" aria-keyshortcuts="Escape" aria-label="멈춤" title="멈춤 (Esc)" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12"/><path d="M15 6v12"/></svg></button>
+    </div>
+    <div id="gain" class="gain" aria-live="polite"></div>
 
-    <div id="edgeArrow" class="edge-arrow" aria-hidden="true" hidden></div>
+    <!-- 길 안내(목표가 화면 밖일 때 가장자리에서 목표 쪽을 가리킨다)와 조이스틱(누른 채 끌면 그 자리에 뜬다). 자리는 main.js가 준다 -->
+    <div id="edgeArrow" class="edge-arrow" aria-hidden="true" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></div>
     <div id="stick" class="stick" aria-hidden="true" hidden><span class="stick__knob"></span></div>
-    <aside id="quest" class="panel quest" hidden aria-live="polite">
-      <p class="quest__label">퀘스트</p>
+    <aside id="quest" class="quest" hidden aria-live="polite">
+      <p class="quest__label">목표</p>
       <h2 id="questTitle" class="quest__title"></h2>
       <ul id="questItems" class="quest__items"></ul>
     </aside>
+    <!-- 조작 안내·알림·머무르기·도전·도감 카드·다음 단추: 모두 장면 위에 상자 없이 얹는다(글자, 가는 선, 엄지 자리의 행동 하나) -->
     <div id="controls" class="controls" hidden></div>
     <div id="toast" class="toast" role="status" hidden></div>
-    <div id="gauge" class="panel gauge" hidden>
-      <p id="gaugeLabel" class="gauge__label"></p>
-      <span class="gauge__track" aria-hidden="true"><span id="gaugeFill" class="gauge__fill"></span></span>
+    <!-- 머무르기: 그 자리에 머무는 동안 선이 찬다 -->
+    <div id="gauge" class="stay" hidden>
+      <p id="gaugeLabel" class="stay__say"></p>
+      <span class="stay__track" aria-hidden="true"><span id="gaugeFill" class="stay__fill"></span></span>
     </div>
-    <div id="challenge" class="panel gauge challenge" hidden>
-      <p id="chLabel" class="gauge__label"></p>
-      <svg id="chPad" class="challenge__pad" viewBox="0 0 240 120" aria-hidden="true" hidden></svg>
-      <span id="chTrack" class="gauge__track challenge__track" aria-hidden="true"><span id="chZone" class="challenge__zone"></span><span id="chMark" class="challenge__mark"></span></span>
-      <div class="challenge__keys">
-        <span class="challenge__key"><kbd class="key key--inline">WASD</kbd>이동</span>
-        <button id="chAct" class="challenge__key" type="button"><kbd class="key key--inline">Space</kbd><span id="chActName">행동</span></button>
-        <button id="chTool" class="challenge__key" type="button" hidden><kbd class="key key--inline">F</kbd><span id="chToolName">도구</span></button>
+    <!-- 도전: 왼쪽에 지금 할 일과 진행 선, 가운데에 놀이판(있을 때), 엄지 자리에 행동(과 도구). 실패는 그 자리에서 바로 다시 -->
+    <div id="challenge" class="work challenge" hidden>
+      <div class="work__text">
+        <p id="chLabel" class="work__say" aria-live="polite"></p>
+        <span id="chTrack" class="work__track" aria-hidden="true"><span id="chZone" class="work__zone"></span><span id="chMark" class="work__mark"></span></span>
+        <p class="work__move"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>이동</span></p>
+      </div>
+      <svg id="chPad" class="work__pad" viewBox="0 0 240 120" aria-hidden="true" hidden></svg>
+      <div class="work__hands">
+        <button id="chTool" class="thumb thumb--tool" type="button" hidden><span class="thumb__disc"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path class="ic__tint" d="M7.800 9.800h10l1.500 10h-13z"/><path d="M7 9h10l1.500 10h-13z"/><path d="M9.500 9c0-3.200 5-3.200 5 0"/></svg></span><span class="thumb__say"><kbd>F</kbd><span id="chToolName">도구</span></span></button>
+        <button id="chAct" class="thumb" type="button"><span class="thumb__disc"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 13V6.500a1.500 1.500 0 0 1 3 0V12"/><path d="M11 11V5.500a1.500 1.500 0 0 1 3 0V12"/><path d="M14 11.500V7a1.500 1.500 0 0 1 3 0v7c0 4-2 6.500-5.500 6.500-3 0-4.500-1.500-6-4.500l-1.500-3c-.5-1.200 1-2.200 2-1l2 2.500"/></svg></span><span class="thumb__say"><kbd>Space</kbd><span id="chActName">행동</span></span></button>
       </div>
     </div>
-    <div id="dexCard" class="panel dexcard" role="status" hidden>
-      <p class="quest__label">바이블로그 도감</p>
-      <span id="dexPic" class="dexcard__pic" aria-hidden="true"></span>
-      <p id="dexTitle" class="dexcard__title"></p>
-      <p id="dexText" class="dexcard__text"></p>
+    <!-- 도감 카드: 새로 만난 것이 기록되는 순간. 누르거나 잠시 뒤 닫힌다 -->
+    <div id="dexCard" class="note" role="status" hidden>
+      <p class="note__label">바이블로그 도감</p>
+      <span id="dexPic" class="note__pic" aria-hidden="true"></span>
+      <p id="dexTitle" class="note__title"></p>
+      <p id="dexText" class="note__text"></p>
       <p id="dexRef" class="codex__ref"></p>
-      <p id="dexCount" class="dexcard__count"></p>
+      <p id="dexCount" class="note__count"></p>
     </div>
     <div id="dayTitle" class="day-title" aria-live="polite"></div>
-    <button id="nextBtn" class="btn btn--next" type="button" hidden></button>
+    <button id="nextBtn" class="do do--scene next" type="button" hidden></button>
 
     <div id="choices" class="choices" role="group" aria-label="고르기" hidden></div>
-    <section id="dialog" class="panel dialog" hidden>
-      <span id="speaker" class="dialog__speaker"></span>
+    <!-- 대사: 자막. 누가 → 말(두 줄씩, 하나님의 말씀은 세 줄씩) → 장절 → 이전·쪽·다음 -->
+    <section id="dialog" class="dialog" hidden>
+      <p id="speaker" class="dialog__speaker"></p>
       <div class="dialog__body">
         <p id="line" class="dialog__line" aria-hidden="true"></p>
       </div>
       <p id="srLine" class="sr-only" aria-live="polite"></p>
+      <p id="ref" class="dialog__ref"></p>
       <div class="dialog__foot">
-        <span id="ref" class="dialog__ref"></span>
-        <button id="dialogBack" class="dialog__back" type="button" title="이전 대사 (← 또는 Backspace)" hidden>이전</button>
+        <button id="dialogBack" class="dialog__back" type="button" title="이전 대사 (← 또는 Backspace)" aria-label="이전 대사" hidden>이전</button>
+        <span id="dialogDots" class="dialog__dots" aria-hidden="true"></span>
+        <span class="dialog__hint" aria-hidden="true"><kbd>Space</kbd><span class="dialog__hint-key">다음</span><span class="dialog__hint-touch">화면을 누르면 이어져요</span></span>
       </div>
     </section>
 
-    <form id="nameForm" class="modal" hidden>
-      <div class="panel modal__panel" role="dialog" aria-labelledby="nameLabel">
+    <!-- 이름: 장면이 물러나고 작은 벽 한 장에 적는다 -->
+    <form id="nameForm" class="modal name-box" hidden>
+      <div class="sheet modal__panel" role="dialog" aria-labelledby="nameLabel">
         <label id="nameLabel" for="nameInput" class="modal__title">이름을 알려 주세요</label>
         <input id="nameInput" class="field" maxlength="10" autocomplete="off" enterkeyhint="done" placeholder="최대 10자" />
         <button type="submit" class="btn">확인</button>
       </div>
     </form>
 
-    <form id="lookForm" class="modal modal--side" hidden>
-      <div class="panel modal__panel look" role="dialog" aria-labelledby="lookTitle">
-        <p id="lookKicker" class="quest__label" hidden></p>
+    <!-- 모습 고르기: 사람은 실제 3D 인물(꾸미기 방)이고, 고르는 것은 곁의 시트(넓으면 오른쪽, 휴대폰은 아래)에 있다 -->
+    <form id="lookForm" class="modal modal--side look-box" hidden>
+      <div class="sheet modal__panel look" role="dialog" aria-labelledby="lookTitle">
+        <p id="lookKicker" class="label" hidden></p>
         <h2 id="lookTitle" class="modal__title"></h2>
         <p id="lookText" class="modal__text"></p>
         <div id="lookTabs" class="look__tabs" role="tablist" hidden></div>
@@ -105,67 +125,84 @@
       </div>
     </form>
 
-    <div id="quiz" class="modal" hidden>
-      <div class="panel modal__panel quiz" role="dialog" aria-labelledby="quizQ">
-        <p id="quizCount" class="quest__label"></p>
-        <h2 id="quizQ" class="modal__title"></h2>
+    <!-- 구절 퀴즈: 장면이 물러나고 고르기와 같은 줄로 묻는다 -->
+    <div id="quiz" class="over" hidden>
+      <div class="quiz" role="dialog" aria-labelledby="quizQ">
+        <p id="quizCount" class="quiz__count"></p>
+        <h2 id="quizQ" class="quiz__q"></h2>
         <div id="quizOptions" class="quiz__options"></div>
-        <p id="quizFeedback" class="modal__text" aria-live="polite"></p>
-        <button id="quizNext" class="btn" type="button" hidden></button>
+        <p id="quizFeedback" class="quiz__feedback" role="status"></p>
+        <button id="quizNext" class="do do--scene quiz__next" type="button" hidden></button>
       </div>
     </div>
 
-    <div id="menuBox" class="modal" hidden>
-      <div class="panel modal__panel menu-panel" role="dialog" aria-label="메뉴">
+    <!-- 기록장(성장·소지품·도감·여정)과 상점: 석회암 벽 한 장. 갈래는 휴대폰에서 아래 줄, 넓으면 왼쪽 -->
+    <div id="menuBox" class="modal wall-box" hidden>
+      <div class="menu-panel" role="dialog" aria-labelledby="menuTitle">
         <div class="menu-panel__top">
-          <h2 id="menuTitle" class="modal__title menu-panel__title" hidden>바이블로그 도감</h2>
+          <h2 id="menuTitle" class="menu-panel__title">기록장</h2>
           <div id="menuTabs" class="look__tabs" role="tablist"></div>
-          <button id="menuClose" class="btn btn--quiet menu-panel__close" type="button" title="닫기 (Esc)">닫기</button>
+          <button id="menuClose" class="tap menu-panel__close" type="button" title="닫기 (Esc)" aria-label="닫기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></button>
         </div>
         <div id="menuBody" class="menu-panel__body"></div>
       </div>
     </div>
 
-    <div id="mapBox" class="modal" hidden>
-      <div class="panel modal__panel map" role="dialog" aria-labelledby="mapTitle">
+    <!-- 여정 지도: 벽에 그린 길. 고른 자리의 카드가 곁에 선다 -->
+    <div id="mapBox" class="modal wall-box" hidden>
+      <div class="map" role="dialog" aria-labelledby="mapTitle">
         <div class="map__top">
           <div>
             <h2 id="mapTitle" class="map__title"></h2>
           </div>
           <p id="mapProgress" class="map__progress"></p>
-          <button id="mapClose" class="btn btn--quiet menu-panel__close" type="button" title="닫기 (Esc)">닫기</button>
+          <button id="mapClose" class="tap menu-panel__close map__close" type="button" title="닫기 (Esc)" aria-label="닫기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></button>
         </div>
         <div class="map__sheet"><div id="mapNodes" class="map__nodes"></div></div>
         <div id="mapDetail" class="map__detail" aria-live="polite"></div>
       </div>
     </div>
 
-    <div id="clearBox" class="modal" hidden>
-      <div class="panel modal__panel clear" role="dialog" aria-labelledby="clearTitle">
-        <div class="clear__head"><span class="clear__check" aria-hidden="true"></span><p id="clearKicker" class="quest__label"></p></div>
-        <h2 id="clearTitle" class="modal__title clear__title"></h2>
+    <!-- 완료: 그 이야기의 말씀이 가운데에 서고, 갈 길은 셋. 지도를 열었다 닫으면 이 화면으로 돌아온다(F99) -->
+    <div id="clearBox" class="over" hidden>
+      <div class="clear" role="dialog" aria-labelledby="clearTitle">
+        <div class="clear__head"><span class="clear__check" aria-hidden="true"></span><p id="clearKicker"></p></div>
+        <h2 id="clearTitle" class="clear__title"></h2>
+        <p id="clearWord" class="clear__word" hidden></p>
+        <p id="clearRef" class="clear__ref" hidden></p>
         <div id="clearNext" class="clear__next">
           <p class="clear__nextlabel">다음 이야기</p>
           <p id="clearNextTitle" class="clear__nexttitle"></p>
         </div>
-        <button id="clearGo" class="btn clear__go" type="button">입장</button>
+        <button id="clearGo" class="do do--scene clear__go" type="button">입장</button>
         <div class="clear__more">
-          <button id="clearMap" class="btn btn--quiet" type="button">지도</button>
-          <button id="clearHome" class="btn btn--quiet" type="button">쉼터로</button>
+          <button id="clearMap" class="alt" type="button">여정 지도</button>
+          <button id="clearHome" class="alt" type="button">쉼터로</button>
         </div>
       </div>
     </div>
 
-    <!-- 스테이지 중 쉼터로 나가기 확인(2026-11-03 F26) -->
-    <div id="quitBox" class="modal" hidden>
-      <div class="panel modal__panel clear" role="alertdialog" aria-labelledby="quitTitle" aria-describedby="quitText">
-        <h2 id="quitTitle" class="modal__title clear__title">쉼터로 나갈까요?</h2>
-        <p id="quitText" class="modal__text quit__text">지금 자리까지 저장돼요.
+    <!-- 멈춤: 한 겹뿐이다. 쉼터로 나가기 확인(F26)도 같은 줄에서 펼쳐진다. 창을 하나 더 띄우지 않는다(F98) -->
+    <div id="pauseBox" class="over" hidden>
+      <div class="pause" role="dialog" aria-labelledby="pauseTitle">
+        <p id="pauseWhere" class="pause__where"></p>
+        <h2 id="pauseTitle" class="pause__title">멈춤</h2>
+        <ul class="pause__list">
+          <li><button id="pauseResume" class="pause__row" type="button"><span>계속하기</span><kbd>Esc</kbd></button></li>
+          <li><button id="pauseLog" class="pause__row" type="button"><span>기록장</span><kbd>M</kbd></button></li>
+          <li id="pauseQuitItem">
+            <button id="pauseQuit" class="pause__row" type="button" aria-expanded="false" aria-controls="pauseSure"><span>쉼터로 나가기</span></button>
+            <div id="pauseSure" class="pause__sure" role="alertdialog" aria-labelledby="quitTitle" aria-describedby="quitText" hidden>
+              <p id="quitTitle" class="pause__ask">쉼터로 나갈까요?</p>
+              <p id="quitText" class="pause__text">지금 자리까지 저장돼요.
 지도나 첫 화면의 이어하기로 다시 시작할 수 있어요.</p>
-        <div class="clear__more">
-          <button id="quitNo" class="btn" type="button">계속하기</button>
-          <button id="quitYes" class="btn btn--quiet" type="button">나가기</button>
-        </div>
+              <div class="pause__acts">
+                <button id="quitNo" class="do do--scene" type="button">계속하기</button>
+                <button id="quitYes" class="alt" type="button">나가기</button>
+              </div>
+            </div>
+          </li>
+        </ul>
       </div>
     </div>
 

@@ -1,0 +1,57 @@
+/* 바탕(2026-11-14 새 UI): 모든 화면이 함께 쓰는 기반. 예전 style.css가 맡던 것을 여기로 옮겨 적었다.
+ * 글꼴과 토큰은 app.css가 먼저 불러온다. 부품의 모양은 scene.css(장면 위)와 record.css(기록 공간)에 있다.
+ * 여기의 요소 규칙은 :where()로 감싸 가장 약하게 둔다: 부품의 클래스 규칙이 늘 이긴다.
+ */
+
+/* ── 화면은 늘 한 장이다: 확대·밀림·당겨 새로고침을 막는다. 스크롤은 목록이 각자 연다(record.css의 pan-y) ── */
+*, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+html { position: fixed; inset: 0; touch-action: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  position: fixed;
+  inset: 0;
+  touch-action: none; /* 두 번 탭 확대·두 손가락 확대·페이지 끌기를 막는다(F83·F89) */
+  background: var(--umber-950);
+  color: var(--ink);
+  font-family: var(--hand);
+  font-size: var(--t-body);
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;        /* 한글은 낱말 단위로 줄을 바꾼다 */
+  overflow-wrap: break-word;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; /* 길게 눌러도 글자 선택·메뉴가 뜨지 않는다 */
+}
+/* 숨김: main.js·ui.js가 hidden 속성으로 켜고 끈다. 부품이 display를 정해도 숨김이 이긴다 */
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ── 3D 화면: 몸통 바로 아래의 캔버스 하나(main.js가 맨 앞에 넣는다). 기록장의 미리보기 캔버스(.model__view)는 해당하지 않는다 ── */
+body > canvas { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+/* 화면 가장자리를 살짝 눌러 시선을 가운데로 모은다(렌더 후처리 대신 겹친 한 장) */
+body::after { content: ''; position: fixed; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(ellipse 120% 100% at 50% 46%, transparent 58%, var(--scene-vignette) 100%); }
+
+/* ── 글과 목록의 기본값 ── */
+:where(p, h1, h2, h3, ul, ol, figure) { margin: 0; padding: 0; }
+:where(ul, ol) { list-style: none; }
+
+/* ── 단추와 입력의 기본값: 브라우저 모양을 걷고 글꼴·색은 둘레를 따른다 ── */
+:where(button) { -webkit-appearance: none; appearance: none; margin: 0; padding: 0; border: 0; border-radius: 0; font: inherit; color: inherit; text-align: inherit; background: none; cursor: pointer; touch-action: manipulation; }
+:where(input, textarea) { -webkit-user-select: text; user-select: text; touch-action: manipulation; }
+/* 키 그림: 키보드가 있을 때만 보인다 */
+kbd { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 0.35rem; border-radius: var(--cut); font: 700 var(--t-tag) / 1 var(--hand); color: inherit; border: var(--hair) solid currentColor; opacity: 0.8; }
+@media (pointer: coarse) { kbd { display: none; } }
+
+/* ── 스크롤 막대: 가늘게. 목록은 record.css에서 scrollbar-width·scrollbar-color를 따로 적는다 ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--wall-3); border-radius: var(--cut); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ── 화면 전환: 빛으로 덮는다(ui.js fade가 opacity를 바꾼다). 부팅 때는 index.html의 최소 스타일이 같은 색으로 덮고 있다 ── */
+.fade { position: fixed; inset: 0; z-index: 20; pointer-events: none; background: var(--veil-color); opacity: 1; transition: opacity var(--veil-time) var(--sway); }
+.fade.is-resuming { display: grid; place-items: center; }
+.fade.is-resuming::after { content: '이어서 들어가는 중이에요'; font: 700 var(--t-body) / 1.4 var(--hand); color: var(--ink-2); }
+
+/* ── 움직임 줄이기: 모든 전환과 움직임을 끝 모습으로 바로 보낸다. 화면 전환의 빛만 짧게 남긴다 ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+  .fade { transition-duration: 150ms !important; }
+}

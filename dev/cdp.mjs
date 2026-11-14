@@ -7,7 +7,7 @@
 //   tap(x, y)     터치 한 번(휴대폰 크기일 때), key(code) 키 누르고 떼기
 // 휴대폰 크기(w < 900)는 터치 기기로 흉내 낸다(pointer: coarse).
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, writeFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -16,20 +16,40 @@ const [w, h, stepsFile, outDir = 'dev/shots'] = process.argv.slice(2);
 const W = Number(w), H = Number(h), mobile = W < 900;
 mkdirSync(outDir, { recursive: true });
 const CHROME = process.env.CHROME ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const port = 9300 + Math.floor(Math.random() * 500);
-const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-first-run', 'about:blank'], { stdio: 'ignore' });
+const profile = mkdtempSync(join(tmpdir(), 'cdp-'));
+const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-first-run', 'about:blank'], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let ws;
+try {
 let target;
-for (let k = 0; k < 50 && !target; k++) {
+const readyBy = Date.now() + 10000;
+while (!target && Date.now() < readyBy) {
   await sleep(200);
-  try { target = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((t) => t.type === 'page'); } catch {}
+  try {
+    const port = Number(readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+    target = (await (await fetch(`http://127.0.0.1:${port}/json`, {signal:AbortSignal.timeout(1000)})).json()).find((t) => t.type === 'page');
+  } catch {}
 }
-const ws = new WebSocket(target.webSocketDebuggerUrl);
-await new Promise((r) => (ws.onopen = r));
+if (!target) throw new Error('Chrome CDP target did not become ready');
+ws = new WebSocket(target.webSocketDebuggerUrl);
+await new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error('CDP connection timed out')), 10000);
+  ws.addEventListener('open', () => { clearTimeout(timer); resolve(); }, { once: true });
+  ws.addEventListener('error', () => { clearTimeout(timer); reject(new Error('CDP connection failed')); }, { once: true });
+});
 let id = 0;
 const pending = new Map();
-ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && pending.has(d.id)) { pending.get(d.id)(d); pending.delete(d.id); } };
-const send = (method, params = {}) => new Promise((r) => { const n = ++id; pending.set(n, r); ws.send(JSON.stringify({ id: n, method, params })); });
+const disconnected = () => { for (const p of pending.values()) { clearTimeout(p.timer); p.reject(new Error('CDP connection closed')); } pending.clear(); };
+ws.addEventListener('close', disconnected);
+ws.addEventListener('error', disconnected);
+ws.onmessage = (m) => { const d = JSON.parse(m.data), p = pending.get(d.id); if (p) { clearTimeout(p.timer); pending.delete(d.id); p.resolve(d); } };
+const send = (method, params = {}) => new Promise((resolve, reject) => {
+  if (ws.readyState !== WebSocket.OPEN) return reject(new Error('CDP connection closed'));
+  const n = ++id;
+  const timer = setTimeout(() => { pending.delete(n); reject(new Error(`CDP response timed out: ${method}`)); }, 30000);
+  pending.set(n, { resolve, reject, timer });
+  ws.send(JSON.stringify({ id: n, method, params }));
+});
 await send('Page.enable');
 await send('Runtime.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: mobile ? 2 : 1, mobile });
@@ -53,13 +73,12 @@ const key = async (code, k = code) => {
   for (const type of ['keyDown', 'keyUp']) await send('Input.dispatchKeyEvent', { type, code, key: k, windowsVirtualKeyCode: { Space: 32, Enter: 13, Escape: 27 }[code] ?? 0 });
 };
 const open = async (url) => { await send('Page.navigate', { url }); await sleep(2500); };
-try {
   const steps = (await import(pathToFileURL(resolve(stepsFile)).href)).default;
   await steps({ ev, shot, wait: sleep, tap, key, open, send, W, H });
 } catch (e) {
   console.error('ERR', e.message);
   process.exitCode = 1;
 } finally {
-  ws.close();
+  ws?.close();
   chrome.kill();
 }
