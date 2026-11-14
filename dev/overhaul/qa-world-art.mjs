@@ -47,6 +47,8 @@ export default async t=>{
           await t.wait(100);
         }
         assert.ok(introduced,'Rebekah did not enter the well dialogue');
+        // --aside: the observer's real step-aside spot toward the camera from the 2026-11-14 PC failure (reached only in some runs).
+        if(process.argv.includes('--aside')){await t.ev(`__dev.player.position.set(4.32,0,3.32);1`);await t.wait(2500);}
       }
     }
     await t.wait(1200);
