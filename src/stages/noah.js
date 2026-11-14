@@ -552,7 +552,7 @@ export default {
       await g.talk(data.lines[say]);
       g.cam(null, 13);
       await g.challenge({
-        title: `방주 짓기 ${i + 1}/${steps.length}: ${name}`, spots: [{ pos: WORK[i], text: `함께 ${text}`, hits: 2 }], verb, kind, fruits: ['patience', 'faith'], tier: i,
+        title: `방주 짓기 ${i + 1} / ${steps.length} · ${name}`, spots: [{ pos: WORK[i], text: `함께 ${text}`, hits: 2 }], verb, kind, fruits: ['patience', 'faith'], tier: i,
         onHit: async (sp) => {
           await F.acts.walkTo(noah, sp.pos.clone().addScaledVector(ALONG, -1.1), 2.4); // 대천사는 관찰자의 화면 오른쪽(+ALONG)에 서므로 노아는 왼쪽에 선다
           F.acts.face(noah, ARK);
@@ -585,7 +585,7 @@ export default {
       title: '방주로 들어가는 생명',
       targets: [...F.pairs.map((p) => ({ pos: p.animals[0].position, name: p.name, pair: p })), birdTarget],
       text: (t) => `${t.name} 곁에 머물러 방주로 보내기`,
-      radius: 2.2, hold: 1.2, holdLabel: (t) => `${t.name} 곁에 머무르기`,
+      radius: 2.2, hold: 1.2, holdLabel: (t) => `${t.name} 곁에 머무는 중`,
       onFound: async (t) => {
         if (t.birds) {
           F.birds.forEach((b, i) => fly(b, ark.window(-4 + i * 0.6), 1800 + i * 200, 2).then(() => (b.visible = false)));

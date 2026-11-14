@@ -183,7 +183,7 @@ const interlude = {
       { who: 'judah', text: '이번에는 동생을 잃지 않겠소.', ref: null, basis: '창 44:33 대신 종이 되겠다' },
     ] },
     { choose: [
-      { text: '뭐가 마음을 바꿨어요?', fruit: 'gentle', reply: [
+      { text: '어쩌다 마음이 바뀌셨어요?', fruit: 'gentle', reply: [
         { who: 'judah', text: '아버지 우시는 소리를 스무 해 넘게 들었소. 사람이 바뀔 만하지.', ref: null, basis: '창 37:34~35, 42:36' },
       ] },
       { text: '이번엔 꼭 지키실 거예요.', fruit: 'patience', reply: [

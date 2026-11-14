@@ -1,7 +1,7 @@
 // 기록장: 성장(레벨, 성령의 열매 나무, 닮은 인물), 소지품, 도감(장별 쪽, 다섯 갈래, 항목마다 세 상태), 그리고 상점.
 // 게임 중에는 걷는 중에만 열고, 첫 화면에서는 도감만 연다. 규칙은 docs/standards/ui.md "메뉴".
 import { $, isTouch, hideModal } from './ui.js';
-import { SPIRIT, SPIRIT_STAGES, slotsAt, CODEX_TITLES } from './data/growth.js';
+import { SPIRIT, SPIRIT_STAGES, CODEX_TITLES } from './data/growth.js';
 import { CODEX, CODEX_TABS } from './data/codex.js';
 import { CHAPTERS } from './data/chapters.js';
 import { josa } from './text.js';
@@ -180,10 +180,18 @@ function twoLines(node) {
   node.setAttribute('aria-label', text);
 }
 
-// 인벤토리: 도구(칸을 차지하고 쓰면 사라짐)와 꾸미기(레벨로 열림). 칸을 고르면 아래 설명 칸에 이름·장절·설명과 손에 들기 버튼이 나온다.
+// 소지품: 꾸미기(레벨·완료·상점으로 얻음)와 도구(이야기 속에서 받아 쓰고 사라짐). 고르면 아래에 이름·장절·설명과 한 가지 행동이 나온다.
+// 도구 갈래는 도구를 가졌을 때만 보인다(2026-11-14 F94): 도구는 이야기 속에서 잠깐 갖는 것이라, 없을 때는 빈 자리를 늘어놓지 않고
+// 꾸미기만 보인다. 가진 도구는 둘로 가른다. 지금 쓰는 도구(data/items.js의 use가 있다): 쓰는 곳과 쓰는 법을 보이고 손에 들 수 있다.
+// 보관 도구(use가 없다, 예전 저장에 남은 것): 지우지 않고 그대로 보이되 지금 쓰는 도구처럼 보이지 않게 "보관"으로 적고 새로 들지 않는다.
 const INV_TABS = [{ id: 'tool', name: '도구' }, { id: 'look', name: '꾸미기' }];
 function inventoryView(state, ctx) {
-  const lv = levelOf(state.xp).level;
+  // 가진 도구(같은 것이 여럿이면 한 줄에 모은다). 지금 쓰는 도구가 위, 보관 도구가 아래
+  const toolCount = (id) => state.items.tools.filter((x) => x === id).length;
+  const myTools = () => [...new Set(state.items.tools)].map((id) => ITEMS.find((i) => i.id === id && i.kind === 'tool')).filter(Boolean).sort((a, b) => Number(!!b.use) - Number(!!a.use));
+  const hasTools = myTools().length > 0;
+  // 처음 열 때: 지금 쓰는 도구가 있으면 도구부터, 아니면 꾸미기부터. 도구가 다 사라졌으면 꾸미기로 돌아온다
+  if (!ctx.kind || (ctx.kind === 'tool' && !hasTools)) ctx.kind = myTools().some((it) => it.use) ? 'tool' : 'look';
   // 소품은 손·허리·머리 세 자리에 하나씩 단다(data/items.js slot). 달면 바뀌므로 그릴 때마다 읽는다
   const keyOf = (it) => SLOT_KEY[slotOf(it)];
   const worn = (it) => (state.earthLook?.[keyOf(it)] ?? 'none') === it.id;
@@ -194,20 +202,23 @@ function inventoryView(state, ctx) {
   const model = ctx.mount && state.earthLook ? ctx.mount(stage, state.earthLook) : null;
   stage.hidden = !model;
   const cats = el('div', 'inv__cats');
+  cats.hidden = !hasTools; // 도구가 없으면 갈래를 고를 일이 없다
   const box = el('div', 'codex__box');
-  let picked = null;
+  // 지금 쓰는 도구를 가졌으면 그것을 먼저 골라 둔다: 어디에 어떻게 쓰는지가 바로 보인다
+  let picked = ctx.kind === 'tool' ? myTools().find((it) => it.use)?.id ?? null : null;
 
   const detail = (it) => {
     const d = el('div', 'inv__detail');
     if (!it) {
       d.append(ctx.kind === 'tool'
-        ? howList([['도전', '도전 과제가 있는 스테이지에서 받을 수 있어요'], ['사용', '쓸 곳에서 다 쓰면 사라져요']], '도구 자리는 레벨이 오르면 늘어나요.')
+        ? howList([['얻기', '이야기 속에서 쓸 일이 생기면 그 자리에서 받아요'], ['쓰기', '받으면 손에 들고, 그 일을 마치면 사라져요']])
         : howList([['레벨', '레벨을 달성하면 받아요'], ['완료', '스테이지를 완료하면 받아요'], ['상점', '쉼터의 상점에서 달란트로 살 수 있어요']]));
       return d;
     }
-    const owned = it.kind === 'tool' ? state.items.tools.includes(it.id) : ownsLook(state, it.id);
+    const tool = it.kind === 'tool', kept = tool && !it.use; // kept: 보관 도구(지금 이야기에서 쓰는 곳이 없다)
+    const owned = tool ? state.items.tools.includes(it.id) : ownsLook(state, it.id);
     const how = it.level ? `레벨 ${it.level}에 열려요` : it.stage ? `${josa(CHAPTERS.find((c) => c.id === it.stage)?.title ?? '', '을', '를')} 완료하면 받아요` : `상점에서 ${it.price} 달란트`;
-    const tags = [[it.kind === 'tool' ? '도구' : SLOTS[slotOf(it)], 'slot']];
+    const tags = [[kept ? '보관' : tool ? '도구' : SLOTS[slotOf(it)], 'slot']];
     if (worn(it)) tags.push(['착용 중', 'ok']);
     else if (!owned) tags.push(['잠김', 'lock']);
     const act = el('div', 'inv__actions');
@@ -215,13 +226,21 @@ function inventoryView(state, ctx) {
     else if (ctx.onHold) {
       const on = worn(it);
       const [verb] = VERB[slotOf(it)];
-      // 착용 중이면 꼬리표('착용 중')가 상태를 보이고, 버튼은 할 수 있는 일 하나만 둔다
+      // 착용 중이면 꼬리표('착용 중')가 상태를 보이고, 버튼은 할 수 있는 일 하나만 둔다.
+      // 보관 도구는 새로 들지 않는다(들고 있던 것은 그대로 두고 내려놓을 수만 있다)
       if (on) act.append(button('btn inv__hold', '내려놓기', () => { ctx.onHold('none', keyOf(it)); render(); }, null, 'inv:drop'));
-      else act.append(button('btn inv__hold', verb, () => { ctx.onHold(it.id, keyOf(it)); render(); }, null, 'inv:hold'));
+      else if (!kept) act.append(button('btn inv__hold', verb, () => { ctx.onHold(it.id, keyOf(it)); render(); }, null, 'inv:hold'));
     }
     // 아직 못 얻은 꾸미기는 형체만 보인다(2026-11-03 사용자 F27 "미리보기도 안 되게, 형체만"). 이름·장절·설명도 얻은 뒤에 보인다
     if (!owned) { d.classList.add('is-locked'); d.append(detailHead(glyph('lock'), '? ? ?', tags), act); return d; }
-    d.append(detailHead(glyph(it.id), it.name, tags, it.ref), el('p', 'inv__note', it.note), act);
+    d.append(detailHead(glyph(it.id), it.name, tags, it.ref), el('p', 'inv__note', it.note));
+    // 도구: 어디에서 어떻게 쓰는지(F94). 쓰는 스테이지가 없는 도구에는 쓰는 곳을 약속하지 않는다
+    if (tool && it.use) {
+      const where = el('p', 'inv__use');
+      where.append(el('span', 'tag tag--slot', '쓰는 곳'), el('span', null, `${stageLabel(it.use.stage)} ${CHAPTERS.find((c) => c.id === it.use.stage)?.title ?? ''}`.trim()));
+      d.append(where, el('p', 'inv__howfoot', it.use.how));
+    } else if (kept) d.append(el('p', 'inv__howfoot', '지금 이야기에서는 쓰는 곳이 없어요.'));
+    d.append(act);
     return d;
   };
 
@@ -233,8 +252,10 @@ function inventoryView(state, ctx) {
     const icon = el('span', 'slot__icon');
     icon.innerHTML = owned ? glyph(it.id) : glyph('lock'); // 아직 못 얻은 것은 자물쇠만(F27: 형체도 이름도 얻은 뒤에)
     // 잠긴 칸: 여는 길(레벨·스테이지·상점)을 짧게
-    b.append(icon, el('span', 'slot__name', owned ? it.name : it.level ? `레벨 ${it.level}` : it.stage ? `${stageLabel(it.stage)} 완료` : '상점'));
+    const n = it.kind === 'tool' ? toolCount(it.id) : 1; // 같은 도구가 여럿이면 수를 곁에 적는다
+    b.append(icon, el('span', 'slot__name', owned ? `${it.name}${n > 1 ? ` ×${n}` : ''}` : it.level ? `레벨 ${it.level}` : it.stage ? `${stageLabel(it.stage)} 완료` : '상점'));
     if (worn(it)) b.append(el('span', 'slot__badge', SLOTS[slotOf(it)]));
+    else if (it.kind === 'tool' && !it.use) b.append(el('span', 'tag', '보관')); // 보관 도구: 지금 쓰는 도구와 한눈에 갈린다
     return b;
   };
 
@@ -244,13 +265,11 @@ function inventoryView(state, ctx) {
     const head = el('p', 'codex__count');
     let grid;
     if (ctx.kind === 'tool') {
-      const slots = slotsAt(lv);
-      head.append(el('span', 'codex__countname', '도구'), el('span', 'codex__countnum', `${state.items.tools.length} / ${slots}`));
+      // 가진 도구만 한 줄씩 보인다. 자리 수(slotsAt)는 적지 않는다: 이야기가 건네는 도구는 자리와 상관없이 들어오고,
+      // 플레이어가 자리로 할 수 있는 일도 없다. 자리 규칙은 growth.js와 점검에 남아 있다
+      head.append(el('span', 'codex__countname', '도구'), el('span', 'codex__countnum', `${state.items.tools.length}`));
       grid = el('div', 'slots');
-      for (let k = 0; k < slots; k++) {
-        const it = ITEMS.find((i) => i.id === state.items.tools[k]);
-        grid.append(it ? slot(it, true) : el('span', 'slot slot--empty'));
-      }
+      for (const it of myTools()) grid.append(slot(it, true));
     } else {
       const looks = ITEMS.filter((i) => i.kind === 'look');
       head.append(el('span', 'codex__countname', '꾸미기'), el('span', 'codex__countnum', `${looks.filter((i) => ownsLook(state, i.id)).length} / ${looks.length}`));
@@ -381,7 +400,7 @@ export function openMenu(state, { tab = 'status', only = null, stage = null, onH
   const stages = [];
   const mount = preview ? (host, look) => { const p = preview(host, look); stages.push(p); return p; } : null;
   const unmount = () => stages.splice(0).forEach((p) => p.dispose());
-  const inv = { kind: 'tool', onHold, mount };
+  const inv = { kind: null, onHold, mount }; // 처음 여는 갈래는 inventoryView가 정한다(지금 쓰는 도구가 있으면 도구, 아니면 꾸미기)
   if (only) tab = only;
   let chapter = Math.max(0, BOOK_CHAPTERS.findIndex((ch) => ch.id === stage));
   let cat = 'person', page = 0;

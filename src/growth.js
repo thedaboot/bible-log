@@ -89,6 +89,14 @@ export function addTool(state, id) {
   state.items.tools.push(id);
   return true;
 }
+// 이야기가 건네는 도구(스테이지의 giveTool, 2026-11-14 F94): 그 이야기의 일에 꼭 필요하므로 자리 수와 상관없이 받는다.
+// 이미 가졌으면 더하지 않는다('had', 겹치지 않는다). 없으면 목록 끝에 더한다('added'). 예전 저장의 도구로 자리가 가득 차 있어도
+// 그 도구들은 건드리지 않고 하나 더 얹을 뿐이며, 다 쓰면(useTool) 원래 길이로 돌아온다. 자리 규칙(addTool·slotsAt)은 그대로다.
+export function grantStoryTool(state, id) {
+  if (state.items.tools.includes(id)) return 'had';
+  state.items.tools.push(id);
+  return 'added';
+}
 // 도구를 쓰면 하나 사라진다. 손에 들고 있던 도구가 다 떨어지면 맨손이 된다.
 export function useTool(state, id) {
   const i = state.items.tools.indexOf(id);

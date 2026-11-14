@@ -126,18 +126,29 @@ export default {
 
     // 도전: 낙타 물 주기(창 24:19~20 "다시 우물로 달려가서 길어 모든 낙타를 위하여 긷는지라"). 구유마다 두 단계를 되풀이한다.
     //  1) 우물 곁에 머물러 물 긷기: 손에 든 물동이 입에 물빛이 찬다.
-    //  2) 구유에 물 붓기(kind 'hold'): 꾹 누르는 동안 물동이가 기울고 물줄기가 흐르며 구유 물이 차오른다. 넘치기 전 금빛에서 뗀다.
+    //  2) 구유에 물 붓기(kind 'hold'): 꾹 누르는 동안 물동이가 기울고 물줄기가 흐르며 구유 물이 차오른다. 가득 차면 넘치기 전에 뗀다.
     //     다 차면 낙타가 고개를 숙여 마신다. 리브가가 곁에서 함께 긷고 붓는다.
     const ORD = ['첫째', '둘째', '셋째'];
     const water = (opacity = 1) => mat(PAL.water, { emissive: PAL.water, emissiveIntensity: 0.3, transparent: opacity < 1, opacity });
     const jarOf = (fig) => fig.userData.arms?.[1]?.children.find((c) => c.isGroup && c.children.some((m) => m.geometry?.parameters?.radius === 0.17));
-    const jarWater = (on) => [g.player, rebekah].forEach((fig) => {
-      const j = jarOf(fig);
-      if (!j) return;
-      let d = j.getObjectByName('jarWater');
-      if (!d) { d = new THREE.Mesh(new THREE.CylinderGeometry(0.066, 0.066, 0.02, 8), water()); d.name = 'jarWater'; d.position.set(0.36, 1.385, -0.05); j.add(d); }
-      d.visible = on;
-    });
+    let filled = false; // 물동이에 물이 차 있는가(물동이를 다시 들었을 때 물빛을 되살린다)
+    const jarWater = (on) => {
+      filled = on;
+      [g.player, rebekah].forEach((fig) => {
+        const j = jarOf(fig);
+        if (!j) return;
+        let d = j.getObjectByName('jarWater');
+        if (!d) { d = new THREE.Mesh(new THREE.CylinderGeometry(0.066, 0.066, 0.02, 8), water()); d.name = 'jarWater'; d.position.set(0.36, 1.385, -0.05); j.add(d); }
+        d.visible = on;
+      });
+    };
+    // 물동이를 손에 다시 든다(F94): 긷고 붓는 연출(물빛, 기울기, 물줄기)은 손에 든 물동이에서 찾는다. 도중에 기록장에서 내려놓거나
+    // 다른 것을 들었으면 쓰기 직전에 다시 든다. 손에 이미 있으면 값만 견주고 끝난다(붓는 동안 프레임마다 불려도 다시 입히지 않는다).
+    const ensureJar = () => {
+      if (g.state.earthLook?.item === 'jar' || !g.state.items.tools.includes('jar')) return;
+      g.hold('jar', false); // 빛 연출 없이 바로(연출은 0.6초쯤 뒤에 바뀌어 붓기 시작에 늦다)
+      if (filled) jarWater(true);
+    };
     // 붓는 팔: 어깨에 멘 물동이를 앞으로 기울인다(animateFigure가 hold 값으로 팔을 세운다)
     const tilt = (fig, k) => { const h = fig.userData.hold?.[1]; if (!h) return; h.base ??= h[0]; h[0] = h.base + 0.95 * k; };
     const UP = new THREE.Vector3(0, 1, 0), a = new THREE.Vector3(), b = new THREE.Vector3();
@@ -169,9 +180,10 @@ export default {
       const title = `낙타 물 주기 ${i + 1} / ${camels.length}`;
       g.cam(WELL.clone().lerp(TROUGHS[i], 0.5), 11); // 우물과 이번 구유가 한 화면에 들어온다
       F.acts.walkTo(rebekah, WELL.clone().add(V(-0.6, 1.3)), 2.6);
+      ensureJar();
       await g.quest({
         title, targets: [{ pos: WELL }], text: () => '우물 곁에 머물러 물 긷기', radius: 1.9, hold: 1.2, holdLabel: () => '물동이에 물 긷는 중',
-        onFound: async () => { jarWater(true); g.reward(`draw/${i}`, 'step'); },
+        onFound: async () => { ensureJar(); jarWater(true); g.reward(`draw/${i}`, 'step'); },
       });
       F.acts.walkTo(rebekah, TROUGHS[i].clone().add(V(-0.75, -0.75)), 2.6).then(() => F.acts.face(rebekah, c.top));
       // 붓는 동안은 구유 가까이 비춘다. 휴대폰 폭에서 구유가 작아 물이 차오르는 것이 잘 안 보였다(U4)
@@ -180,7 +192,7 @@ export default {
       const last = i === camels.length - 1;
       const done = g.challenge({
         title, radius: 1.3, spots: [{ pos: POURS[i], text: `${ORD[i]} 구유에 물 붓기` }], verb: '물 붓기', hits: 1, kind: 'hold', tier: i,
-        tool: last ? 'jar' : null, toolName: '물동이', fruits: ['kindness', 'patience'], missText: '넘쳤어요. 다시 부어요', hitText: '알맞게 채웠어요!', lowText: '조금 더 부어요', onHold: (m) => (pourM = m),
+        tool: last ? 'jar' : null, toolName: '물동이', fruits: ['kindness', 'patience'], missText: '넘쳤어요. 다시 부어요', hitText: '알맞게 채웠어요!', lowText: '조금 더 부어요', onHold: (m) => { if (m > 0) ensureJar(); pourM = m; },
         onHit: async () => {
           c.pour.full = true;
           c.setLevel(1);
@@ -190,8 +202,7 @@ export default {
           await tween(700, (p) => (c.pour.drink = easeOut(p)));
         },
       });
-      // 물동이는 손에 든 채 붓는다(F로 따로 쓰지 않는다). 마지막 구유를 마치면 도구 규칙대로 물동이를 하나 쓴다(growth.md).
-      if (last) document.getElementById('chTool').hidden = true;
+      // 물동이는 손에 든 채 붓는다(F로 따로 쓰지 않으므로 도구 단추는 뜨지 않는다). 마지막 구유를 마치면 도구 규칙대로 물동이를 하나 쓴다(growth.md).
       await done;
       cur = null;
       [g.player, rebekah].forEach((fig, k) => { tilt(fig, 0); flow(streams[k], fig, null); });

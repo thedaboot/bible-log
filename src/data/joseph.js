@@ -50,7 +50,7 @@ const lines = {
     { who: 'narr', text: '꼬박 두 해 뒤, 바로가 꿈을 꾸었다.\n애굽의 술객과 현인을 다 불렀으나 아무도 풀지 못했다.', ref: '창 41:1~8' },
     { who: 'cupbearer', text: '오늘에야 제 잘못이 생각납니다.\n옥에 있던 히브리 청년이 저희 꿈을 그대로 풀었습니다.', ref: '창 41:9~12' },
     { who: 'narr', text: '바로가 사람을 보내 요셉을 부르니, 신하가 급히 옥으로 달려갔다.', ref: '창 41:14' },
-    { who: 'angel', text: '신하가 바로 앞에 설 때 입을 옷을 가져왔어요.\n받아서 요셉에게 건네 주세요.', ref: null, basis: '각색: 창 41:14 옷을 갈아입음(옷을 가져온 사람은 본문에 없다)' },
+    { who: 'angel', text: '신하가 바로 앞에 설 때 입을 옷을 가져왔어요.\n받아서 요셉에게 건네주어요.', ref: null, basis: '각색: 창 41:14 옷을 갈아입음(옷을 가져온 사람은 본문에 없다)' },
     { who: 'narr', text: '요셉은 수염을 깎고 옷을 갈아입은 뒤 바로에게 나아갔다.', ref: '창 41:14' },
   ],
   pharaoh: [
@@ -108,7 +108,7 @@ const interlude = {
       { who: 'joseph', text: '형님들도 가끔 생각납니다. 미운데도 그렇습니다.', ref: null, basis: '창 42:24 돌이켜 울었다' },
     ] },
     { choose: [
-      { text: '만나면 첫마디는 뭐예요?', fruit: 'joy', reply: [
+      { text: '만나면 첫마디는 뭐라고 할 건가요?', fruit: 'joy', reply: [
         { who: 'joseph', text: '글쎄요. 몇 해째 연습하는데 아직 못 정했습니다.', ref: null, basis: '창 45:1~3' },
       ] },
       { text: '미운 마음도 괜찮아요.', fruit: 'gentle', reply: [

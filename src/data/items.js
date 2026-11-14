@@ -13,7 +13,9 @@ export const ITEMS = [
   { id: 'sling', kind: 'tool', name: '물매', ref: '삼상 17:40', note: '다윗이 시냇가의 돌 다섯 개와 함께 든 물매' },
   { id: 'horn', kind: 'tool', name: '양각 나팔', ref: '수 6:4', note: '여리고 성을 돌며 제사장들이 분 나팔' },
   { id: 'lamp', kind: 'tool', name: '등잔', ref: '마 25:1', note: '신랑을 맞으러 나간 처녀들의 등잔' },
-  { id: 'jar', kind: 'tool', name: '물동이', ref: '창 24:15', note: '리브가가 어깨에 메고 나온 물동이' },
+  // use: 지금 이야기에서 이 도구를 건네고 쓰는 스테이지와 쓰는 법(소지품이 보인다). 이 값이 있는 도구만 "지금 쓰는 도구"이고,
+  // 없는 도구는 아직 쓰는 스테이지가 없다(예전 저장에 남아 있으면 소지품에 "보관"으로 보인다). npm run check가 스테이지 코드와 맞는지 본다.
+  { id: 'jar', kind: 'tool', name: '물동이', ref: '창 24:15', note: '리브가가 어깨에 메고 나온 물동이', use: { stage: 'rebekah', how: '우물에서 물을 길어 구유에 부어요. 구유 셋을 다 채우면 사라져요.' } },
   { id: 'net', kind: 'tool', name: '그물', ref: '눅 5:4', note: '시몬이 말씀대로 깊은 데로 가서 내린 그물' },
   { id: 'sickle', kind: 'tool', name: '낫', ref: '막 4:29', note: '곡식이 익으면 곧 대는 낫' },
   { id: 'torch', kind: 'tool', name: '횃불 항아리', ref: '삿 7:16', note: '기드온의 용사들이 빈 항아리 속에 감춘 횃불' },
@@ -40,7 +42,7 @@ export const ITEMS = [
   // 상점 꾸미기(쉼터의 상점 천사). 값은 decisions.md "F(제안)"를 받아 올렸다
   { id: 'pomegranate', kind: 'look', slot: 'hand', price: 40, name: '석류', ref: '출 28:33', note: '대제사장 옷단에 수놓은 석류' },
   { id: 'timbrel', kind: 'look', slot: 'hand', price: 60, name: '소고', ref: '출 15:20', note: '홍해를 건넌 뒤 미리암이 손에 든 소고' },
-  { id: 'pipe', kind: 'look', slot: 'hand', price: 70, name: '피리', ref: '삼상 10:5', note: '선지자 무리가 산당에서 내려오며 분 저' },
+  { id: 'pipe', kind: 'look', slot: 'hand', price: 70, name: '피리', ref: '삼상 10:5', note: '선지자 무리가 산당에서 내려오며 분 피리' },
   { id: 'palm', kind: 'look', slot: 'hand', price: 90, name: '종려 가지', ref: '요 12:13', note: '예루살렘에 들어오시는 예수님을 맞은 종려 가지' },
   { id: 'lyre', kind: 'look', slot: 'hand', price: 120, name: '수금', ref: '삼상 16:23', note: '다윗이 사울 앞에서 탄 수금' },
   { id: 'belt', kind: 'look', slot: 'waist', price: 150, name: '금띠', ref: '계 1:13', note: '인자 같은 이가 가슴에 띤 금띠' },
@@ -48,7 +50,7 @@ export const ITEMS = [
   { id: 'crown', kind: 'look', slot: 'head', price: 500, name: '생명의 면류관', ref: '계 2:10', note: '죽도록 충성하는 이에게 주시는 면류관' },
   // 2026-11-03 사용자 "더 많은 물품, 조금 더 희귀한 것": 성경에 한 번 나오는 귀한 물건. 값은 귀한 정도대로 200~1,000
   { id: 'myrrh', kind: 'look', slot: 'hand', price: 200, name: '몰약 합', ref: '마 2:11', note: '동방 박사들이 아기 예수께 드린 몰약' },
-  { id: 'alabaster', kind: 'look', slot: 'hand', price: 300, name: '옥합', ref: '막 14:3', note: '한 여자가 깨뜨려 예수의 머리에 부은 나드 향유의 옥합' },
+  { id: 'alabaster', kind: 'look', slot: 'hand', price: 300, name: '옥합', ref: '막 14:3', note: '한 여자가 깨뜨려 예수님의 머리에 부은 나드 향유의 옥합' },
   { id: 'pearl', kind: 'look', slot: 'hand', price: 400, name: '값진 진주', ref: '마 13:46', note: '장사가 가진 것을 다 팔아 산 값진 진주 하나' },
   { id: 'budrod', kind: 'look', slot: 'hand', price: 500, name: '싹 난 지팡이', ref: '민 17:8', note: '움이 돋고 꽃이 피어 살구 열매가 열린 아론의 지팡이' },
   { id: 'breastplate', kind: 'look', slot: 'waist', price: 600, name: '판결 흉패', ref: '출 28:15', note: '열두 지파의 이름을 새긴 보석 열두 개를 단 대제사장의 흉패' },

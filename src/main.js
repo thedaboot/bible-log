@@ -13,7 +13,7 @@ import { load, save, reach, newState, openNext } from './save.js';
 import { CHAPTERS } from './data/chapters.js';
 import { josa } from './text.js';
 import { REWARDS, SPIRIT } from './data/growth.js';
-import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook, addTool, useTool, assistOf, deepOpen, codexDone, canHold, stageLooks } from './growth.js';
+import { grant, bond, record, levelOf, looksOpened, choiceOpen, chooseFruit, buyLook, grantStoryTool, useTool, assistOf, deepOpen, codexDone, canHold, stageLooks } from './growth.js';
 import { CHALLENGE, CODEX_TITLES } from './data/growth.js';
 import { WORLDS } from './data/chapters.js';
 import { ITEMS, SHOP, STYLES, SLOT_KEY, slotOf } from './data/items.js';
@@ -1250,7 +1250,7 @@ async function runCain() {
     text: (s) => `${s.name} 곁에 머물러 우리로 보내기`,
     radius: 1.8,
     hold: 1.2,
-    holdLabel: (s) => `${s.name} 곁에 머무르기`,
+    holdLabel: (s) => `${s.name} 곁에 머무는 중`,
     onFound: async (s) => {
       cain.acts.pen(s.an);
       reward(`cain/sheep/${s.an.userData.id}`, 'sheep');
@@ -1282,7 +1282,7 @@ async function runCain() {
     text: () => '어린양 곁에 머무르기',
     radius: 2.2,
     hold: 1.5,
-    holdLabel: () => '어린양 곁에 머무르기',
+    holdLabel: () => '어린양 곁에 머무는 중',
     onFound: async () => { cain.acts.lambFollow(player.position); note('creature/lamb', 'cain'); },
   });
   await questFind({
@@ -1394,7 +1394,7 @@ function runChallenge({ title, spots, verb = '행동', hits = 3, fruits = [], to
     const render = () => setQuest({ title, items: spots.map((sp) => ({ text: sp.text, done: !left.has(sp) })) });
     const panel = $('challenge');
     $('chActName').textContent = verb;
-    $('chTool').hidden = !tool;
+    $('chTool').hidden = !spots.some((sp) => sp.tool); // 도구 단추는 도구를 먼저 써야 하는 자리가 있을 때만 보인다(F94: 1-9는 손에 든 채 붓는다)
     $('chToolName').textContent = toolName;
     // 놀이판으로 하는 놀이(따라 긋기·순서·받기)는 행동 버튼 없이 놀이판을 누른다(F58)
     $('chAct').hidden = isPadKind(kind) && kind !== 'mash' && kind !== 'balance';
@@ -1687,8 +1687,21 @@ function stageApi(id, mod) {
       return () => { triggers = triggers.filter((x) => x !== trig); };
     },
     deepOpen: (who) => deepOpen(state, who),
-    giveTool: (tool) => { if (!state.items.tools.includes(tool)) addTool(state, tool); save(state); toast(`${josa(ITEMS.find((i) => i.id === tool).name, '을', '를')} 얻었어요`, { gain: true }); },
-    hold: (tool) => { state.earthLook = { ...state.earthLook, item: tool }; save(state); dressWith(earthSpec)(state.earthLook, 'item'); },
+    // 이야기가 건네는 도구(F94): 반드시 받는다(자리가 차 있어도, growth.js grantStoryTool). 이미 가졌으면 다시 받지 않고 알리지도 않는다.
+    // 이어하기로 빠르게 지나가는 동안(ff)에는 알림을 띄우지 않는다(화면이 걷힌 뒤 "얻었어요"가 다시 뜨지 않게).
+    giveTool: (tool) => {
+      const got = grantStoryTool(state, tool) === 'added';
+      save(state);
+      if (got && !ff) toast(`${josa(ITEMS.find((i) => i.id === tool).name, '을', '를')} 얻었어요`, { gain: true });
+    },
+    // 손에 든다. 갖지 않은 물건은 들지 않는다(손에만 남는 일이 없게). fx가 false면 빛 연출 없이 바로 바뀐다:
+    // 빛 연출은 물건이 0.6초쯤 뒤에 바뀌므로, 쓰기 직전에 다시 들 때는 바로 바꾼다(1-9 물 붓기).
+    hold: (tool, fx = true) => {
+      if (!state.earthLook || !canHold(state, tool)) return;
+      state.earthLook = { ...state.earthLook, item: tool };
+      save(state);
+      dressWith(earthSpec)(state.earthLook, fx ? 'item' : null);
+    },
     toast: (text) => toast(text, { gain: true }),
     card: showCard,
     // 스테이지 끝: 퀴즈, 말씀·기념물 기록, 보상, 쉼터로

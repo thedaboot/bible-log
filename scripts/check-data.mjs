@@ -16,7 +16,7 @@ import { DEFAULT_LOOK, DEFAULT_EARTH, LOOK, LOOK_TABS } from '../src/props.js';
 import { CHAPTERS, CHECKPOINTS, WORLDS } from '../src/data/chapters.js';
 import { layout } from '../src/map.js';
 import { SPIRIT, SPIRIT_STAGES, STAGE_AT, SPIRIT_GAIN, TITLES, REWARDS, slotsAt, PLAN, MAX_LEVEL, CHALLENGE } from '../src/data/growth.js';
-import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, useTool, canHold, buyLook, codexDone } from '../src/growth.js';
+import { grant, grow, bond, levelOf, stageOf, likeness, codexState, choiceOpen, chooseFruit, ownsLook, looksOpened, addTool, grantStoryTool, useTool, canHold, buyLook, codexDone } from '../src/growth.js';
 import { ITEMS, STYLES, SHOP, SLOT_KEY, slotOf } from '../src/data/items.js';
 import { hasGlyph, codexGlyphName } from '../src/glyphs.js';
 import { STAGE_MODS } from '../src/stages/index.js';
@@ -197,6 +197,36 @@ assert.equal(load(null), null);
   assert.equal(s.earthLook.item, 'none', '도구를 다 썼는데 손에 남음');
   assert.equal(useTool(s, 'sling'), false);
   assert.ok(canHold(s, 'none') && canHold(s, 'staff') && !canHold(s, 'horn'));
+  // 이야기가 건네는 도구(F94, grantStoryTool): 자리가 가득 차 있어도 반드시 받고, 겹치지 않고, 쓰면 옛 도구는 그대로 남는다.
+  // 일반 규칙(addTool)은 그대로다: 같은 상태에서 넣지 못한다.
+  {
+    const t = newState();
+    const old = ['sling', 'horn', 'lamp', 'net'];
+    for (let i = 0; i < slotsAt(levelOf(t.xp).level); i++) assert.ok(addTool(t, old[i % old.length]));
+    const before = [...t.items.tools];
+    assert.equal(addTool(t, 'jar'), false, '칸이 찼는데 일반 규칙으로 도구가 들어감');
+    assert.equal(grantStoryTool(t, 'jar'), 'added', '자리가 찼다고 이야기 도구를 받지 못함');
+    assert.deepEqual(t.items.tools, [...before, 'jar'], '이야기 도구를 받으면서 옛 도구가 바뀜');
+    assert.equal(grantStoryTool(t, 'jar'), 'had', '이야기 도구를 겹쳐 받음');
+    assert.equal(t.items.tools.filter((x) => x === 'jar').length, 1, '이야기 도구가 둘이 됨');
+    t.earthLook = { ...DEFAULT_EARTH, item: 'jar' };
+    assert.ok(canHold(t, 'jar') && useTool(t, 'jar'), '받은 이야기 도구를 들거나 쓰지 못함');
+    assert.deepEqual(t.items.tools, before, '이야기 도구를 쓴 뒤 옛 도구가 바뀜');
+    assert.equal(t.earthLook.item, 'none', '이야기 도구를 다 썼는데 손에 남음');
+    assert.ok(!canHold(t, 'jar'), '다 쓴 도구를 다시 들 수 있음');
+    const e = newState();
+    assert.equal(grantStoryTool(e, 'jar'), 'added');
+    assert.deepEqual(e.items.tools, ['jar'], '빈 저장에서 이야기 도구를 받지 못함');
+  }
+  // 도구의 쓰는 곳(data/items.js use): 그 스테이지 코드가 실제로 그 도구를 건넨다(giveTool). use가 없는 도구는 어느 스테이지도 건네지 않는다.
+  // 소지품은 use가 있는 도구만 "지금 쓰는 도구"로 보이므로, 코드와 어긋나면 쓰지 않는 도구를 쓰는 것처럼 알리게 된다.
+  for (const it of ITEMS.filter((i) => i.kind === 'tool')) {
+    const givers = readdirSync(new URL('../src/stages/', import.meta.url))
+      .filter((f) => f.endsWith('.js') && readFileSync(new URL(`../src/stages/${f}`, import.meta.url), 'utf8').includes(`giveTool('${it.id}')`))
+      .map((f) => f.slice(0, -3));
+    assert.deepEqual(givers, it.use ? [it.use.stage] : [], `${it.id}: 쓰는 곳(use)과 스테이지 코드가 다름`);
+    if (it.use) assert.ok(CHAPTERS.some((c) => c.id === it.use.stage) && typeof it.use.how === 'string' && it.use.how, `${it.id}: 쓰는 곳·쓰는 법 오류`);
+  }
   // 상점: 달란트가 모자라면 못 사고, 사면 달란트가 줄고 갖게 되며, 두 번 사지 않는다
   s.talents = 10;
   assert.equal(buyLook(s, 'timbrel'), false, '달란트가 모자란데 삼');

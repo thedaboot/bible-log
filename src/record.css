@@ -170,8 +170,6 @@
 .slot__price { font: 800 var(--t-lead) / 1 var(--hand); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .slot[data-state="owned"] .slot__price { font: 700 var(--t-tag) / 1 var(--hand); color: var(--ink-2); }
 .slot[data-short] .slot__price { color: var(--ink-3); }
-/* 빈 도구 자리: 줄이 아니라 점선 고리로 남은 자리를 보인다 */
-.slot--empty { flex: none; width: 2.5rem; height: 2.5rem; margin: var(--s3) var(--s2) var(--s3) 0; border: 1.5px dashed var(--wall-line); border-radius: 50%; }
 /* 고른 물건: 이름·자리·장절 → 설명 → 한 가지 행동. 목록 아래에 붙어 있다(목록만 스크롤된다) */
 .inv__detail { display: grid; gap: var(--s2); align-content: start; max-height: 42dvh; padding: var(--s3) 0 max(var(--s3), var(--safe-b)); overflow-y: auto; touch-action: pan-y; border-top: var(--hair) solid var(--wall-line); background: var(--wall); }
 .inv__head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--s3); }
@@ -185,6 +183,9 @@
 .inv__how { display: grid; gap: var(--s1); }
 .inv__howrow { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); gap: var(--s2); font: 500 var(--t-body) / 1.5 var(--hand); color: var(--ink-2); }
 .inv__howrow .tag { color: var(--ink); }
+/* 도구를 쓰는 곳: 꼬리표와 스테이지 이름을 한 줄에(좁으면 이름이 다음 줄로) */
+.inv__use { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s2); font: 600 var(--t-body) / 1.5 var(--hand); color: var(--ink); }
+.inv__use .tag { color: var(--ink-2); }
 .is-locked .inv__name { color: var(--ink-3); }
 /* 상점 머리: 인사말과 가진 달란트 */
 /* 안내와 화폐(그림·숫자·단위)를 각자 한 묶음으로 둔다: 안내는 왼쪽 칸에서 제 폭 안에서 줄을 바꾸고, 화폐 셋은 오른쪽 세 칸에 늘 한 줄로 선다.

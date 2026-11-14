@@ -18,7 +18,7 @@ const lines = {
     { who: 'rebekah', text: '어르신, 드십시오.', ref: '창 24:18' },
     { who: 'rebekah', text: '낙타들도 실컷 마실 때까지 물을 길어 오겠습니다.', ref: '창 24:19' },
     { who: 'angel', text: '낙타 열 마리가 마실 물이면 물동이로 수십 번이에요.\n우물에서 물을 긷고, 구유에 부어 주어요.', ref: null },
-    { who: 'angel', text: '물 붓기를 꾹 누르면 물동이가 기울어요.\n구유가 넘치기 전, 금빛에서 손을 떼요.', ref: null },
+    { who: 'angel', text: '물 붓기를 꾹 누르면 물동이가 기울어요.\n구유에 물이 가득 차면 넘치기 전에 손을 떼요.', ref: null },
   ],
   pour: [
     { who: 'narr', text: '리브가가 급히 물동이의 물을 구유에 붓고,\n다시 우물로 달려가 물을 길었다.', ref: '창 24:20' },
@@ -53,7 +53,7 @@ const interlude = {
       { text: '팔 아프지 않아요?', fruit: 'kindness', reply: [
         { who: 'rebekah', text: '조금 저려요. 그래도 낙타들이 목을 축이는 소리가 좋더라고요.', ref: null, basis: '창 24:19~20' },
       ] },
-      { text: '처음 본 나그네인데요.', fruit: 'goodness', reply: [
+      { text: '처음 본 나그네인데 왜 도와주세요?', fruit: 'goodness', reply: [
         { who: 'rebekah', text: '목마른 사람에게 물 한 모금 주는 건 이 성의 법이에요.\n낙타는 덤이고요.', ref: null, basis: '창 24:18~19' },
       ] },
       { text: '낙타는 끝도 없이 마시네요.', fruit: 'joy', reply: [

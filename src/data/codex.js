@@ -23,9 +23,9 @@ export const CODEX = [
   { id: 'creature/fig', name: '무화과나무', stage: 'eden', fact: '두 사람이 잎을 엮어 몸을 가린 나무', ref: '창 3:7', memo: '넓은 잎 아래에 열매가 숨어 있었다.' },
   { id: 'creature/pomegranate', name: '석류나무', stage: 'eden', fact: '대제사장 겉옷 가장자리에 수놓은 열매', ref: '출 28:33', memo: '붉은 열매 안에 알갱이가 가득했다.' },
   { id: 'creature/grape', name: '포도나무', stage: 'eden', fact: '정탐꾼 둘이 막대기에 꿰어 메고 온 포도', ref: '민 13:23', memo: '송이가 무거워 가지가 휘어 있었다.' },
-  { id: 'creature/olive', name: '올리브나무', stage: 'eden', fact: '약속의 땅에서 나는 일곱 가지 소산 가운데 하나', ref: '신 8:8', memo: '잎 뒷면이 은빛으로 반짝였다.' },
+  { id: 'creature/olive', name: '올리브나무', stage: 'eden', fact: '약속의 땅에서 나는 일곱 가지 먹을거리 가운데 하나', ref: '신 8:8', memo: '잎 뒷면이 은빛으로 반짝였다.' },
   { id: 'creature/date', name: '대추야자나무', stage: 'eden', fact: '여리고를 종려나무 성읍이라 불렀다', ref: '신 34:3', memo: '높은 꼭대기에 열매가 주렁주렁 달렸다.' },
-  { id: 'creature/bird', name: '참새', stage: 'eden', fact: '아담이 이름을 지어 준 공중의 새', ref: '창 2:20', memo: '나뭇가지에서 꽁지를 까딱이며 제 이름을 들었다. 예수님은 참새 한 마리도 하나님이 잊지 않으신다고 하셨다(눅 12:6).' },
+  { id: 'creature/bird', name: '참새', stage: 'eden', fact: '아담이 이름을 지어 준 공중의 새', ref: '창 2:20', memo: '나뭇가지에서 꽁지를 까딱이며 제 이름을 들었다. 예수님은 참새 한 마리도 하나님께서 잊지 않으신다고 하셨다(눅 12:6).' },
   { id: 'creature/serpent', name: '뱀', stage: 'eden', fact: '들짐승 가운데 가장 간교했다', ref: '창 3:1', memo: '말은 부드러웠지만 하나님의 말씀을 비틀었다.' },
 
   { id: 'place/eden', name: '에덴 동산', stage: 'eden', fact: '하나님께서 동쪽에 만드신 동산', ref: '창 2:8', memo: '보기에 아름답고 먹기에 좋은 나무가 가득했다.' },
@@ -34,7 +34,7 @@ export const CODEX = [
   { id: 'place/tigris', name: '힛데겔 강', stage: 'eden', fact: '앗수르 동쪽으로 흐른 강', ref: '창 2:14', memo: '물살이 빨라 멀리서도 물소리가 들렸다.' },
   { id: 'place/euphrates', name: '유브라데 강', stage: 'eden', fact: '에덴에서 갈라진 넷째 강', ref: '창 2:14', memo: '넓고 잔잔하게 흘러 나갔다.' },
 
-  { id: 'item/fig-leaf', name: '무화과 잎', stage: 'eden', fact: '두 사람이 엮어 몸을 가린 잎', ref: '창 3:7', memo: '에덴을 떠나며 챙긴 잎. 하나님이 가죽옷을 지어 입히신 일도 함께 떠오른다.' },
+  { id: 'item/fig-leaf', name: '무화과 잎', stage: 'eden', fact: '두 사람이 엮어 몸을 가린 잎', ref: '창 3:7', memo: '에덴을 떠나며 챙긴 잎. 하나님께서 가죽옷을 지어 입히신 일도 함께 떠오른다.' },
 
   { id: 'word/gen-2-7', name: '흙과 생명의 숨', stage: 'eden', fact: '흙으로 사람을 지으시고 생명의 숨을 불어넣으셨다', ref: '창 2:7', memo: '흙덩이였던 몸이 처음으로 숨을 쉬었다.' },
   { id: 'word/gen-3-15', name: '여자의 후손', stage: 'eden', fact: '여자의 후손이 뱀의 머리를 상하게 한다', ref: '창 3:15', memo: '대천사가 이 약속은 꼭 기억해 두라고 했다.' },
@@ -45,7 +45,7 @@ export const CODEX = [
   { id: 'creature/lamb', name: '첫 새끼 양', stage: 'cain', fact: '아벨이 여호와께 가져온 양 떼의 첫 새끼', ref: '창 4:4', memo: '어미 곁을 한 걸음도 떠나지 않던 어린양이었다.' },
   { id: 'place/nod', name: '놋 땅', stage: 'cain', fact: '가인이 여호와 앞을 떠나 머문 에덴 동쪽 땅', ref: '창 4:16', memo: '‘놋’은 떠돈다는 말과 소리가 비슷하다(창 4:12).' },
   { id: 'item/wool', name: '양털 한 줌', stage: 'cain', fact: '아벨은 양을 치는 사람이었다', ref: '창 4:2', memo: '아벨의 어린양을 쓰다듬다 손에 남은 털. 기념으로 간직했다.' },
-  { id: 'word/gen-4-7', name: '죄를 다스려라', stage: 'cain', fact: '죄가 문 앞에 엎드려 있으나 너는 죄를 다스려야 한다', ref: '창 4:7', memo: '화가 난 가인에게 하나님이 먼저 말을 거셨다.' },
+  { id: 'word/gen-4-7', name: '죄를 다스려라', stage: 'cain', fact: '죄가 문 앞에 엎드려 있으나 너는 죄를 다스려야 한다', ref: '창 4:7', memo: '화가 난 가인에게 하나님께서 먼저 말을 거셨다.' },
 
   { id: 'person/noah', name: '노아', stage: 'noah', fact: '여호와께 은혜를 입고 하나님과 동행한 사람', ref: '창 6:8~9', memo: '굳은살 박인 손으로 마지막 판자까지 받쳤다.' },
   { id: 'person/shem', name: '셈', stage: 'noah', fact: '노아의 세 아들 가운데 맏아들', ref: '창 6:10', memo: '먹이 자루를 메고 방주를 몇 번이고 오갔다.' },
@@ -61,7 +61,7 @@ export const CODEX = [
   { id: 'person/enoch', name: '에녹', stage: 'enoch', fact: '삼백 년 동안 하나님과 동행한 사람', ref: '창 5:22', memo: '날마다 같은 언덕길을 걸으며 하루 일을 다 아뢰었다.' },
   { id: 'person/methuselah', name: '므두셀라', stage: 'enoch', fact: '에녹의 아들, 노아의 할아버지', ref: '창 5:21~29', memo: '저녁이면 언덕 쪽을 보며 아버지를 기다렸다.' },
   { id: 'item/path-stone', name: '길가의 돌', stage: 'enoch', fact: '에녹이 하나님과 동행하던 길', ref: '창 5:24', memo: '언덕길 가장자리에서 주운 매끈한 돌. 에녹과 걷던 길을 떠올리게 한다.' },
-  { id: 'word/gen-5-24', name: '하나님과 동행', stage: 'enoch', fact: '에녹이 하나님과 동행하더니 하나님이 그를 데려가셨다', ref: '창 5:24', memo: '에녹은 죽음을 보지 않고 옮겨졌다(히 11:5).' },
+  { id: 'word/gen-5-24', name: '하나님과 동행', stage: 'enoch', fact: '에녹이 하나님과 동행하더니 하나님께서 그를 데려가셨다', ref: '창 5:24', memo: '에녹은 죽음을 보지 않고 옮겨졌다(히 11:5).' },
 
   { id: 'person/builder', name: '벽돌 굽는 이', stage: 'babel', fact: '시날 들판에서 벽돌을 구워 탑을 쌓던 사람들', ref: '창 11:3', memo: '본문에 이름이 없는 일꾼이다. 가마 불을 밤새 지켰다(각색 인물).' },
   { id: 'place/shinar', name: '시날 땅', stage: 'babel', fact: '사람들이 동방으로 옮기다가 머문 들판', ref: '창 11:2', memo: '돌이 귀해 진흙을 구워 벽돌을 만들었다.' },
@@ -75,11 +75,11 @@ export const CODEX = [
   { id: 'place/haran', name: '하란', stage: 'abram', fact: '아브람이 일흔다섯 살에 떠난 곳', ref: '창 12:4', memo: '흙벽돌 집을 뒤로하고 길을 나섰다.' },
   { id: 'place/shechem', name: '모레 상수리나무', stage: 'abram', fact: '세겜 땅에서 아브람이 처음 제단을 쌓은 곳', ref: '창 12:6~7', memo: '그늘이 넓어 무리가 다 쉬어 갈 수 있었다.' },
   { id: 'item/oak-leaf', name: '상수리나무 잎', stage: 'abram', fact: '세겜 모레 상수리나무', ref: '창 12:6', memo: '처음 제단을 쌓은 나무 아래에서 주운 잎.' },
-  { id: 'word/gen-12-2', name: '복이 되리라', stage: 'abram', fact: '큰 민족을 이루고 이름을 크게 하리니 너는 복이 될 것이다', ref: '창 12:2', memo: '바벨에서 사람들이 스스로 높이려던 이름을 하나님이 아브람에게 주셨다.' },
+  { id: 'word/gen-12-2', name: '복이 되리라', stage: 'abram', fact: '큰 민족을 이루고 이름을 크게 하리니 너는 복이 될 것이다', ref: '창 12:2', memo: '바벨에서 사람들이 스스로 높이려던 이름을 하나님께서 아브람에게 주셨다.' },
   { id: 'word/gen-15-6', name: '믿음과 의', stage: 'abram', fact: '아브람이 여호와를 믿으니 이를 그의 의로 여기셨다', ref: '창 15:6', memo: '셀 수 없는 별 아래에서 들은 말씀이다.' },
 
   { id: 'person/hagar', name: '하갈', stage: 'hagar', fact: '사래의 애굽인 여종, 이스마엘의 어머니', ref: '창 16:1', memo: '광야에서 자기 이름을 불러 주신 분을 만났다.' },
-  { id: 'person/ishmael', name: '이스마엘', stage: 'hagar', fact: '하나님이 들으신다는 이름의 아들', ref: '창 16:11', memo: '광야에서 자라 활 쏘는 사람이 되었다(창 21:20).' },
+  { id: 'person/ishmael', name: '이스마엘', stage: 'hagar', fact: '하나님께서 들으신다는 이름의 아들', ref: '창 16:11', memo: '광야에서 자라 활 쏘는 사람이 되었다(창 21:20).' },
   { id: 'place/beer-lahai-roi', name: '브엘라해로이', stage: 'hagar', fact: '나를 살피시는 살아 계신 이의 우물', ref: '창 16:14', memo: '마른 땅 사이에 풀빛이 돋은 샘이었다.' },
   { id: 'place/beersheba', name: '브엘세바 광야', stage: 'hagar', fact: '하갈과 아이가 물이 떨어져 헤맨 광야', ref: '창 21:14', memo: '덤불 그늘 말고는 숨을 곳이 없었다.' },
   { id: 'item/waterskin', name: '가죽 부대', stage: 'hagar', fact: '아브라함이 하갈에게 준 물 부대', ref: '창 21:14', memo: '샘물을 가득 채워 아이에게 건넨 부대.' },
@@ -96,7 +96,7 @@ export const CODEX = [
   { id: 'place/moriah', name: '모리아 산', stage: 'moriah', fact: '하나님께서 일러 주신 산', ref: '창 22:2', memo: '사흘 길 끝에 멀리 보인 산이었다.' },
   { id: 'creature/ram', name: '숫양', stage: 'moriah', fact: '덤불에 뿔이 걸려 있던 숫양', ref: '창 22:13', memo: '아브라함이 이삭 대신 번제로 드렸다.' },
   { id: 'item/firewood', name: '번제 나무', stage: 'moriah', fact: '아브라함이 쪼개어 이삭에게 지운 나무', ref: '창 22:6', memo: '이삭이 지고 산을 오른 나뭇단의 한 토막.' },
-  { id: 'word/gen-22-14', name: '여호와 이레', stage: 'moriah', fact: '여호와의 산에서 준비되리라', ref: '창 22:14', memo: '"번제할 어린양은 하나님이 준비하시리라"던 아브라함의 말이 그대로 이루어졌다.' },
+  { id: 'word/gen-22-14', name: '여호와 이레', stage: 'moriah', fact: '여호와의 산에서 준비되리라', ref: '창 22:14', memo: '"번제할 어린양은 하나님께서 준비하시리라"던 아브라함의 말이 그대로 이루어졌다.' },
 
   { id: 'person/rebekah', name: '리브가', stage: 'rebekah', fact: '브두엘의 딸, 이삭의 아내', ref: '창 24:15', memo: '처음 본 나그네의 낙타 열 마리에게 물을 길어 주었다.' },
   { id: 'person/laban', name: '라반', stage: 'rebekah', fact: '리브가의 오라버니', ref: '창 24:29', memo: '누이의 금 코걸이를 보고 우물로 달려 나왔다.' },
@@ -121,12 +121,12 @@ export const CODEX = [
   { id: 'word/gen-32-28', name: '이스라엘', stage: 'jabbok', fact: '이스라엘이라 부르리니, 하나님과 사람들과 겨루어 이겼다', ref: '창 32:28', memo: '발꿈치를 잡던 이가 새 이름을 받았다.' },
 
   { id: 'person/joseph', name: '요셉', stage: 'joseph', fact: '야곱이 사랑한 아들, 애굽을 다스린 이', ref: '창 41:41', memo: '옥에서도 죄수들의 빵을 나누고 맨 마지막에 앉았다.' },
-  { id: 'person/pharaoh', name: '바로', stage: 'joseph', fact: '꿈을 꾸고 요셉에게 풀이를 들은 애굽 왕', ref: '창 41:15', memo: '요셉을 하나님의 영에 감동된 사람이라 불렀다.' },
+  { id: 'person/pharaoh', name: '바로', stage: 'joseph', fact: '꿈을 꾸고 요셉에게 풀이를 들은 애굽 왕', ref: '창 41:15', memo: '요셉을 하나님의 영이 머무는 사람이라 불렀다.' },
   { id: 'person/cupbearer', name: '술 맡은 관원장', stage: 'joseph', fact: '옥에서 요셉에게 꿈 풀이를 들은 신하', ref: '창 40:9', memo: '두 해 동안 잊었다가 바로 앞에서 요셉을 기억해 냈다.' },
   { id: 'place/dothan', name: '도단', stage: 'joseph', fact: '형들이 양을 치다 요셉을 판 들', ref: '창 37:17', memo: '빈 구덩이 하나가 들 가운데 있었다.' },
   { id: 'place/egypt', name: '애굽', stage: 'joseph', fact: '요셉이 종으로 팔려 가 다스리는 자가 된 땅', ref: '창 39:1', memo: '옥에서 궁정까지, 요셉이 걸은 길은 끊기지 않고 이어졌다.' },
   { id: 'creature/cow', name: '살진 암소', stage: 'joseph', fact: '바로의 꿈에서 일곱 해의 풍년을 뜻한 소', ref: '창 41:26', memo: '나일 강가에서 갈밭 풀을 뜯던 소들이었다.' },
-  { id: 'creature/grain', name: '충실한 이삭', stage: 'joseph', fact: '한 줄기에 일곱 이삭이 충실하게 맺힌 곡식', ref: '창 41:22', memo: '마른 이삭이 충실한 이삭을 삼켰다.' },
+  { id: 'creature/grain', name: '알찬 이삭', stage: 'joseph', fact: '한 줄기에 일곱 이삭이 알차게 맺힌 곡식', ref: '창 41:22', memo: '마른 이삭이 알찬 이삭을 삼켰다.' },
   { id: 'item/coat-thread', name: '채색옷 실', stage: 'joseph', fact: '야곱이 요셉에게 지어 입힌 채색옷', ref: '창 37:3', memo: '구덩이 곁에 떨어져 있던 채색옷 실 한 가닥.' },
   { id: 'word/gen-39-23', name: '형통하게 하심', stage: 'joseph', fact: '여호와께서 요셉과 함께하사 그가 하는 일을 형통하게 하셨다', ref: '창 39:23', memo: '옥에 갇혀서도 요셉이 맡은 일은 잘되었다.' },
 
@@ -135,7 +135,7 @@ export const CODEX = [
   { id: 'item/silver-cup', name: '은잔', stage: 'brothers', fact: '요셉이 베냐민의 자루에 넣게 한 잔', ref: '창 44:2', memo: '막내의 자루에서 나와 형들의 마음을 드러냈다.' },
   { id: 'place/goshen', name: '고센 땅', stage: 'brothers', fact: '야곱의 온 집안이 내려와 산 애굽 땅', ref: '창 45:10', memo: '요셉 곁에서 가축을 치며 살게 된 땅이다.' },
   { id: 'item/grain-handful', name: '곡식 한 줌', stage: 'brothers', fact: '기근 때 애굽에서 산 곡식', ref: '창 42:25', memo: '형들의 자루에 채운 곡식 한 줌. 창세기 길을 마치며 챙긴 마지막 기념물이다.' },
-  { id: 'word/gen-50-20', name: '선으로 바꾸심', stage: 'brothers', fact: '당신들은 해하려 하였으나 하나님은 선으로 바꾸셨다', ref: '창 50:20', memo: '구덩이에서 궁정까지 이어진 길 끝에서 요셉이 한 말이다.' },
+  { id: 'word/gen-50-20', name: '선으로 바꾸심', stage: 'brothers', fact: '당신들은 해하려 하였으나 하나님께서는 선으로 바꾸셨다', ref: '창 50:20', memo: '구덩이에서 궁정까지 이어진 길 끝에서 요셉이 한 말이다.' },
 ];
 
 // 닮은 인물: 인물마다 그 사람의 삶에서 두드러진 열매 두 가지(감수 목록에 오른다).
@@ -143,19 +143,19 @@ export const CODEX = [
 // "○○처럼, ~해요" 한 문장에 몰아 쓰던 것을 나눴다. 문장에는 줄바꿈 기호를 넣지 않는다.
 // 상태 창은 도감에서 만난 인물 가운데 이 두 열매의 점수 합이 가장 큰 인물을 보여 준다.
 export const LIKENESS = {
-  adam: { fruits: ['faith', 'joy'], deed: '하나님이 맡기신 동산을 일구고 지켰어요.', ref: '창 2:15', text: '맡은 일을 끝까지 돌보는 성실함이 닮았어요.', why: '창 2:15 일구고 지킴(신실), 창 2:23 기쁨의 고백(기쁨)' },
+  adam: { fruits: ['faith', 'joy'], deed: '하나님께서 맡기신 동산을 일구고 지켰어요.', ref: '창 2:15', text: '맡은 일을 끝까지 돌보는 성실함이 닮았어요.', why: '창 2:15 일구고 지킴(신실), 창 2:23 기쁨의 고백(기쁨)' },
   abel: { fruits: ['faith', 'gentle'], deed: '양 떼에서 처음 난 새끼를 골라 하나님께 드렸어요.', ref: '창 4:4', text: '아끼는 것을 먼저 내어놓는 마음이 같아요.', why: '히 11:4 믿음으로 더 나은 제사(신실), 창 4:2 양을 치는 사람(온유)' },
   seth: { fruits: ['faith', 'peace'], deed: '셋의 집안에서 사람들이 여호와의 이름을 부르기 시작했어요.', ref: '창 4:26', text: '하루를 하나님을 부르며 시작하는 모습이 닮았어요.', why: '창 4:26 여호와의 이름을 부름(신실), 창 4:25 슬픔 뒤에 주신 아들(화평)' },
   eve: { fruits: ['love', 'kindness'], deed: '모든 산 사람의 어머니가 되었어요.', ref: '창 3:20', text: '곁에 있는 사람을 따뜻하게 품어 줘요.', why: '창 3:20 모든 산 사람의 어머니(사랑), 창 4:1 생명을 품고 돌봄(친절)' },
-  noah: { fruits: ['faith', 'patience'], deed: '하나님이 명하신 대로 방주를 끝까지 지었어요.', ref: '창 6:22', text: '알아주는 사람이 없어도 오래 참고 맡은 일을 해내요.', why: '히 11:7 믿음으로 방주를 준비함(신실), 벧전 3:20 오래 참으심 속에 방주를 지음(인내)' },
+  noah: { fruits: ['faith', 'patience'], deed: '하나님께서 명하신 대로 방주를 끝까지 지었어요.', ref: '창 6:22', text: '알아주는 사람이 없어도 오래 참고 맡은 일을 해내요.', why: '히 11:7 믿음으로 방주를 준비함(신실), 벧전 3:20 오래 참으심 속에 방주를 지음(인내)' },
   enoch: { fruits: ['faith', 'peace'], deed: '삼백 년 동안 하나님과 동행했어요.', ref: '창 5:22', text: '하루하루를 하나님께 이야기하며 걸어요.', why: '히 11:5 하나님을 기쁘시게 함(신실), 창 5:22 동행(화평)' },
   abraham: { fruits: ['faith', 'patience'], deed: '갈 곳을 모르면서도 말씀을 따라 길을 떠났어요.', ref: '히 11:8', text: '약속을 믿고 오래 기다릴 줄 알아요.', why: '히 11:8 믿음으로 나아감(신실), 히 6:15 오래 참아 약속을 받음(인내)' },
-  sarah: { fruits: ['joy', 'patience'], deed: '늙어서 아들을 낳고, 하나님이 나를 웃게 하셨다고 했어요.', ref: '창 21:6', text: '기다리는 동안에도 웃음을 잃지 않아요.', why: '창 21:6 하나님이 나를 웃게 하심(기쁨), 히 11:11 약속하신 이를 미쁘신 줄 앎(인내)' },
-  hagar: { fruits: ['patience', 'faith'], deed: '광야에서 자기를 살피시는 하나님을 만났어요.', ref: '창 16:13', text: '혼자라고 느낄 때도 하나님이 보고 계심을 믿어요.', why: '창 16:9 돌아가 견딤(인내), 창 16:13 살피시는 하나님을 고백함(신실)' },
+  sarah: { fruits: ['joy', 'patience'], deed: '늙어서 아들을 낳고, 하나님께서 나를 웃게 하셨다고 했어요.', ref: '창 21:6', text: '기다리는 동안에도 웃음을 잃지 않아요.', why: '창 21:6 하나님이 나를 웃게 하심(기쁨), 히 11:11 약속하신 이를 미쁘신 줄 앎(인내)' },
+  hagar: { fruits: ['patience', 'faith'], deed: '광야에서 자기를 살피시는 하나님을 만났어요.', ref: '창 16:13', text: '혼자라고 느낄 때도 하나님께서 보고 계심을 믿어요.', why: '창 16:9 돌아가 견딤(인내), 창 16:13 살피시는 하나님을 고백함(신실)' },
   isaac: { fruits: ['gentle', 'faith'], deed: '번제 나무를 지고 아버지와 함께 산을 올랐어요.', ref: '창 22:6', text: '궁금한 것은 묻되, 믿고 끝까지 따라가요.', why: '창 22:6~8 함께 나아감(온유), 히 11:20 믿음으로 축복함(신실)' },
   rebekah: { fruits: ['kindness', 'goodness'], deed: '처음 본 나그네의 낙타들에게까지 물을 길어 주었어요.', ref: '창 24:19~20', text: '부탁받은 것보다 한 걸음 더 도와요.', why: '창 24:19 낙타도 마시게 하겠다(친절), 창 24:20 급히 물을 길음(선함)' },
   jacob: { fruits: ['patience', 'faith'], deed: '돌베개를 베고 자던 밤에 함께하겠다는 약속을 들었어요.', ref: '창 28:15', text: '먼 길 위에서도 함께하시는 분을 기억해요.', why: '창 29:20 칠 년을 며칠같이 여김(인내), 창 28:20~22 서원(신실)' },
   esau: { fruits: ['love', 'gentle'], deed: '오랜만에 만난 동생에게 달려가 껴안았어요.', ref: '창 33:4', text: '먼저 다가가 화해의 손을 내밀어요.', why: '창 33:4 달려와 껴안음(사랑), 창 33:9 넉넉하니 네 것은 네가 가지라(온유)' },
-  joseph: { fruits: ['patience', 'faith'], deed: '종으로 팔려 가고 옥에 갇혀서도 맡은 일을 해냈어요.', ref: '창 39:22~23', text: '어디에 있든 하나님이 함께하심을 믿고 성실하게 일해요.', why: '창 39:20~23 옥에서 형통함(인내), 창 41:16 하나님께서 대답하심(신실)' },
+  joseph: { fruits: ['patience', 'faith'], deed: '종으로 팔려 가고 옥에 갇혀서도 맡은 일을 해냈어요.', ref: '창 39:22~23', text: '어디에 있든 하나님께서 함께하심을 믿고 성실하게 일해요.', why: '창 39:20~23 옥에서 형통함(인내), 창 41:16 하나님께서 대답하심(신실)' },
   judah: { fruits: ['love', 'faith'], deed: '막내 동생 대신 자기가 종이 되겠다고 나섰어요.', ref: '창 44:33', text: '맡은 사람을 끝까지 책임져요.', why: '창 44:33 대신 종이 되겠다(사랑), 창 43:9 담보가 되겠다(신실)' },
 };
