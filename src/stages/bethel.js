@@ -7,7 +7,7 @@
 // 장막은 안이 들여다보이게 지붕을 뒤쪽 처마만 남기고 걷었다. 휘장으로 이삭의 방(오른쪽)과 리브가의 방(왼쪽)을 나눈 것은 각색이다.
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
-import { PAL, mat, makeAngel, makeSack, makeCloud, setArms, dye as clothTone } from '../props.js';
+import { PAL, mat, makeAngel, makeSack, makeCloud, setArms, poseFigure, dye as clothTone } from '../props.js';
 import { tween, easeOut, easeBack } from '../anim.js';
 import data from '../data/bethel.js';
 
@@ -39,6 +39,8 @@ const GOATS = V(10, -1.8);
 const J_GOATS = V(9.0, -1.4);
 const J_BACK = at(TENT, -3.9, 1.2);
 const BEHIND = at(TENT, -1.0, -2.3); // 염소 새끼를 데려가는 장막 뒤(잡는 장면은 그리지 않는다)
+const KID_AT = [at(TENT, -3.0, 0.6), at(TENT, -3.55, 0.55)]; // 염소 새끼가 닿는 자리: 요리하는 리브가(R_COOK) 뒤쪽 곁
+const DOOR = at(TENT, 0.7, 1.2); // 장막 앞 입구: 휘장 끝(a 0.3, f 0.51)과 기둥 앞을 지나 이삭의 방으로 드나드는 길목
 const R_GIVE = at(TENT, -3.2, 0.9); // 리브가가 길양식을 건네는 자리
 const WAIT = at(TENT, -3.2, -1.6); // 장막 뒤 길목: 야곱이 몰래 기다린다
 const ROAD = V(-1.5, -3.5);
@@ -80,6 +82,8 @@ function tremble(fig, ms = 1200, amp = 0.06) {
   return tween(ms, (p) => (u.rig.rotation.z = Math.sin(p * Math.PI * 22) * amp * (1 - p))).then(() => { if (own) u.pose = null; });
 }
 // 팔을 앞으로 내민다(k 0~1). 자세가 있는 인물에만 쓴다(없으면 걷기 몸짓이 덮어쓴다)
+// 앉거나 꿇어 pose가 있는 인물은 field.js face가 몸을 돌리지 않으므로(faceYaw는 pose가 없을 때만 적용) 방향을 직접 돌린다
+const turn = (fig, p, ms = 500) => { const y0 = fig.rotation.y, want = Math.atan2(p.x - fig.position.x, p.z - fig.position.z), d = Math.atan2(Math.sin(want - y0), Math.cos(want - y0)); return tween(ms, (k) => (fig.rotation.y = y0 + d * easeOut(k))); };
 const reach = (fig, x, ms = 500) => { const a0 = fig.userData.arms.map((a) => a.rotation.x); return tween(ms, (p) => fig.userData.arms.forEach((a, i) => { a.rotation.x = a0[i] + (x - a0[i]) * easeOut(p); a.rotation.z = (i ? 1 : -1) * 0.12; })); };
 
 export default {
@@ -137,7 +141,7 @@ export default {
     for (let a = -2.5; a <= 2.51; a += 0.36) F.block(at(TENT, a, -1.4), 0.18);
     for (const s of [-1, 1]) for (let f = -1.4; f <= 1.31; f += 0.35) F.block(at(TENT, s * 2.5, f), 0.18);
     for (let f = -1.4; f <= 0.51; f += 0.35) F.block(at(TENT, 0.3, f), 0.15);
-    F.block(at(TENT, 0.3, 1.4), 0.1);
+    // 앞 기둥(a 0.3, f 1.4)은 막지 않는다: 막으면 휘장 끝과 사이 틈(0.64)이 인물 지름(0.6)에 닫혀 길찾기가 입구를 못 찾고 휘장을 곧게 뚫었다
 
     // 화덕과 솥(창 25:29 죽을 쑤었더니): 솥 안의 죽은 팥을 넣으면 붉어진다
     for (let i = 0; i < 7; i++) {
@@ -263,7 +267,7 @@ export default {
     F.onUpdate((dt, t) => {
       if (!ladder.visible) return;
       // 빛이 아래 칸부터 위 칸으로 물결처럼 오른다
-      steps.forEach((st, i) => (st.material.opacity = st.material.userData.base * (0.7 + 0.3 * Math.sin(t * 3 - i * 0.45))));
+      steps.forEach((st, i) => (st.material.opacity = st.material.userData.base * (0.7 + 0.3 * Math.sin(t * 3 - i * 0.45)) * (st.userData.fade ?? 1)));
       for (const a of climbers) {
         a.userData.k = (a.userData.k + dt * 0.035) % 1;
         const k = a.userData.up ? a.userData.k : 1 - a.userData.k, i = k * (RUNG - 1);
@@ -303,7 +307,7 @@ export default {
     const pillow = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 1).scale(1.4, 0.7, 1), stoneM);
     pillow.visible = false;
     G.add(pillow);
-    Object.assign(F, { camp, jacob, esau, isaac, rebekah, rocks, ladder, steps, rails, climbers, pillow, stars, robe, skins, stew, lentils, bowl, dish, esauDish, clothes, bundle, kids, goats });
+    Object.assign(F, { cloud, camp, jacob, esau, isaac, rebekah, rocks, ladder, steps, rails, climbers, pillow, stars, robe, skins, stew, lentils, bowl, dish, esauDish, clothes, bundle, kids, goats });
     F.spots = {
       start: START, jacob: JACOB, bed: BED, oil: OIL, ladder: LADDER, ...Object.fromEntries(STONES.map((s, i) => [`stone${i}`, s])),
       isaac: ISAAC, before: BEFORE, kneel: KNEEL, listen: LISTEN, rroom: R_ROOM, jroom: J_ROOM, sack: SACK, hearth: HEARTH, cook: COOK, rcook: R_COOK,
@@ -316,7 +320,7 @@ export default {
 
   async run(g) {
     const { F } = g;
-    const { camp, goats, jacob, esau, isaac, rebekah, rocks, ladder, steps, rails, climbers, pillow, stars, robe, skins, stew, lentils, bowl, dish, esauDish, clothes, bundle, kids } = F;
+    const { cloud, camp, goats, jacob, esau, isaac, rebekah, rocks, ladder, steps, rails, climbers, pillow, stars, robe, skins, stew, lentils, bowl, dish, esauDish, clothes, bundle, kids } = F;
     const L = data.lines;
     // 다른 옷감의 색도 같은 차분한 빛(props.js dye)으로 옮긴다
     const dye = (to, ms = 900) => { const c0 = robe[0].color.clone(), c1 = clothTone(to); return tween(ms, (p) => robe.forEach((m) => m.color.copy(c0).lerp(c1, p))); };
@@ -403,14 +407,16 @@ export default {
     await g.talk(L.bless.slice(4, 7));
     // 창 27:14 염소 새끼 둘을 끌어오고, 리브가는 화덕에서 별미를 만든다
     g.cam(at(TENT, -0.5, 1.2), 12);
+    // 새끼는 들(J_GOATS)에서 야곱을 따라 화덕 곁 리브가(R_COOK) 뒤로 가서, 잡는 장면은 그리지 않고 작아지며 사라진다. 그 자리에 별미가 놓인다.
     const fetch = F.acts.walkTo(jacob, J_GOATS, 2.6).then(() => {
+      g.cam(at(TENT, -2.2, 2.0), 11);
       kids.forEach((k, i) => { k.userData.lead = jacob; k.userData.leadOffset = V(0.5 - i, 0.6); });
       return F.acts.walkTo(jacob, J_BACK, 2.4);
-    }).then(() => kids.forEach((k) => {
+    }).then(() => Promise.all(kids.map((k, i) => new Promise((done) => {
       k.userData.lead = null;
-      k.userData.route = [at(TENT, -3.6, -0.2), at(TENT, -2.9, -2.0), BEHIND];
-      k.userData.onArrive = () => (k.visible = false);
-    }));
+      k.userData.route = [KID_AT[i]];
+      k.userData.onArrive = () => { const s0 = k.scale.x; tween(700, (p) => k.scale.setScalar(Math.max(0.01, s0 * (1 - p)))).then(() => { k.visible = false; done(); }); };
+    }))));
     const cook = F.acts.walkTo(rebekah, R_COOK, 1.4).then(() => { F.acts.face(rebekah, HEARTH); return F.acts.bow(rebekah, 0.3); });
     await g.talk(L.bless.slice(7, 8));
     await Promise.all([fetch, cook, hunt]);
@@ -438,7 +444,8 @@ export default {
     // 창 27:18~29 야곱이 에서인 척 아버지 앞에 선다. 본문대로 보이고 꾸미지 않는다.
     g.cam(at(TENT, 1.0, 0.2), 9);
     const D = L.deceive;
-    const enter = F.acts.walkTo(jacob, BEFORE, 1.2).then(() => F.acts.face(jacob, ISAAC));
+    const viaDoor = async (fig, to, speed) => { await F.acts.walkTo(fig, DOOR, speed); return F.acts.walkTo(fig, to, speed); }; // 휘장을 지나지 않고 앞 입구로 드나든다
+    const enter = viaDoor(jacob, BEFORE, 1.6).then(() => F.acts.face(jacob, ISAAC));
     F.acts.walkTo(rebekah, LISTEN, 1.2).then(() => F.acts.face(rebekah, ISAAC));
     await g.talk(D.slice(0, 1));
     await enter;
@@ -450,6 +457,7 @@ export default {
     const near = place(dish, at(TENT, 1.35, 0.05), 0.08);
     await kneel(jacob, 0.1);
     await reach(jacob, -1.0);
+    turn(isaac, jacob.position); // 이삭이 야곱 쪽으로 몸을 돌린다(이후 축복까지 유지)
     const feel = reach(isaac, -1.2, 700);
     await g.talk(D.slice(5, 6));
     await feel;
@@ -473,7 +481,8 @@ export default {
     // 창 27:30~35 야곱이 나가자마자 에서가 돌아온다
     g.cam(at(TENT, 1.2, 0.8), 10.5);
     await stand(jacob);
-    const out = F.acts.walkTo(jacob, J_ROOM, 1.6).then(() => F.acts.face(jacob, ISAAC));
+    const out = viaDoor(jacob, J_ROOM, 1.8).then(() => F.acts.face(jacob, ISAAC));
+    turn(isaac, BEFORE, 900); // 돌아온 에서 쪽으로
     esau.visible = true;
     esauDish.visible = true;
     F.acts.carry(esauDish, esau);
@@ -511,7 +520,7 @@ export default {
     // 창 28:1 이삭이 야곱을 불러 축복한다
     g.cam(at(TENT, 0.8, 0.2), 9.5);
     g.stage('tent');
-    const call = F.acts.walkTo(jacob, KNEEL, 1.4).then(() => { F.acts.face(jacob, ISAAC); return kneel(jacob, 0.25); }).then(() => reach(isaac, -2.4, 700));
+    const call = viaDoor(jacob, KNEEL, 1.8).then(() => { F.acts.face(jacob, ISAAC); return kneel(jacob, 0.25); }).then(() => { turn(isaac, jacob.position); return reach(isaac, -2.4, 700); });
     await g.talk(L.flee.slice(3, 4));
     await call;
     await reach(isaac, 0, 400);
@@ -568,20 +577,31 @@ export default {
 
     // 창 28:11 잠: 밤이 되며 별이 돋고, 야곱이 돌을 내려놓고 눕는다
     // 브엘세바와 벧엘을 한 들에 둔 각색이므로, 벧엘의 밤과 아침에는 떠나온 장막 자리를 비운다(카메라가 돌밭을 비춘 뒤)
-    [...camp, isaac, rebekah, esau, ...goats, ...kids].forEach((o) => (o.visible = false));
+    // 저녁빛(dim 0.4)에서 밤(dim 0.95)으로: 전에는 1.8초에 몰아 넘기며 같은 프레임에 장막·가축이 사라지고 별이 켜졌다.
+    // 이제 4.2초에 걸쳐 넘기고(대사·걷기와 겹쳐 기다림 없음), 장막 자리는 하늘이 거의 어두워진 뒤에 감추고, 별은 늦게 돋는다.
+    const night = F.acts.sky(0x141a30, 0.95, 0, 4200, 0.7);
+    F.acts.wait(3200).then(() => { [...camp, isaac, rebekah, esau, ...goats, ...kids].forEach((o) => (o.visible = false)); });
     stars.visible = true;
-    await Promise.all([F.acts.night(), tween(1800, (p) => (stars.material.opacity = p))]);
+    const starUp = F.acts.wait(1200).then(() => tween(3000, (p) => (stars.material.opacity = p)));
     g.cam(BED, 12);
     g.stage('bed');
     await F.acts.walkTo(jacob, BED, 1.2);
     F.acts.face(jacob, BED.clone().addScaledVector(ALONG, -1));
     await F.acts.bow(jacob, 0.5);
     F.acts.carry(pillow, null);
-    await place(pillow, BED.clone().addScaledVector(ALONG, -0.8), 0.12, 500);
+    await place(pillow, BED.clone().addScaledVector(ALONG, -0.8), 0.06, 500); // 머리를 받치게 땅에 반쯤 묻는다(윗면 0.21)
     await F.acts.bow(jacob, 0);
     jacob.rotation.y = Math.atan2(ALONG.x, ALONG.z); // 머리가 돌베개 쪽
+    // 누우면 머리 가운데는 발에서 1.57h 뒤(BODY: HEAD_Y 0.996 + 0.572)라, 발을 돌 쪽으로 0.77 물려 머리가 돌 위에 오게 한다
+    const feet = BED.clone().addScaledVector(ALONG, 1.56 * (jacob.userData.height ?? 1) - 0.8);
+    const settle = F.acts.walkTo(jacob, feet, 1.0);
     await g.talk(L.sleep);
+    await settle;
+    await Promise.all([night, starUp]);
     await F.acts.lie(jacob);
+    // 머리를 돌 위로 조금 든다: 머리 가운데 높이 0.16 + 1.57 sin(0.09) = 0.30, 바닥 0.19가 돌 윗면 0.21에 닿는다
+    const { rig: jr } = jacob.userData;
+    await tween(300, (p) => { jr.rotation.x = -Math.PI / 2 + 0.09 * easeOut(p); poseFigure(jacob); });
 
     // 창 28:12 꿈: 층계가 밑동부터 하늘까지 차례로 빛나며 놓이고, 사자들이 오르내린다
     ladder.visible = true;
@@ -607,12 +627,19 @@ export default {
     F.acts.presence(null);
 
     // 창 28:16~17 깨어 두려워한다: 층계가 위에서부터 사라지고 아침이 온다. 벌떡 일어나 둘러보고, 뒷걸음질하며 떤다.
-    await tween(900, (p) => steps.forEach((s, i) => (s.visible = i < (1 - p) * RUNG)));
+    // 꿈의 끝: 층계가 위 칸부터 빛 속으로 옅어지고(칸마다 0.4 구간, 위는 먼저), 사자들은 작아지고, 구름이 걷힌다. 아침빛과 별 지움이 같은 1.8초에 이어진다.
+    const fadeUp = tween(1800, (p) => {
+      steps.forEach((s, i) => { const t = ((RUNG - 1 - i) / (RUNG - 1)) * 0.6; s.userData.fade = 1 - Math.min(1, Math.max(0, (p - t) / 0.4)); });
+      rails.forEach((r) => (r.material.opacity = 0.8 * (1 - p)));
+      cloud.scale.setScalar(Math.max(0.01, 1 - easeOut(p)));
+      climbers.forEach((a) => a.scale.setScalar(Math.max(0.01, 0.5 * (1 - Math.min(1, p * 2)))));
+    });
+    await Promise.all([fadeUp, F.acts.day(), tween(1800, (p) => (stars.material.opacity = 1 - p))]);
     ladder.visible = false;
-    await Promise.all([F.acts.day(), tween(1800, (p) => (stars.material.opacity = 1 - p))]);
     stars.visible = false;
     g.cam(BED, 12);
     g.stage('bed');
+    await tween(250, (p) => { jr.rotation.x = -Math.PI / 2 + 0.09 * (1 - p); poseFigure(jacob); }); // 든 머리를 내린 뒤 일어난다(lie가 -90도에서 시작해 튀지 않게)
     await F.acts.lie(jacob, true);
     const look = F.acts.wait(10).then(async () => { F.acts.face(jacob, LADDER); await F.acts.wait(700); F.acts.face(jacob, BED.clone().addScaledVector(ALONG, 2)); await F.acts.wait(700); F.acts.face(jacob, LADDER); });
     await g.talk(L.woke.slice(0, 1));

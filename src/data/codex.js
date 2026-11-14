@@ -113,7 +113,7 @@ export const CODEX = [
   { id: 'item/stone-pillow', name: '돌베개', stage: 'bethel', fact: '야곱이 베고 잔 뒤 기둥으로 세운 돌', ref: '창 28:18', memo: '야곱에게 골라 건넨 매끈한 돌. 아침에 기둥으로 세워졌다.' },
   { id: 'word/gen-28-15', name: '너와 함께 있어', stage: 'bethel', fact: '내가 너와 함께 있어 네가 어디로 가든지 너를 지키리라', ref: '창 28:15', memo: '도망치던 밤에 들은 약속이다.' },
 
-  { id: 'place/jabbok', name: '얍복 나루', stage: 'jabbok', fact: '야곱이 밤에 가족을 건너보낸 강 나루', ref: '창 32:22', memo: '여울에 디딤돌이 놓여 있었다.' },
+  { id: 'place/jabbok', name: '얍복 나루', stage: 'jabbok', fact: '야곱이 밤에 가족을 건너보낸 강 나루', ref: '창 32:22', memo: '여울에 나무다리가 놓여 있었다.' },
   { id: 'place/peniel', name: '브니엘', stage: 'jabbok', fact: '하나님을 대면하여 보았다는 뜻의 땅', ref: '창 32:30', memo: '해가 돋을 때 야곱이 절뚝이며 떠난 곳이다.' },
   { id: 'person/the-man', name: '그 사람', stage: 'jabbok', fact: '날이 새도록 야곱과 씨름한 이', ref: '창 32:24', memo: '이름을 묻자 대답 대신 축복하였다(창 32:29).' },
   { id: 'creature/goat', name: '염소', stage: 'jabbok', fact: '야곱이 에서에게 예물로 보낸 암염소 이백', ref: '창 32:14', memo: '떼마다 사이를 두고 앞서 보냈다.' },

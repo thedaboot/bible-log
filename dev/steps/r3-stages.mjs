@@ -12,6 +12,7 @@ export default async (t) => {
   };
   const vis = (id) => t.ev(`(() => { const e = document.getElementById('${id}'); return !!e && !e.hidden && getComputedStyle(e).display !== 'none'; })()`);
   const stages = (process.env.STAGES ?? 'noah').split(',');
+  const marks = (process.env.MARKS ?? '').split(',').filter(Boolean).map((m) => m.split('=')), shot = new Set();
   await boot(t, { ...SAVE, xp: 3000, talents: 300 });
   await t.ev(`window.__errs=[];addEventListener('error',e=>__errs.push(String(e.message)));addEventListener('unhandledrejection',e=>__errs.push(String(e.reason?.stack||e.reason))); __dev.speed = 4; 1`);
   for (const id of stages) {
@@ -33,7 +34,14 @@ export default async (t) => {
         continue;
       }
       if (await vis('dexCard')) { seen.add('도감 카드'); await press('Space', ' ', 300); continue; }
-      if (await vis('dialog')) { seen.add('대사'); await press('Space', ' ', 100); continue; }
+      if (await vis('dialog')) {
+        seen.add('대사');
+        // MARKS=대사 일부=캡처 이름,... : 그 대사가 뜨면 SHOT_WAIT(ms)만큼 기다렸다가 캡처하고 PROBE(페이지에서 계산할 식)의 값을 찍는다
+        const line = await t.ev(`document.getElementById('line').textContent`);
+        const m = marks.find(([s, name]) => line.includes(s) && !shot.has(name));
+        if (m) { shot.add(m[1]); await t.wait(Number(process.env.SHOT_WAIT ?? 1500)); await t.shot(m[1]); if (process.env.PROBE) console.log('PROBE', m[1], JSON.stringify(await t.ev(process.env.PROBE))); }
+        await press('Space', ' ', 100); continue;
+      }
       if (await vis('nextBtn')) { seen.add('다음 버튼'); await t.ev(`document.getElementById('nextBtn').focus(); 1`); await press('Enter', 'Enter', 600); continue; }
       if (await vis('challenge')) {
         seen.add('도전');
@@ -55,6 +63,8 @@ export default async (t) => {
       await t.wait(300);
     }
     const errs = await t.ev(`JSON.stringify(__errs.splice(0))`);
+    const walked = await t.ev(`JSON.stringify((globalThis.__stuck ?? []).splice(0))`);
+    if (walked !== '[]') console.log(`STUCK ${id} ${walked}`); // 걷다가 막혀 순간 이동한 인물(벽 관통 점검)
     if (!done) { await t.shot(`stuck-${id}`); await boot(t, { ...SAVE, xp: 3000, talents: 300 }); await t.ev(`window.__errs=[];addEventListener('error',e=>__errs.push(String(e.message))); __dev.speed = 4; 1`); }
     console.log(`${done ? 'OK' : 'NG'} ${id} [${[...seen].join(', ')}] errs=${errs}${done ? '' : ' 멈춘 곳=' + last}`);
   }

@@ -14,6 +14,9 @@ import data from '../data/brothers.js';
 
 // 화면 자리: s는 화면 오른쪽, d는 카메라 쪽(카메라가 +x, +z에서 내려다본다). 방의 벽을 화면과 나란히 세우려고 이 좌표로 놓는다.
 const SD = (s, d) => V((s + d) * Math.SQRT1_2, (d - s) * Math.SQRT1_2);
+// 엎드린 몸은 앞으로 약 1.7 뻗고 어깨 폭은 0.5다. 줄로 세우면 바깥 사람이 옆 사람의 몸 위에 눕는다. 요셉(s, d)을 꼭짓점으로 반지름 R, 각 간격 step의 부채꼴로 세우면
+// 몸이 바큇살처럼 퍼진다(머리 쪽 반지름 R-1.7에서 이웃과의 간격이 (R-1.7)×step으로 0.5 안팎이다).
+const FAN = (s, d, n, R, step) => Array.from({ length: n }, (_, i) => { const a = (i - (n - 1) / 2) * step; return SD(s + R * Math.sin(a), d + R * Math.cos(a)); });
 const START = V(6, 5);
 const NAMES = ['맏형 르우벤', '둘째 시므온', '셋째 레위', '넷째 유다', '다섯째 단', '막내 베냐민'];
 
@@ -23,13 +26,13 @@ const JOSEPH_GR = SD(-5.6, -4.2);
 const SCRIBE = SD(-6.35, -4.45);
 const STEWARD_GR = SD(-4.5, -4.25);
 const CELL = SD(-7.65, -4.6); // 마당 왼쪽 안의 갇히는 칸(창 42:17 "옥", 42:24)
-const BOW_GR = [0, 1, 2, 3, 4].map((i) => SD(-6.75 + i * 0.75, -2.3));
+const BOW_GR = FAN(-5.6, -4.2, 5, 2.9, 0.4); // 요셉(JOSEPH_GR) 둘레의 부채꼴(2026-11-14 F95: 전에는 d -2.3의 한 줄, 간격 0.75)
 const SACKS = [-7.4, -6.4, -3.8, -2.9].map((s) => SD(s, 0.6)); // 문 앞 빈 자루(곡식 받기 자리)
 const DONKEYS = SACKS.map((p) => p.clone().add(SD(0, 1.3)));
 // 요셉의 집(창 43:16): 화면 가로 7, 깊이 4.4. 오른쪽 안에 안방(창 43:30)
 const HS = { s: 1.9, d: -6, w: 7, dp: 4.4, door: 2 };
 const JOSEPH_HALL = SD(-0.7, -5.3);
-const HALL_ROW = [0, 1, 2, 3, 4, 5].map((i) => SD(0.1 + i * 0.65, -4.65)); // 맏이 → 막내
+const HALL_ROW = [0, 1, 2, 3, 4, 5].map((i) => SD(0.3 + i * 0.85, -4.35)); // 맏이 → 막내(F95: 간격 0.65에서 0.85로, 엎드릴 때는 앞쪽에서 20도만 비틀어 나란히 눕는다)
 const SEATS = [0, 1, 2, 3, 4, 5].map((i) => SD(-0.1 + i * 0.6, -7.15)); // 나이 차례대로 앉는 자리(창 43:33)
 const TABLE = SD(1.4, -6.45);
 const BY_TABLE = SD(-0.55, -7.4); // 상 왼쪽 끝을 돌아 자리로 들어가는 길목
@@ -47,13 +50,13 @@ const ROW = ROW_S.map((s) => SD(s, 1.3));
 const ROW_MEN = ROW_S.map((s) => SD(s, 0.55));
 // 가나안 장막
 const CANAAN = SD(8.6, 0.6);
-const JACOB = SD(7.3, 2.1);
+const JACOB = SD(8.2, 3.1); // 장막 입구 바로 앞(전에는 SD(7.3, 2.1)로 장막 옆 천 위였다, F97)
 const CAN_ROW = [0, 1, 2, 3, 4, 5].map((i) => SD(3.2 + i * 0.7, 2.3));
-const CAN_ARRIVE = SD(7.6, 5.4);
+const CAN_ARRIVE = SD(7, 4.3); // 장막 입구(SD(8.6, 2.55)) 앞마당. 전에는 SD(7.6, 5.4)로 장막에서 7.7 떨어진 빈 땅이었다(F93)
 // 고센(창 45:10, 47:27): 장막과 가축
 const GOSHEN = SD(-4.6, 2.5);
 const JACOB_G = SD(-3.2, 5.4);
-const GOSHEN_ROW = [0, 1, 2, 3, 4, 5].map((i) => SD(-6.6 + i * 0.75, 6.6)); // 장막 앞을 비워 엎드린 형들이 장막에 겹치지 않게
+const GOSHEN_ROW = FAN(-4.25, 5.6, 6, 3, 0.4); // 요셉(JOSEPH_G) 둘레의 부채꼴. 장막 앞을 비워 엎드린 형들이 장막에 겹치지 않게
 const JOSEPH_G = SD(-4.25, 5.6);
 const GOSHEN_ARRIVE = SD(-1.2, 7);
 const PASTURE = SD(-8.2, 4.4);
@@ -72,7 +75,7 @@ export default {
         canaan: { c: SD(4.9, 3.9), r: 1.5 }, goshen: { c: SD(-4.6, 8.4), r: 1.4 },
       },
       trees: 9, treeKinds: ['palm', 'round'],
-      keep: [...SACKS, ...DONKEYS, ...ROW, ...CAN_ROW, CANAAN, GOSHEN, PASTURE, ...WAGON_OUT, ...DONKEY_PARK, ...[0, 1, 2, 3, 4, 5].map((k) => SD(-4 + k * 2.4, 3))],
+      keep: [...SACKS, ...DONKEYS, ...ROW, ...CAN_ROW, CANAAN, GOSHEN, PASTURE, ...WAGON_OUT, ...DONKEY_PARK, CAN_ARRIVE, ...[0, 1, 2, 3, 4, 5].map((k) => SD(-4 + k * 2.4, 3))],
     });
     const add = (obj, p, y = 0, yaw = 0) => { obj.position.copy(p).setY(y); obj.rotation.y = yaw; F.group.add(obj); return obj; };
     const box = (w, h, d, c) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c));
@@ -226,6 +229,7 @@ export default {
     add(makeTent(0x5a3a28), CANAAN, 0, -Math.PI / 4);
     F.block(CANAAN, 1.2);
     const goshenTent = add(makeTent(0x6a4a30, 1), GOSHEN, 0, -Math.PI / 4);
+    goshenTent.visible = false; // 고센으로 떠날 때 보인다: 낮은 카메라에서 곡식 창고 앞을 가려 절하는 형들이 보이지 않았다(2026-11-14)
     for (let i = 0; i < 3; i++) F.animal('sheep', [0xeee8dc, 0xe0d8c8, 0xf4f0e8][i], 0.6, PASTURE.clone().add(SD(i * 0.8 - 0.8, (i % 2) * 0.6)), { roam: 1.2 });
 
     // ---------- 소품: 자루, 돈뭉치, 은잔, 밧줄, 옷 ----------
@@ -279,6 +283,8 @@ export default {
     // 수레는 끄는 사람 뒤 1.2를 두고 따라간다
     F.onUpdate((dt) => {
       for (const w of wagons) {
+        const rider = w.userData.rider; // 타고 있는 사람: 짐칸 위에서 수레와 함께 간다
+        if (rider) { rider.position.copy(w.position).setY(0.55); rider.rotation.y = w.rotation.y; }
         const lead = w.userData.lead;
         if (!lead) continue;
         const to = lead.position.clone().setY(0).sub(w.position), d = to.length();
@@ -322,6 +328,27 @@ export default {
       return tween(500, (p) => fig.position.copy(p0).addScaledVector(dir, dist * easeOut(p)));
     };
     const later = (ms, fn) => tween(ms, () => {}).then(fn);
+    // 몸 돌리기: field.js의 face는 자세(pose)를 잡은 인물에게 먹지 않아, 울기·엎드림 앞뒤의 방향은 이것으로 돌린다
+    const turn = (fig, p, ms = 500) => {
+      face(fig, p);
+      const y0 = fig.rotation.y, d = Math.atan2(Math.sin(fig.userData.faceYaw - y0), Math.cos(fig.userData.faceYaw - y0));
+      return tween(ms, (k) => (fig.rotation.y = y0 + d * easeOut(k)));
+    };
+    // 엎드림(F95): 요셉 쪽을 보되 화면 안쪽(-d)에서 max 라디안까지만 비튼다. 한 줄로 선 사람이 모두 요셉을 향해 모이면 바깥 사람이 옆 사람 몸 위에 눕는다
+    const DOWN = Math.atan2(-1, -1);
+    const lie = (fig, to, max, k = 0.7) => {
+      const want = Math.atan2(to.x - fig.position.x, to.z - fig.position.z), diff = Math.atan2(Math.sin(want - DOWN), Math.cos(want - DOWN)), yaw = DOWN + Math.max(-max, Math.min(max, diff));
+      return F.acts.prostrate(fig, fig.position.clone().add(V(Math.sin(yaw), Math.cos(yaw))), k);
+    };
+    // 가나안 장막 입구로 나온다(F97): 장막 안에서 앞기둥까지 걸어 나와 JACOB에 선다. 안에 있는 동안은 보이지 않는다.
+    const exitTent = async () => {
+      jacob.position.copy(CANAAN).add(SD(0, 0.6));
+      jacob.rotation.y = Math.PI / 4;
+      jacob.visible = true;
+      const a = at(jacob), b = CANAAN.clone().add(SD(0, 1.7));
+      await tween(700, (p) => jacob.position.lerpVectors(a, b, p));
+      await walkTo(jacob, JACOB, 1.2);
+    };
     // 나귀: 사람을 따라가거나(lead), 한자리에 매어 둔다
     const DONKEY_LEAD = [0, 2, 3, 4];
     const follow = () => donkeys.forEach((d, i) => Object.assign(d.userData, { lead: brothers[DONKEY_LEAD[i]], leadOffset: SD(0.35, -0.75), route: null, still: true }));
@@ -338,7 +365,7 @@ export default {
     await g.talk(data.lines.arrive);
     await arrive;
     brothers.forEach((b) => face(b, JOSEPH_GR));
-    await Promise.all(brothers.map((b) => F.acts.prostrate(b, JOSEPH_GR, 0.7))); // 창 42:6 땅에 엎드려 절함(R5)
+    await Promise.all(brothers.map((b) => lie(b, JOSEPH_GR, 1.2))); // 창 42:6 땅에 엎드려 절함(R5)
     await g.talk(data.lines.bow);
     // 창고에 쌓인 곡식 더미를 비추며 꿈을 떠올린다(창 37:7 곡식 단이 절함 → 42:9)
     g.cam(SD(-4.3, -3.6), 11);
@@ -349,15 +376,13 @@ export default {
     // 형들이 서로 돌아보며 뉘우친다(창 42:21~22). 르우벤이 동생들 쪽으로 돈다.
     brothers.forEach((b, i) => face(b, BOW_GR[i === 0 ? 1 : 0]));
     await g.talk(data.lines.regret);
-    // 요셉이 형들에게서 돌아서서 단 뒤로 물러나 운다(창 42:24)
-    await walkTo(joseph, SD(-6.3, -3.2), 1.4);
-    face(joseph, SD(-8, -6));
+    // 요셉이 형들에게서 돌아서서 운다(창 42:24): 단 위에서 몸을 돌려 뒷벽을 향한 채 어깨를 들썩인다(형들에게 얼굴을 보이지 않는다)
+    await turn(joseph, JOSEPH_GR.clone().add(SD(0.3, -3)), 700);
     const cry1 = weep(joseph, 2600);
     await g.talk(data.lines.weep);
     await cry1;
     // 시므온을 끌어내어 묶고(창 42:24), 청지기가 칸으로 데려간다. 칸의 앞 창살이 닫힌다.
-    await walkTo(joseph, JOSEPH_GR, 1.4);
-    face(joseph, BOW_GR[1]);
+    turn(joseph, BOW_GR[1], 600);
     brothers.forEach((b) => face(b, JOSEPH_GR));
     await walkTo(steward, BOW_GR[1].clone().add(SD(0.5, -0.45)), 2);
     rope.visible = true;
@@ -411,7 +436,8 @@ export default {
     // 형들(시므온 빼고 넷)이 나귀를 이끌고 가나안 장막으로 돌아간다. 관찰자도 따라간다.
     follow();
     const homeBros = brothers.filter((b) => b !== simeon);
-    homeBros.forEach((b, i) => walkTo(b, CAN_ROW[i], 1.7));
+    homeBros.forEach((b, i) => walkTo(b, CAN_ROW[i], 2.8)); // 관찰자(속도 4)와 거의 함께 닿는 걸음(전에는 1.7이라 관찰자가 먼저 닿고 한참 기다렸다)
+    jacob.visible = false; // 야곱은 장막 안에 있다가 형들이 닿으면 입구로 나온다(F97)
     await g.quest({ title: '가나안으로', targets: [{ pos: CAN_ARRIVE }], text: () => '형들을 따라 가나안 장막으로 가기', radius: 1.8 });
     removeDeep();
     walkTo(joseph, JOSEPH_HALL, 1.6); // 다음에는 집에서 맞는다(화면 밖)
@@ -421,6 +447,7 @@ export default {
     g.stage('canaan');
     await Promise.all(homeBros.map((b, i) => walkTo(b, CAN_ROW[i], 2)));
     homeBros.forEach((b) => face(b, at(b).add(SD(0, 1))));
+    const out1 = exitTent();
     // 자루를 나귀에서 내려 앞에 쏟으니 돈뭉치가 나온다(창 42:35)
     park(CAN_ROW.slice(0, 4).map((p) => p.clone().add(SD(0.2, -1.3))));
     const unload = Promise.all(sacks.map(async (s, i) => {
@@ -435,7 +462,7 @@ export default {
       await tween(500, (p) => b.scale.setScalar(Math.max(0.01, easeBack(p) * 1.3)));
     }));
     await g.talk(data.lines.home.slice(0, 1));
-    await unload;
+    await Promise.all([unload, out1]);
     face(jacob, CAN_ROW[2]);
     homeBros.forEach((b) => recoil(b, at(b).add(SD(0, 0.6)), 0.35)); // 두려워 물러섬
     await g.talk(data.lines.home.slice(1, 4));
@@ -493,7 +520,7 @@ export default {
     walkTo(steward, STEWARD_HALL, 1.6);
     face(joseph, HALL_ROW[3]);
     all().forEach((b) => face(b, JOSEPH_HALL));
-    await Promise.all(all().map((b) => F.acts.prostrate(b, JOSEPH_HALL, 0.7))); // 창 43:26 땅에 엎드려 절함
+    await Promise.all(all().map((b) => lie(b, JOSEPH_HALL, 0.35))); // 창 43:26 땅에 엎드려 절함
     await g.talk(data.lines.greet.slice(0, 1));
     await Promise.all(all().map((b) => F.acts.rise(b, 0.7)));
     await g.talk(data.lines.greet.slice(1, 2));
@@ -503,10 +530,10 @@ export default {
     const go = walkTo(joseph, INNER_DOOR, 2.2).then(() => walkTo(joseph, INNER, 1.6));
     await g.talk(data.lines.inner.slice(0, 1));
     await go;
-    face(joseph, SD(4.7, -9));
+    await turn(joseph, SD(4.7, -9), 300); // 안방 뒷벽을 향한다: 형제들이 있는 홀에서 급히 물러나 혼자 운다
     await weep(joseph, 2200);
-    face(joseph, SD(5.05, -7.85));
-    const out = walkTo(joseph, INNER_DOOR, 1.4).then(() => walkTo(joseph, JOSEPH_SEAT, 1.6));
+    // 대야에서 얼굴을 씻고(창 43:31) 나온다. 씻는 동안 "얼굴을 씻고 나와" 대사가 흐른다.
+    const out = turn(joseph, SD(5.05, -7.85), 400).then(() => F.acts.bow(joseph, 0.5, 500)).then(() => F.acts.bow(joseph, 0, 400)).then(() => walkTo(joseph, INNER_DOOR, 1.4)).then(() => walkTo(joseph, JOSEPH_SEAT, 1.6));
     await g.talk(data.lines.inner.slice(1));
 
     // 상을 차린다: 요셉도, 형들도, 애굽 사람들도 따로(창 43:32). 형들은 맏이부터 막내까지 차례로 앉는다(43:33).
@@ -617,7 +644,7 @@ export default {
     g.stage('hall');
     face(joseph, HALL_ROW[3]);
     all().forEach((b) => face(b, JOSEPH_HALL));
-    await Promise.all(all().map((b) => F.acts.prostrate(b, JOSEPH_HALL, 0.7))); // 창 44:14 땅에 엎드림
+    await Promise.all(all().map((b) => lie(b, JOSEPH_HALL, 0.35))); // 창 44:14 땅에 엎드림
     await g.talk(data.lines.back.slice(0, 1));
     await Promise.all(all().map((b) => F.acts.rise(b, 0.7)));
     await g.talk(data.lines.back.slice(1));
@@ -657,12 +684,11 @@ export default {
     await g.talk(data.lines.hug.slice(0, 1));
     await hug;
     const kiss = (async () => {
+      await Promise.all([weep(joseph, 1000, 1.1), weep(benjamin, 1000, 1.1)]); // 껴안은 채 함께 운다(창 45:14)
       for (const b of [...brothers].reverse()) {
-        await walkTo(joseph, at(b).add(SD(0, -0.6)), 2);
-        face(joseph, at(b));
-        face(b, at(joseph));
-        await Promise.all([F.acts.bow(joseph, 0.25, 300), F.acts.bow(b, 0.25, 300)]);
-        await Promise.all([F.acts.bow(joseph, 0, 300), F.acts.bow(b, 0, 300)]);
+        await walkTo(joseph, at(b).add(SD(0, -0.6)), 2.6);
+        await Promise.all([turn(joseph, at(b), 250), turn(b, at(joseph), 250)]);
+        await Promise.all([weep(joseph, 800, 1.1), weep(b, 800, 1.1)]); // 입 맞추며 형제가 함께 운다(창 45:15)
       }
     })();
     await g.talk(data.lines.hug.slice(1));
@@ -690,7 +716,8 @@ export default {
     follow();
     wagons[0].userData.lead = judah;
     wagons[1].userData.lead = reuben;
-    all().forEach((b, i) => walkTo(b, CAN_ROW[i], 1.7));
+    all().forEach((b, i) => walkTo(b, CAN_ROW[i], 2.8)); // 수레(최고 3)가 따라올 수 있고 관찰자와 거의 함께 닿는 걸음
+    jacob.visible = false; // 야곱은 장막 안에 있다가 입구로 나온다(F97)
     await g.quest({ title: '가나안으로', targets: [{ pos: CAN_ARRIVE }], text: () => '수레를 따라 가나안 장막으로 가기', radius: 1.8 });
 
     // ===== 가나안, 다시(창 45:25~28) =====
@@ -700,6 +727,7 @@ export default {
     all().forEach((b) => face(b, JACOB));
     F.acts.carry(robes, null);
     robes.visible = false;
+    await exitTent(); // 소식을 들으러 장막 입구로 나온다(F97)
     face(jacob, CAN_ROW[3]);
     await g.talk(data.lines.revive.slice(0, 1));
     // 야곱이 믿지 못해 고개를 떨군다(창 45:26 "마음이 어리둥절하였다") → 수레를 보고 고개를 들어 수레 쪽으로 걸어간다(45:27)
@@ -715,20 +743,48 @@ export default {
 
     // ===== 고센(창 46:5~30, 47:27, 49:33, 50:15~21) =====
     // 온 집안이 수레와 함께 고센으로 내려간다. 요셉도 집에서 고센으로 올라온다.
-    wagons[0].userData.lead = jacob;
-    const family = Promise.all([walkTo(jacob, JACOB_G, 1.5), ...all().map((b, i) => walkTo(b, GOSHEN_ROW[i], 1.6))]);
+    // 야곱이 수레 곁으로 걸어가 올라타 앉으면(창 46:5) 수레가 움직이기 시작하고, 아들들과 가축이 앞서 걷는다. 카메라는 수레를 따라간다.
+    const wagon = wagons[0];
+    wagon.userData.lead = null;
+    wagon.updateMatrixWorld();
+    const sides = [0.85, -0.85].map((x) => wagon.localToWorld(new THREE.Vector3(x, 0, 0)).setY(0));
+    const side = at(jacob).distanceTo(sides[0]) < at(jacob).distanceTo(sides[1]) ? sides[0] : sides[1];
+    g.cam(wagon.position, 12);
+    F.goshenTent.visible = true;
+    const journey = (async () => {
+      await walkTo(jacob, side, 1.3);
+      await turn(jacob, at(wagon), 300);
+      const from = at(jacob);
+      await tween(700, (p) => { jacob.position.lerpVectors(from, at(wagon), easeOut(p)); jacob.position.y = 0.55 * easeOut(p) + Math.sin(p * Math.PI) * 0.25; });
+      wagon.userData.rider = jacob;
+      await sit(jacob);
+      wagon.userData.lead = judah;
+      walkTo(joseph, JOSEPH_G, 2.6); // 요셉은 먼저 고센으로 올라가 기다린다(창 46:29)
+      await Promise.all(all().map((b, i) => walkTo(b, GOSHEN_ROW[i], 2.4)));
+      await F.acts.wait(500);
+      wagon.userData.rider = null; // 고센에 닿아 수레에서 내린다
+      wagon.userData.lead = null;
+      const down = at(jacob).add(SD(0.4, 0.4));
+      await Promise.all([stand(jacob), tween(500, (p) => { jacob.position.lerpVectors(at(wagon), down, easeOut(p)); jacob.position.y = 0.55 * (1 - easeOut(p)); })]);
+      // 수레는 장막 곁으로 비켜 세운다: 엎드린 형들 사이를 가로막지 않게
+      const w0 = at(wagons[0]), w1 = at(wagons[1]), p0 = SD(-1.2, 4.2), p1 = SD(-0.4, 4.7);
+      wagons[1].userData.lead = null;
+      tween(1400, (p) => { wagons[0].position.lerpVectors(w0, p0, easeOut(p)); wagons[1].position.lerpVectors(w1, p1, easeOut(p)); });
+      await walkTo(jacob, JACOB_G, 1.5);
+    })();
     await g.talk(data.lines.goshen.slice(0, 1));
     await g.quest({ title: '고센으로', targets: [{ pos: GOSHEN_ARRIVE }], text: () => '야곱의 집안을 따라 고센으로 가기', radius: 1.8 });
+    await journey; // 일행이 닿는 모습을 끝까지 비춘 뒤 고센 장면으로 넘어간다
     g.cam(SD(-4.2, 5.4), 12);
     g.stage('goshen');
     park([0, 1, 2, 3].map((i) => SD(-2.0 + i * 0.7, 2.5)));
-    await Promise.all([family, walkTo(joseph, JOSEPH_G, 2)]);
+    await walkTo(joseph, JOSEPH_G, 2);
     const meet = F.acts.embrace(joseph, jacob, 2400); // 창 46:29 아버지의 목을 안고 한참 욺
     await g.talk(data.lines.goshen.slice(1, 2));
     await meet;
     await g.talk(data.lines.goshen.slice(2));
     // 여러 해가 흐른다. 야곱은 장막 안으로 들어가고(창 49:33), 하늘빛이 한 번 저물었다 밝아진다.
-    const inTent = walkTo(jacob, GOSHEN.clone().add(SD(0, 1.2)), 0.9).then(async () => {
+    const inTent = walkTo(jacob, GOSHEN.clone().add(SD(0, 2.8)), 0.9).then(() => walkTo(jacob, GOSHEN.clone().add(SD(0, 1.2)), 0.9)).then(async () => { // 장막 앞(입구 쪽)으로 와서 들어간다
       const a = at(jacob);
       await tween(700, (p) => jacob.position.lerpVectors(a, GOSHEN, p));
       jacob.visible = false;
@@ -742,7 +798,7 @@ export default {
     await walkTo(joseph, JOSEPH_G, 1.4);
     face(joseph, GOSHEN_ROW[2]);
     all().forEach((b) => face(b, JOSEPH_G));
-    await Promise.all(all().map((b) => F.acts.prostrate(b, JOSEPH_G, 0.7))); // 창 50:18 그의 앞에 엎드림(R5)
+    await Promise.all(all().map((b) => lie(b, JOSEPH_G, 1.2))); // 창 50:18 그의 앞에 엎드림(R5)
     await g.talk(data.lines.end.slice(0, 3));
     await Promise.all(all().map((b) => F.acts.rise(b, 0.7)));
     await g.talk(data.lines.end.slice(3, 5));

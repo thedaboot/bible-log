@@ -536,11 +536,23 @@ export default {
     await Promise.all([0, 3, 4].map((i) => F.acts.rise(brothers[i])));
     F.acts.face(judah, merchants[0].position);
     F.acts.face(merchants[0], judah.position);
+    // F86:두 형이 구덩이 가장자리(오른쪽)로 가서 손을 내밀고, 요셉은 구덩이 안에서 제자리로 올라온 뒤 가장자리에 발을 딛는다.
+    // 전에는 바닥에서 가장자리까지 비스듬히 한 번에 옮겨 흙벽 속을 지나는 것처럼 보였다.
+    const pullers = [PIT.clone().addScaledVector(ALONG, 1.5).addScaledVector(UP, 0.85), PIT.clone().addScaledVector(ALONG, 1.45).addScaledVector(UP, -0.2)];
+    const toEdge = Promise.all([3, 4].map((b, i) => F.acts.walkTo(brothers[b], pullers[i], 1.4)));
+    const lip = PIT.clone().addScaledVector(ALONG, 1.65).addScaledVector(UP, 0.3), under = PIT.clone().addScaledVector(ALONG, 0.6).addScaledVector(UP, 0.5);
     await g.talk(data.lines.pit.slice(5, 6));
-    const lip = PIT.clone().addScaledVector(ALONG, 1.65);
-    await Promise.all([F.acts.bow(brothers[3], 0.6), F.acts.bow(brothers[4], 0.6)]);
-    await tween(1300, (p) => { joseph.position.lerpVectors(bottom, lip, easeOut(p)).setY(-PIT_D * (1 - easeOut(p))); });
+    await toEdge;
+    for (const b of [3, 4]) { F.acts.face(brothers[b], under); brothers[b].userData.armPose = 'hug'; }
+    joseph.userData.armPose = 'raise';
+    await tween(400, (p) => joseph.position.lerpVectors(bottom, under, easeOut(p)).setY(-PIT_D));
+    await Promise.all([F.acts.bow(brothers[3], 0.5), F.acts.bow(brothers[4], 0.5)]);
+    await tween(1100, (p) => joseph.position.copy(under).setY(-PIT_D * (1 - easeOut(p))));
+    await tween(500, (p) => joseph.position.lerpVectors(under, lip, easeOut(p)).setY(0));
     joseph.userData.fixY = false;
+    joseph.userData.armPose = null;
+    brothers[3].userData.armPose = brothers[4].userData.armPose = null;
+    F.acts.face(joseph, merchants[0].position);
     await Promise.all([F.acts.bow(brothers[3], 0), F.acts.bow(brothers[4], 0)]);
     // 값(은 이십)을 받은 형이 누구인지는 본문에 없다. 팔자고 한 유다가 받는다(각색)
     const pay = Promise.all([pass(pouch, judah), F.acts.walkTo(joseph, merchants[0].position.clone().add(V(0.3, 0.8)), 1.8)]);
@@ -625,7 +637,10 @@ export default {
       title: '옥의 저녁', targets: prisoners.map((p, i) => ({ pos: p.position.clone().add(V(1.3, -0.35)), i })), text: (t) => `${nth[t.i]} 죄수에게 빵 건네기`, radius: 1.3,
       onFound: async (t) => {
         const p = prisoners[t.i];
-        await F.acts.walkTo(joseph, p.position.clone().add(V(0.8, t.i < 2 ? 0.45 : -0.45)), 1.8);
+        // F87: 관찰자(목표 p+(1.3,-0.35) 곁)와 겹치지 않게 관찰자에서 먼 쪽에 서고, 죄수·요셉·관찰자가 한 화면에 들게 비춘다
+        const side = [0.45, -0.45].sort((a, b) => p.position.clone().add(V(0.8, b)).distanceTo(g.player.position) - p.position.clone().add(V(0.8, a)).distanceTo(g.player.position))[0];
+        g.cam(p.position.clone().add(V(0.9, 0)), 10);
+        await F.acts.walkTo(joseph, p.position.clone().add(V(0.8, side)), 1.8);
         F.acts.face(joseph, p.position);
         loaves[p.userData.slot].visible = true;
         await tween(500, (k) => (p.userData.rig.rotation.x = 0.35 * Math.sin(k * Math.PI))); // 고개 숙여 받는다
@@ -803,8 +818,12 @@ export default {
     await g.talk(data.lines.ruler.slice(5, 6));
     await toCart;
     joseph.userData.fixY = true;
+    // F90: 수레 뒤에 서서 난간을 잡고(grip) 발을 들어 올라선다. 올라서면 수레 몰기(drive)가 이어 받아 같은 자리에서 달리기 시작한다
     const step = joseph.position.clone();
-    await tween(500, (p) => joseph.position.lerpVectors(step, CHARIOT, p).setY(0.42 * Math.sin(p * Math.PI / 2)));
+    F.acts.face(joseph, CHARIOT);
+    joseph.userData.armPose = 'grip';
+    await tween(750, (p) => joseph.position.lerpVectors(step, CHARIOT, easeOut(p)).setY(0.42 * Math.sin(p * Math.PI / 2)));
+    joseph.userData.armPose = null;
     // 수레는 길을 따라 동쪽으로 간다. 요셉은 수레 위에 서고, 길가의 사람들이 수레가 지나갈 때 엎드린다
     g.cam(V(5.4, -1.2), 14);
     const ride = drive(ROAD, 4200, joseph);

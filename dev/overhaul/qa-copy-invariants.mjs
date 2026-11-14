@@ -7,7 +7,7 @@ import {isDeepStrictEqual} from 'node:util';
 
 const root=process.cwd(), here=new URL('.',import.meta.url);
 const approved=JSON.parse(fs.readFileSync(new URL('integration-5-approved-copy.json',here),'utf8'));
-assert.equal(approved.data.length,29,'the reviewed copy list changed');
+assert.equal(approved.data.length,31,'the reviewed copy list changed');
 const files=[...new Set(approved.data.map(d=>d.path.split('.js.')[0]+'.js'))];
 const entries=s=>s.match(/[A-Za-z_$][\w$-]*|\d+/g);
 const locate=(o,parts)=>parts.slice(0,-1).reduce((v,k)=>v[k],o);
@@ -33,6 +33,6 @@ for(const file of files){
   }
   assert.ok(isDeepStrictEqual(after,before),`unreviewed data/ID/reference/reward/order change in ${file}`);
 }
-const result={at:new Date().toISOString(),baseline:'0729d43',files,approved:29,unreviewedChanges:0};
+const result={at:new Date().toISOString(),baseline:'0729d43',files,approved:approved.data.length,unreviewedChanges:0};
 fs.writeFileSync(new URL('../shots/overhaul/integration-5-copy-result.json',here),JSON.stringify(result,null,2)+'\n');
-console.log('PASS exact reviewed 29 copy changes; every other data field/ID/ref/reward/order preserved',JSON.stringify(result));
+console.log('PASS exact reviewed copy changes; every other data field/ID/ref/reward/order preserved',JSON.stringify(result));

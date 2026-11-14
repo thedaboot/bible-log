@@ -1011,7 +1011,7 @@ function talk(lines, ctx, opts = {}) {
 //    말하는 사람이 바뀔 때마다 다시 겨누지 않는다(말하는 사람은 영역 안에 넣을 사람으로만 센다).
 const camR = new THREE.Vector3(), camU = new THREE.Vector3(), camF = new THREE.Vector3(), camWant = new THREE.Vector3(), camAt = new THREE.Vector3();
 let fitZoom = 1;
-function frameFit(base) {
+function frameFit(base, staged = false) {
   camR.setFromMatrixColumn(camera.matrixWorld, 0);
   camU.setFromMatrixColumn(camera.matrixWorld, 1);
   camF.setFromMatrixColumn(camera.matrixWorld, 2).negate(); // 카메라가 보는 방향
@@ -1021,7 +1021,8 @@ function frameFit(base) {
   const ox = viewOff.x * 2, oy = viewOff.y * 2;
   const x0 = -0.9 + ox, x1 = 0.9 + ox;
   const y0 = -1 + 2 * (talk ? (tall ? 0.3 : 0.36) : 0.16) - oy, y1 = 1 - 2 * (tall ? 0.17 : 0.13) - oy;
-  let minX, maxX, minY, maxY, n, at = base;
+  stagePoint.position = base;
+  let minX, maxX, minY, maxY, n, at = base, zL, zR, zB, zT; // z*: 그 끝을 만든 사람의 깊이(카메라에서의 거리)
   // 카메라가 at을 볼 때 그 사람의 발과 머리가 화면의 어디에 오는지(원근: 멀수록 가운데로 모이고 작아진다)
   const take = (fig, height, half) => {
     if (!fig?.visible) return;
@@ -1029,30 +1030,45 @@ function frameFit(base) {
     camAt.y -= CAM_LIFT; // 보는 점은 base에서 CAM_LIFT만큼 위다
     const side = camAt.dot(camR), up = camAt.dot(camU), z = Math.max(1, camDist + camAt.dot(camF)), zTop = Math.max(1, z + height * camF.y);
     const sx = side / (z * tanH), w = half / (z * tanH);
-    minX = Math.min(minX, sx - w); maxX = Math.max(maxX, sx + w);
-    minY = Math.min(minY, up / (z * tanV)); maxY = Math.max(maxY, (up + height * camU.y) / (zTop * tanV));
+    const sy = up / (z * tanV), sTop = (up + height * camU.y) / (zTop * tanV);
+    if (sx - w < minX) { minX = sx - w; zL = z; }
+    if (sx + w > maxX) { maxX = sx + w; zR = z; }
+    if (sy < minY) { minY = sy; zB = z; }
+    if (sTop > maxY) { maxY = sTop; zT = zTop; }
     n++;
   };
-  // 벗어난 만큼을 보는 점의 거리에서의 길이로 바꿔 초점을 옮긴다. 카메라에 가까운 사람(비켜 선 관찰자)은 같은 이동에도 화면에서 더 크게
-  // 움직이므로, 옮긴 초점에서 다시 재서 남은 만큼만 더 옮긴다(한 번에 옮기면 지나쳐서 PC에서 머리가 화면 위로 잘렸다, 2026-11-14)
+  // 벗어난 만큼을 "벗어난 그 사람의 깊이"에서의 길이로 바꿔 초점을 옮긴다. 카메라에 가까운 사람(비켜 선 관찰자)은 같은 이동에도 화면에서
+  // 더 크게 움직인다. 보는 점의 거리(camDist)로 바꾸면 지나쳐서 PC에서 머리가 화면 위로 잘렸고, 그대로 되풀이하면 가까울수록
+  // 더 크게 지나쳐 초점이 화면 밖으로 밀렸다(2026-11-14 우물, 얍복강). 옮긴 초점에서 다시 재서 남은 만큼만 더 옮긴다
   for (let i = 0; i < 4; i++) {
     minX = minY = Infinity; maxX = maxY = -Infinity; n = 0;
     take(player, 1.8 * (player.userData.height ?? 1), 0.4);
     if (angelFollow) take(angel, 2, 0.6);
     if (talk && speaker !== player) take(speaker, 1.8, 0.4);
+    if (staged) take(stagePoint, 1.8, 0.6);
     if (!n) { fitZoom = 1; return base; }
     const spanX = maxX - minX, spanY = maxY - minY, roomX = x1 - x0, roomY = y1 - y0;
     // 물러나야 하는 만큼: 지금 화면에서 넘치는 비에 지금 실제로 물러나 있는 정도(zoom ÷ 기본 배율)를 곱한다.
     // 배율이 옮겨 가는 중에도 같은 값이 나와서 다가갔다 물러났다 하지 않는다
     const need = Math.max(spanX / roomX, spanY / roomY) * (zoom / (talk ? 0.88 : 1));
     fitZoom = need > 1.02 ? Math.min(1.45, need) : 1;
-    const ex = spanX > roomX ? (minX + maxX) / 2 - (x0 + x1) / 2 : minX < x0 ? minX - x0 : maxX > x1 ? maxX - x1 : 0;
-    const ey = spanY > roomY ? (minY + maxY) / 2 - (y0 + y1) / 2 : minY < y0 ? minY - y0 : maxY > y1 ? maxY - y1 : 0;
+    const [ex, zx] = spanX > roomX ? [(minX + maxX) / 2 - (x0 + x1) / 2, Math.min(zL, zR)] : minX < x0 ? [minX - x0, zL] : maxX > x1 ? [maxX - x1, zR] : [0, 1];
+    const [ey, zy] = spanY > roomY ? [(minY + maxY) / 2 - (y0 + y1) / 2, Math.min(zB, zT)] : minY < y0 ? [minY - y0, zB] : maxY > y1 ? [maxY - y1, zT] : [0, 1];
     if (Math.abs(ex) < 0.005 && Math.abs(ey) < 0.005) break;
-    at = camWant.copy(at).addScaledVector(camR, ex * camDist * tanH).addScaledVector(camU, ey * camDist * tanV);
+    at = camWant.copy(at).addScaledVector(camR, ex * zx * tanH).addScaledVector(camU, ey * zy * tanV);
+  }
+  // 스테이지가 준 초점(사건이 일어나는 자리)은 늘 화면에 남는다: 관찰자가 멀리 서 있어 둘을 함께 담지 못하면 초점이 이긴다
+  // (2026-11-14: 관찰자가 출발 자리에 선 채 곡식 창고의 절하는 장면이 화면 밖에서 지나갔다)
+  if (staged) {
+    camAt.copy(base).sub(at);
+    camAt.y -= CAM_LIFT;
+    const z = Math.max(1, camDist + camAt.dot(camF)), sx = camAt.dot(camR) / (z * tanH), sy = camAt.dot(camU) / (z * tanV);
+    const kx = sx < x0 + 0.25 ? sx - x0 - 0.25 : sx > x1 - 0.25 ? sx - x1 + 0.25 : 0, ky = sy < y0 + 0.05 ? sy - y0 - 0.05 : sy > y1 - 0.4 ? sy - y1 + 0.4 : 0;
+    if (kx || ky) at = camWant.copy(at).addScaledVector(camR, kx * z * tanH).addScaledVector(camU, ky * z * tanV);
   }
   return at;
 }
+const stagePoint = { visible: true, position: null };
 let speaker = null, speakerFrame = null;
 const figOf = (who) => { const L = land(); return L?.people?.[who] ?? (L && L === eden ? { adam: eden.adam, eve: eden.eve }[who] : null) ?? null; };
 const ndc = new THREE.Vector3();
@@ -2184,7 +2200,7 @@ function tick() {
   // 천국·창조·꾸미기처럼 땅이 없는 장면은 전과 같다(말하는 사람이 화면 밖이면 그쪽을 본다)
   const fit = land() && mode !== 'orbit' && !titleView;
   const aim = camFocus ?? (camPair && pairPoint.copy(camPair[0].position).lerp(camPair[1].position, 0.5).setY(0)) ?? camFollow;
-  const want = fit ? frameFit(aim) : speakerFocus() ?? aim;
+  const want = fit ? frameFit(aim, aim !== camFollow) : speakerFocus() ?? aim;
   if (!fit) fitZoom = 1;
   const zoomTo = (!creation && !titleView && !$('dialog').hidden ? 0.88 : 1) * fitZoom;
   if (Math.abs(zoomTo - zoom) > 0.002) { zoom += (zoomTo - zoom) * Math.min(1, dt * 2.5); applyView(); }

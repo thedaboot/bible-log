@@ -3,14 +3,14 @@
 // → 홀로 남은 야곱에게 돌아가기 → 밤새 씨름(도전) → 새벽, 이스라엘과 브니엘 → 해 돋을 때 절뚝이며 여울을 건넘(퀘스트, 32:31)
 // → 에서와 사백 명이 옴, 식구를 차례로 세움(퀘스트, 33:1~2) → 일곱 번 엎드림, 달려와 안음(33:3~4) → 식구들이 차례로 절함(33:5~7)
 // → 예물 떼(33:8) → 막간(에서) → 창 33:10~11 예물을 받음 → 퀴즈(창 32:28)
-// 장소(2026-11-05 F61 "장면이 생략되어 있다, 장소가 그곳 같지 않다"): 골짜기 사이를 흐르는 강, 여울과 두 줄 디딤돌, 강가 바위·갈대,
+// 장소(2026-11-05 F61 "장면이 생략되어 있다, 장소가 그곳 같지 않다"): 골짜기 사이를 흐르는 강, 나무다리, 강가 바위·갈대,
 // 이쪽 둑의 장막, 건너편 둑에서 고개(산 사이 틈)로 오르는 너른 길. 밤과 새벽은 하늘빛과 햇빛 색으로 보인다
 // (정사영 카메라라 하늘이 산줄기 틈으로만 보여 별·해 물체는 두지 않았다).
 // 각색: 예물 떼(암염소 이백 … 새끼 나귀 열)는 떼마다 두 마리와 종 하나로, 사백 명은 앞의 네 사람과 길을 메운 실루엣 예순으로 줄였다.
 // 식구는 두 여종과 아이 둘, 레아와 아이 둘, 라헬과 요셉 아홉으로 줄였다(열한 아들, 창 32:22). 관찰자가 떼를 보내고 줄을 세우는 일은 각색이다.
 import * as THREE from 'three';
 import { makeField, V, toCam } from '../field.js';
-import { PAL, mat, setArms, makeTent, makeTree } from '../props.js';
+import { PAL, mat, setArms, makeTent, makeTree, makeBridge } from '../props.js';
 import { tween, easeOut } from '../anim.js';
 import data from '../data/jabbok.js';
 
@@ -20,6 +20,9 @@ const FORD = V(0, 0); // 얍복 나루(여울)
 // 나루 기준 자리: a는 강을 따라(화면 오른쪽 +), f는 강을 가로질러(이쪽 둑 +, 건너편 둑 -)
 const P = (a, f) => FORD.clone().addScaledVector(ALONG, a).addScaledVector(FRONT, f);
 const RIVER = 1.2; // 강 반폭
+const BL = 4.4, BW = 1.9; // 다리: 강을 가로지르는 길이(양쪽 둑에 1미터씩 걸침)와 폭. 폭은 강 막이(아래 block)가 남기는 통로 폭과 같다
+// 다리 위 걷는 높이: makeBridge의 판자 높이(양 끝 0.14, 가운데 0.22)를 따른다. 다리 밖은 0
+const bridgeY = (x, z) => { const a = x * ALONG.x + z * ALONG.z, f = x * FRONT.x + z * FRONT.z; return Math.abs(a) > BW / 2 || Math.abs(f) > BL / 2 ? 0 : 0.14 + Math.sin(((f + BL / 2) / BL) * Math.PI) * 0.08; };
 const START = V(6, 5);
 const CAMP = P(-1.4, 3.4); // 이쪽 둑의 야곱 장막 앞
 const WRESTLE = P(2.6, 3); // 홀로 남아 씨름한 자리
@@ -30,6 +33,7 @@ const ESAU_STOP = P(2, -9.6); // 에서가 멈춰 바라본 자리
 const TO_ESAU = ESAU_STOP.clone().sub(JFRONT).normalize();
 const JEND = JFRONT.clone().addScaledVector(TO_ESAU, 1.4); // 일곱 번 엎드리며 다가간 끝
 const MEET = JEND.clone().addScaledVector(TO_ESAU, 0.65); // 둘이 껴안는 자리
+const MEET_CAM = P(2.2, -6.8); // 만남 대화 내내 쓰는 초점 하나: 야곱의 출발(JFRONT), 에서(ESAU_STOP), 예물 떼, 식구 줄이 한 구도에 든다
 const ROAD = [P(1.2, -1.8), P(2.6, -12), P(3.2, -19.5)]; // 건너편 둑에서 고개로 오르는 길
 // 예물 떼 다섯(창 32:14~15). 떼마다 두 마리와 모는 종 하나. 기다리는 자리는 이쪽 둑 오른쪽에 사이를 두고 늘어선다.
 const DROVES = [
@@ -72,15 +76,23 @@ export default {
     const rand = F.rand;
     const add = (geo, m, p, y = 0) => { const o = new THREE.Mesh(geo, m); o.position.copy(p).setY(y); F.group.add(o); return o; };
     const yawOf = (d) => Math.atan2(d.x, d.z);
-    // 강: 깊은 물줄기(폭 2.4)와 여울의 얕은 물빛. 여울(가운데 폭 1.6) 말고는 막는다.
+    // 강: 깊은 물줄기(폭 2.4). 가운데 나무다리(폭 BW) 말고는 막는다(막는 원 반지름 1.2 + 인물 0.35, 가장 가까운 원이 a=±2.5라 통로 반폭 0.95).
     const river = add(new THREE.BoxGeometry(30, 0.04, RIVER * 2), mat(0x3f6f8a), FORD, 0.02);
     river.rotation.y = -Math.atan2(ALONG.z, ALONG.x);
-    const shallow = add(new THREE.BoxGeometry(2, 0.04, RIVER * 2), mat(0x8cb8c4), FORD, 0.03);
-    shallow.rotation.y = river.rotation.y;
-    for (let k = -15; k <= 15; k += 0.5) if (Math.abs(k) >= 2) F.block(P(k, 0), RIVER);
-    // 여울을 건너는 디딤돌 두 줄
-    const stoneM = mat(0xa39a8a);
-    for (const a of [-0.45, 0.45]) for (let f = -1; f <= 1.01; f += 0.5) add(new THREE.CylinderGeometry(0.2, 0.25, 0.1, 6), stoneM, P(a + (f * 7 % 0.1), f), 0.06);
+    for (let k = -15; k <= 15; k += 0.5) if (Math.abs(k) >= 2.3) F.block(P(k, 0), RIVER);
+    // 나무다리(makeBridge의 x축이 FRONT 방향): 양쪽 둑의 돌 받침, 물속 말뚝, 다리 끝에 이어지는 흙길
+    const bridge = makeBridge(BL, BW);
+    bridge.position.copy(FORD);
+    bridge.rotation.y = -Math.PI / 4;
+    F.group.add(bridge);
+    const stoneM = mat(0xa39a8a), barkM = mat(PAL.bark), dirtM = mat(0xb39b72);
+    for (const s of [-1, 1]) {
+      const foot = add(new THREE.BoxGeometry(0.5, 0.12, BW + 0.3), stoneM, P(0, s * (BL / 2 - 0.15)), 0.06);
+      foot.rotation.y = bridge.rotation.y;
+      const pad = add(new THREE.BoxGeometry(1.4, 0.03, BW + 0.6), dirtM, P(0, s * (BL / 2 + 0.6)), 0.015);
+      pad.rotation.y = bridge.rotation.y;
+      for (const a of [-BW / 2, BW / 2]) add(new THREE.BoxGeometry(0.12, 0.34, 0.12), barkM, P(a, s * 0.9), 0.1);
+    }
     // 강가 바위(막음)와 갈대 덤불(막지 않음)
     const rockM = [mat(0x8a8274), mat(0x6f685c)];
     for (const [a, f, r] of [[-4.6, 1.5, 0.4], [3.4, 1.55, 0.35], [-8.4, -1.5, 0.45], [8.6, 1.5, 0.4], [6, -1.55, 0.4], [-11, 1.6, 0.5], [-3.6, -1.5, 0.3]]) {
@@ -106,9 +118,11 @@ export default {
       if (p.length() < 13.5) F.block(p, Math.min(rx, rz) * 0.85);
     };
     for (const s of [-1, 1]) for (const f of [-1, 1]) {
-      hill(P(s * 12.2, f * 3.6), 2.2, 2.6, 2.2);
-      hill(P(s * 13.6, f * 6.6), 2.6, 3.6, 2.6);
-      hill(P(s * 15, f * 2.6), 2, 2.2, 2);
+      // 이쪽 둑(f > 0, 카메라 쪽)의 언덕은 낮게 둔다: 낮은 원근 카메라 앞을 가려 관찰자가 이쪽 둑 끝에 서면 화면을 덮었다(2026-11-14)
+      const low = f > 0 ? 0.2 : 1;
+      hill(P(s * 12.2, f * 3.6), 2.2, 2.6 * low, 2.2);
+      hill(P(s * 13.6, f * 6.6), 2.6, 3.6 * low, 2.6);
+      hill(P(s * 15, f * 2.6), 2, 2.2 * low, 2);
     }
     for (let a = -17; a <= 17; a += 2.3) if (Math.abs(a - 3.2) > 3.6) hill(P(a, -14.6 - rand() * 1.6), 1.8 + rand() * 0.6, 3.2 + rand() * 2.6 + Math.abs(a) * 0.08, 2.4);
     hill(P(0.2, -14.2), 1.4, 4, 1.8); // 고개 양쪽 바위벽
@@ -209,6 +223,8 @@ export default {
     const { jacob, family, flock, man, esau, men, crowd, march } = F;
     const L = data.lines;
     g.cam(null, 13);
+    // 다리 위를 걷는 높이: 관찰자·인물·짐승이 다리 판자 위에 선다(moriah.js와 같은 방법)
+    F.onUpdate(() => { for (const o of [g.player, ...Object.values(F.people), ...F.animals]) if (o.visible) o.position.y = bridgeY(o.position.x, o.position.z); });
     await g.talk(L.arrive.slice(0, 3));
     g.meet('jacob');
     // 창 32:7 두 무리로 나눈다: 여종들과 아이들이 떼가 있는 왼쪽 장막 쪽으로 옮겨 간다
@@ -247,11 +263,13 @@ export default {
     });
     removeDeep();
     // 창 32:21 예물이 앞서 건너가고 야곱은 장막에서 밤을 지낸다. 그 사이 밤이 든다.
+    // 밤이 드는 동안 관찰자가 먼 떼 자리에서 다리 앞으로 걸어온다: 멀리 서 있으면 다음 대사가 가리키는 다리가 화면 밖이었다(2026-11-14)
+    const toBridge = g.walkAlong(P(1.8, 2.8), FORD);
     const night = F.acts.night();
     await g.talk(L.sent);
-    await night;
+    await Promise.all([night, toBridge]);
 
-    // 퀘스트 2: 그 밤에 식구와 떼가 여울을 건넌다(창 32:22~23). 관찰자는 디딤돌에서 손을 잡아 주고, 건너편 둑에서 떼를 맞아들인다.
+    // 퀘스트 2: 그 밤에 식구와 떼가 여울을 건넌다(창 32:22~23). 관찰자는 다리에서 손을 잡아 주고, 건너편 둑에서 떼를 맞아들인다.
     F.acts.walkTo(jacob, P(-1.3, 2.1), 1.4);
     g.cam(P(0, -3.5), 15); // 건너편 산줄기 위 밤하늘이 보이게
     await g.talk(L.crossed.slice(0, 2));
@@ -259,7 +277,7 @@ export default {
     await g.quest({
       title: '밤의 여울',
       targets: [{ pos: FORD.clone(), i: 0 }, { pos: FAR.clone(), i: 1 }],
-      text: (t) => ['디딤돌에서 식구들 손 잡아 주기', '건너편 둑에서 떼 맞아들이기'][t.i],
+      text: (t) => ['다리에서 식구들 손 잡아 주기', '건너편 둑에서 떼 맞아들이기'][t.i],
       radius: 1.2, hold: 1.4, holdLabel: (t) => ['손을 잡아 주는 중', '떼를 맞아들이는 중'][t.i],
       onFound: async (t) => {
         if (t.i === 0) family.forEach((f, j) => F.acts.wait(j * 450).then(() => F.acts.walkTo(f, NIGHT(j), 1.3)));
@@ -282,7 +300,8 @@ export default {
     g.note('person/the-man');
     F.acts.face(jacob, man.position);
     F.acts.face(man, jacob.position);
-    g.cam(WRESTLE, 11);
+    // 야곱(0), 그 사람(+0.7), 관찰자의 도전 자리(-2.6)의 가운데를 비춘다. 초점을 씨름 자리에 두면 관찰자와 대천사를 넣으려 옮기다 씨름하는 둘이 잘렸다
+    g.cam(WRESTLE.clone().addScaledVector(ALONG, -1), 12);
     await g.talk(L.crossed.slice(2));
 
     // 도전 자리는 야곱 왼쪽으로 떨어뜨린다(관찰자 오른쪽에 서는 대천사가 씨름하는 둘과 겹치지 않게).
@@ -313,8 +332,10 @@ export default {
       onHit: async (sp, n) => {
         F.acts.speak('jacob');
         shove = 1;
-        // 버틸 때마다 하늘이 조금씩 밝아진다(날이 새도록, 창 32:24)
-        await F.acts.sky(new THREE.Color(0x1c2340).lerp(new THREE.Color(0xe8b890), n / 6), 0.75 - n * 0.1, 0, 500);
+        // 버틸 때마다 하늘이 조금씩 밝아진다(날이 새도록, 창 32:24). 밤(dim 0.95, cool 0.7)에서 새벽(dim 0.3, warm 0.6, cool 0)으로 네 번에 나눠 이어 가고,
+        // 마지막(n=4)이 아래 새벽 값과 같아 그 뒤 호출이 튀지 않는다. 전에는 cool을 빼서 첫 타에 달빛 푸른빛이 낮의 흰 빛으로 튀었다
+        const k = n / 4;
+        await F.acts.sky(new THREE.Color(0x141a30).lerp(new THREE.Color(0xe8b890), k), 0.95 - 0.65 * k, 0.6 * k, 900, 0.7 * (1 - k));
         g.reward(`wrestle/${n}`, 'step');
       },
     });
@@ -378,7 +399,7 @@ export default {
 
     // 창 33:3~4 야곱이 앞서 나아가 일곱 번 땅에 엎드리며 다가가고, 넷째 절 무렵 에서가 달려온다
     g.stage('meet');
-    g.cam(MEET, 13);
+    g.cam(MEET_CAM, 15); // 에서와의 대화가 끝날 때까지 이 초점을 유지한다(말하는 사람마다 옮겨 가지 않게, 아래 g.cam 호출도 같은 값)
     let run = null;
     const bows = (async () => {
       await ahead;
@@ -415,14 +436,13 @@ export default {
     await b12;
     await Promise.all(family.map((f) => F.acts.rise(f, 0.6)));
     // 창 33:8 길에서 만난 예물 떼
-    g.cam(DROVES[2].meet, 13);
     F.acts.face(esau, DROVES[0].meet);
     await g.talk(L.meet.slice(9));
     g.note('creature/goat');
 
     // 막간: 떼가 쉬는 동안 에서와 대화한다.
     await g.interlude(esau);
-    g.cam(MEET, 12);
+    g.cam(MEET_CAM, 15);
     // 막간 동안 관찰자 곁에 왔던 에서가 야곱 앞으로 돌아온다
     F.acts.walkTo(esau, jacob.position.clone().addScaledVector(TO_ESAU, 0.8).addScaledVector(ALONG, 0.7), 1.6).then(() => { F.acts.face(esau, jacob.position); F.acts.face(jacob, esau.position); });
     await g.talk(L.after.slice(0, 1));
