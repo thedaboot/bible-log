@@ -312,6 +312,7 @@ function movePlayer(dt, t) {
   // 'auto': 연출 중에 관찰자가 장면 앞을 비켜 걸어 나간다(키 입력은 받지 않는다). 게임 시간 4초 안에 못 닿으면 그 자리에 선다.
   if (mode === 'auto') autoLeft -= dt;
   if (mode === 'auto' && (!target || autoLeft <= 0)) { target = null; mode = 'none'; }
+  if (mode !== 'auto' && autoDone) { const done = autoDone; autoDone = null; if (mode === 'none') mode = autoBack; autoRoute = false; done(); }
   if (mode === 'walk' || mode === 'auto') {
     // 방향키를 쓰는 놀이판(따라 긋기·받기) 곁에서는 키보드로 걷지 않는다(F58)
     const keysWalk = mode === 'walk' && !(ch?.near && ch.game?.arrows);
@@ -329,7 +330,8 @@ function movePlayer(dt, t) {
     else if (target) {
       want.subVectors(target, player.position).setY(0);
       const d = want.length();
-      if (d < 0.15) { target = null; want.set(0, 0, 0); }
+      if (mode === 'auto' && autoRoute && autoQueue.length && d < 0.3) nextAside(); // 길을 따라 걷는 중(walkAlong): 거쳐 가는 점에 닿으면 다음 점으로
+      else if (d < 0.15) { target = null; want.set(0, 0, 0); }
       else if (mode === 'auto') {
         // 비키는 중 0.5초 넘게 가까워지지 않으면(막힘) 다음 후보로 가고, 후보가 없으면 그 자리에 선다
         if (d < autoBest - 0.02) { autoBest = d; autoStuck = 0; } else autoStuck += dt;
@@ -356,7 +358,20 @@ const prevPos = new THREE.Vector3();
 
 // 연출 무대: 동물과 관찰자가 장면 앞(카메라 쪽)을 비켜 준다. 연출 중에 관찰자가 무대 안에 있으면 가장자리로 걸어 나간다.
 // 비킬 자리는 실제로 설 수 있고 곧게 걸어 닿는 후보(stepAsideSpots, 가까운 순)에서 고르고, 막히면 다음 후보로 간다.
-let autoLeft = 0, autoQueue = [], autoBest = Infinity, autoStuck = 0, playerFace = null;
+let autoLeft = 0, autoQueue = [], autoBest = Infinity, autoStuck = 0, playerFace = null, autoDone = null, autoBack = null, autoRoute = false;
+// 연출 중에 관찰자가 일행을 따라 걷는다(키 입력 없이, 길찾기가 준 길로). 닿거나 sec(게임 시간)가 지나면 끝나고, 끝나면 face를 본다.
+// 퀘스트가 아니라서 이어하기 순번(mark)을 늘리지 않는다(2026-11-13 F68: 산꼭대기까지 관찰자도 함께 오른다)
+function walkAlong(to, face = null, sec = 8) {
+  if (mode !== 'none' && mode !== 'walk') return Promise.resolve();
+  autoBack = mode;
+  autoRoute = true;
+  autoQueue = land().acts.routeTo(player.position.clone().setY(0), to, 0.35);
+  playerFace = face;
+  autoLeft = sec;
+  mode = 'auto';
+  nextAside();
+  return new Promise((res) => { autoDone = res; });
+}
 function nextAside() {
   target = autoQueue.shift() ?? null;
   autoBest = Infinity;
@@ -482,6 +497,9 @@ function moveAngel(dt, t) {
     // (2026-11-14 6B 교정: 전에는 1.4보다 멀어질 때만 따라가서, 관찰자가 비켜 서면 대천사가 제자리에 남아 관찰자 앞을 가렸다.
     //  이제 늘 설 자리로 간다. 거리를 좁혀서 풀지 않는다) 설 자리에 거의 닿으면 멈춘다(제자리에서 떨지 않게)
     angelGoal.copy(ANGEL_SIDE).add(player.position);
+    // 층진 땅(모리아 산): 설 자리가 관찰자와 다른 단이면 몸이 절벽에 묻히거나 허공에 뜬다(2026-11-13 F66). 화면 왼쪽 뒤, 그다음 관찰자 바로 뒤로 옮긴다
+    const hAt = land()?.heightAt;
+    if (hAt) for (const [x, z] of [[-1.25, 0.55], [-0.5, -0.5], [0, 0]]) { if (Math.abs(hAt(angelGoal) - player.position.y) < 0.4) break; angelGoal.set(x, 0, z).add(player.position); }
     if (angel.position.distanceTo(angelGoal) > 0.08) angel.position.lerp(angelGoal, Math.min(1, dt * 2.5));
   }
   angel.children.forEach((c) => (c.position.y += Math.sin(t * 2) * 0.002)); // 둥실거림
@@ -1720,6 +1738,7 @@ function stageApi(id, mod) {
     talk: (lines, opts) => talk(lines, state, opts),
     cam: (p, view, wide = false) => { camFocus = p ?? null; if (view) setView(view, wide); },
     stage: (name) => setStage(name),
+    walkAlong,
     quest: questFind,
     challenge: runChallenge,
     reward: (key, kind, entry, spirit) => reward(`${id}/${key}`, kind, entry, spirit),

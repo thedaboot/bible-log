@@ -143,7 +143,7 @@ export default {
     const messenger = makeAngel();
     messenger.visible = false;
     F.group.add(messenger);
-    Object.assign(F, { abraham, isaac, servants, donkey, ram, wood, altar, messenger });
+    Object.assign(F, { abraham, isaac, servants, donkey, ram, wood, altar, messenger, heightAt });
     F.spots = { start: START, foot: FOOT, peak: PEAK, altar: ALTAR, ...Object.fromEntries(TRAIL.map((t, i) => [`trail${i}`, t])) };
     F.solid = ['altar', 'peak'];
     F.plant();
@@ -157,7 +157,7 @@ export default {
     let sway = 0; // 나뭇단 흔들림(도전 중)
     const climbCam = new THREE.Vector3();
     F.onUpdate((dt, t) => {
-      for (const o of [g.player, abraham, isaac, ram]) if (o.visible) o.position.y = heightAt(o.position);
+      for (const o of [g.player, abraham, isaac, ram]) if (o.visible) o.position.y = heightAt(o.position) + (o.userData.lift ?? 0); // lift: 제단 위에 놓인 높이
       // 오르는 동안 카메라는 관찰자와 산 아래 들판(종들과 나귀) 사이 3분의 1 자리를 본다: 오를수록 아래가 멀어 보인다
       climbCam.copy(g.player.position).lerp(at(FOOT), 0.3);
       sway = Math.max(0, sway - dt * 0.25);
@@ -241,42 +241,76 @@ export default {
     // 길목마다 두 사람을 기다림(인내). 아브라함의 믿음(히 11:17)은 장면이 보여 준다.
     g.reward('climb-done', 'questDone', null, 'patience');
 
-    // 창 22:9~10: 제단. 카메라는 멀리서, 산꼭대기와 저 아래 산자락(종들과 나귀)이 함께 보이게 비추고 서술로만 전한다.
-    // 칼을 드는 동작은 그리지 않는다.
+    // 창 22:9~10: 제단. 카메라는 멀리서, 산꼭대기와 저 아래 산자락(종들과 나귀)이 함께 보이게 비춘다.
+    // 2026-11-13 F69: 손을 뻗는 순간까지 보여 주고 바로 그때 여호와의 사자가 부른다(전에는 서술만 하고 두 사람이 제단 곁에 서 있었다).
+    // 칼과 상처는 그리지 않는다: 이삭이 나무 위에 눕고 아브라함이 빈손을 뻗는 데서 멈춘다(decisions.md).
+    const ISAAC_BY = ALTAR.clone().add(V(0.2, 1.2));
+    const layIsaac = (on) => {
+      const from = isaac.position.clone(), to = on ? ALTAR.clone().add(V(-0.57, 0.57)) : ISAAC_BY, l0 = isaac.userData.lift ?? 0, l1 = on ? 1 : 0;
+      if (on) isaac.rotation.y = -Math.PI * 0.25; // 누운 몸은 발(기준점)에서 뒤로 뻗는다: 발을 화면 왼쪽에 두어 몸 가운데가 나무 위에, 머리가 아브라함 쪽에 온다
+      F.acts.lie(isaac, !on);
+      return tween(900, (p) => { isaac.position.lerpVectors(from, to, easeOut(p)); isaac.userData.lift = l0 + (l1 - l0) * easeOut(p); });
+    };
+    // 관찰자도 마지막 계단을 걸어 꼭대기 가장자리(제단을 비켜 선 자리)까지 함께 오른다(F68). 전에는 셋째 단에 남아 제단이 화면 밖이었다
     g.stage('peak');
-    await Promise.all([F.acts.walkTo(abraham, ALTAR.clone().add(V(0.9, -0.6)), 1), F.acts.walkTo(isaac, ALTAR.clone().add(V(-0.7, 0.9)), 1)]);
+    await Promise.all([
+      F.acts.walkTo(abraham, ALTAR.clone().add(V(0.9, -0.6)), 1.6), F.acts.walkTo(isaac, ALTAR.clone().add(V(-0.7, 0.9)), 1.6),
+      g.walkAlong(PEAK.clone().add(V(2.3, 0.4)), ALTAR),
+    ]);
     g.cam(at(PEAK).lerp(FOOT, 0.4), 18);
     F.acts.carry(wood, null);
     wood.rotation.set(0, 0, 0);
     altar.visible = true;
     await tween(800, (p) => altar.scale.setScalar(1.1 * Math.max(0.01, easeBack(p))));
     wood.position.copy(at(ALTAR)).y += 0.95;
-    await g.talk(data.lines.altar);
+    await g.talk(data.lines.altar, { onLine: (l, i) => {
+      if (i !== 1) return;
+      layIsaac(true);
+      F.acts.face(abraham, ALTAR);
+      abraham.userData.armPose = 'hug';
+    } });
 
     // 창 22:11~12: 여호와의 사자가 부른다. 여기서 멈춘다.
     const peakY = heightAt(ALTAR);
     messenger.position.copy(ALTAR).add(V(1.4, -1.4)).setY(peakY + 3);
     messenger.visible = true;
     g.cam(at(ALTAR), 12);
-    await tween(1000, (p) => messenger.position.setY(peakY + 3 - 1.6 * easeOut(p)));
+    await tween(600, (p) => messenger.position.setY(peakY + 3 - 1.6 * easeOut(p)));
     messenger.lookAt(abraham.position.x, messenger.position.y, abraham.position.z);
-    F.acts.face(abraham, messenger.position);
-    await g.talk(data.lines.call);
+    // 부르는 소리를 듣고서야 손을 거두고 돌아본다(창 22:11 "제가 여기 있습니다")
+    await g.talk(data.lines.call, { onLine: (l, i) => {
+      if (i !== 1) return;
+      abraham.userData.armPose = null;
+      F.acts.face(abraham, messenger.position);
+    } });
+    await layIsaac(false);
     F.acts.face(isaac, abraham.position);
-    await F.acts.walkTo(isaac, abraham.position.clone().add(V(-0.7, 0.7)), 1.4);
 
-    // 창 22:13~14 숫양과 여호와 이레. 숫양은 빛 속에서 보이지 않게 된다(잡는 장면은 그리지 않는다).
+    // 창 22:13~14 숫양과 여호와 이레. 2026-11-13 F70: 아브라함이 덤불로 가서 숫양을 붙들어 제단으로 끌고 와 올린다(전에는 숫양이 혼자 걸어왔다).
+    // 제단 위의 숫양은 빛 속에서 보이지 않게 된다(잡는 장면은 그리지 않는다).
     ram.visible = true;
     g.note('creature/ram');
     g.cam(at(THICKET), 12);
     await g.talk(data.lines.ram.slice(0, 1));
-    ram.userData.route = [ALTAR.clone().add(V(-0.7, -0.4))];
-    await F.acts.walkTo(abraham, ALTAR.clone().add(V(0.9, 0.2)), 1.2);
+    await F.acts.walkTo(abraham, ram.position.clone().add(V(0.9, 0.1)), 1.6);
+    F.acts.face(abraham, ram.position);
+    abraham.userData.armPose = 'grip';
+    Object.assign(ram.userData, { still: false, lead: abraham, leadOffset: V(-0.5, 0.35) });
     g.cam(at(ALTAR), 12);
-    await F.acts.pillar(ALTAR);
-    await tween(1400, (p) => ram.scale.setScalar(Math.max(0.001, 1 - p)));
-    ram.visible = false;
+    // 끌고 와서 올리는 동안 서술("가서 그 숫양을 아들 대신 번제로 드렸다")이 함께 흐른다: 대사 없이 기다리는 구간을 두지 않는다
+    const offering = (async () => {
+      await F.acts.walkTo(abraham, ALTAR.clone().add(V(0.9, 0.2)), 1.2);
+      abraham.userData.armPose = null;
+      F.acts.face(abraham, ALTAR);
+      Object.assign(ram.userData, { lead: null, still: true });
+      const from = ram.position.clone();
+      await tween(500, (p) => { ram.position.lerpVectors(from, ALTAR, easeOut(p)); ram.userData.lift = easeOut(p); });
+      await F.acts.pillar(ALTAR);
+      await tween(1400, (p) => ram.scale.setScalar(Math.max(0.001, 1 - p)));
+      ram.visible = false;
+    })();
     await g.talk(data.lines.ram.slice(1, 3));
+    await offering;
     await F.acts.pillar(null);
     messenger.visible = true;
     await g.talk(data.lines.ram.slice(3, 4));

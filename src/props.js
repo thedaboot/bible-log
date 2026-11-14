@@ -1588,7 +1588,7 @@ export function makeWaypoint() {
       if (!target) return;
       marker.position.set(target.x, (target.y ?? 0) + 2.6 + Math.sin(t * 3) * 0.2, target.z);
       marker.rotation.y = t * 1.5;
-      ring.position.set(target.x, 0.12, target.z);
+      ring.position.set(target.x, (target.y ?? 0) + 0.12, target.z); // 목표의 높이에 놓는다(산 위 길목의 고리가 산 아래 땅에 그려졌다, 2026-11-13 F66)
       ring.scale.setScalar(1 + (t % 1.2) * 0.4);
       ringM.opacity = 0.6 * (1 - (t % 1.2) / 1.2);
       dir.subVectors(target, from).setY(0);
@@ -1597,7 +1597,7 @@ export function makeWaypoint() {
       if (far) {
         dir.normalize();
         const reach = 1.1 + (t * 1.2 % 1) * 0.4; // 목표 쪽으로 미끄러지듯 움직인다
-        arrowPivot.position.set(from.x + dir.x * reach, 0.15, from.z + dir.z * reach);
+        arrowPivot.position.set(from.x + dir.x * reach, from.y + 0.15, from.z + dir.z * reach);
         arrowPivot.rotation.y = Math.atan2(dir.x, dir.z);
       }
     },
