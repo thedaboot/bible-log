@@ -107,7 +107,8 @@ export default {
     await g.talk(data.lines.spring.slice(0, 6));
     g.note('place/beer-lahai-roi');
     await g.talk(data.lines.spring.slice(6));
-    await tween(900, (p) => messenger.position.setY(2 * easeOut(p)));
+    // 퇴장: 사람들 사이로 지나가지 않게 자리에서 곧게 하늘로 올라, 화면 위로 벗어난 뒤에 숨긴다(가속해서 오른다)
+    await tween(1500, (p) => messenger.position.setY(7 * p * p));
     messenger.visible = false;
 
     // 막간: 샘가에서 하갈과 대화한다.
@@ -115,8 +116,8 @@ export default {
     g.stage(null);
 
     // 창 16:15~21:19: 여러 해 뒤 브엘세바 광야. 물이 떨어지고 아이를 덤불 아래 둔다.
-    await F.acts.dusk();
-    await F.acts.day();
+    // 저녁빛(1.2초) 정점에서 새 장면으로 바꾸고 같은 길이로 낮빛에 돌아와, 장면이 튀지 않고 빛 속에서 이어진다(총 2.4초)
+    await F.acts.sky(0xf0cfa8, 0.16, 0.85, 1200);
     g.note('person/ishmael');
     g.note('place/beersheba');
     ishmael.visible = true;
@@ -124,6 +125,7 @@ export default {
     g.place(BUSH.clone().add(V(3.6, 2.8)));
     g.cam(BUSH, 12);
     g.stage('bush');
+    await F.acts.sky(0xf0e2c2, 0, 0, 1200);
     skin.visible = true;
     F.acts.carry(skin, hagar);
     await g.talk(data.lines.years.slice(0, 3));

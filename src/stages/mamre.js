@@ -23,7 +23,7 @@ const GUESTS = [-1.3, 0, 1.3].map((k) => OAK.clone().add(V(1.1, 1.1)).addScaledV
 const SOURCES = [
   { id: 'water', name: '물', text: '우물가에서 물 받기', pos: V(5.5, -3), color: PAL.water },
   { id: 'bread', name: '떡', text: '사라에게서 떡 받기', pos: TENT.clone().add(V(-0.4, 2.4)), color: 0xe8c890 },
-  { id: 'curds', name: '엉긴 젖', text: '소 떼 곁에서 엉긴 젖 받기', pos: V(5, 2.2), color: 0xf6f0dc },
+  { id: 'curds', name: '엉긴 젖', text: '소 곁에 머물러 엉긴 젖 받기', pos: V(5.9, 1.1), color: 0xf6f0dc }, // 소 떼 터(7, 0.5)에서 1.25 떨어진 자리. 실제 목표는 퀘스트 때 소 곁에서 다시 잡는다
 ];
 
 // 창 18:12 속으로 웃음: 몸을 움츠려 낮추고 손을 입가로 모은 채 어깨를 들썩인다.
@@ -139,7 +139,19 @@ export default {
     const removeGreet = g.greet(sarah, data.greetings.sarah, 'sarah');
     // 퀘스트 안에서 다른 퀘스트를 부르면 남은 목표가 지워지므로, 하나씩 받아 나른다.
     for (const [i, s] of SOURCES.entries()) {
-      await g.quest({ title: '손님 대접하기', targets: [s], text: () => s.text, radius: 1.8 });
+      let tgt = s, hold = {};
+      if (s.id === 'curds') {
+        // 소는 돌아다니므로 받는 동안 세워 두고, 지금 선 자리 곁(충돌 없는 쪽)을 목표로 삼는다. 멀리서는 완료되지 않는다.
+        const cow = F.cows[0], cu = cow.userData;
+        [...F.cows, F.calf].forEach((a) => { a.userData.still = true; a.userData.dest = null; });
+        const side = [V(-1.1, 0.6), V(-0.6, 1.2), V(0.6, 1.2), V(-1.2, -0.4)].map((o) => cow.position.clone().add(o).setY(0)).find((p) => !F.collide(p.clone(), 0.35)) ?? s.pos;
+        cu.yaw = Math.atan2(side.z - cow.position.z, side.x - cow.position.x);
+        tgt = { ...s, pos: side };
+        hold = { hold: 1.2, holdLabel: () => '소에게서 엉긴 젖 받는 중' };
+        F.acts.walkTo(F.servant, side.clone().add(V(0.5, 0.9)), 2).then(() => F.acts.face(F.servant, cow.position));
+      }
+      await g.quest({ title: '손님 대접하기', targets: [tgt], text: () => s.text, radius: hold.hold ? 1.3 : 1.8, ...hold });
+      if (s.id === 'curds') [...F.cows, F.calf].forEach((a) => { a.userData.still = false; });
       dishes[i].visible = true;
       F.acts.carry(dishes[i], g.player);
       await g.quest({ title: '손님 대접하기', targets: [{ pos: TABLE }], text: () => `${s.name} 나무 아래 상에 놓기`, radius: 1.8 });
