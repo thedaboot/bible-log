@@ -109,10 +109,16 @@ export default {
     g.hold('jar');
 
     // 리브가가 물동이를 메고 나온다(창 24:15~19)
+    // 브두엘의 집 문(+x 면, 벽 바깥 x -5.54, 문 z -4.86)으로 걸어 나온다. 집은 반지름 1.5의 막는 원이라 안에서는 걸을 수 없어,
+    // 벽 속(x -5.95)에서 막는 원 가장자리(-5.02, -4.79)까지는 직접 밀어 내고 그 뒤부터 우물까지 걷는다(걷기 속도 2.8, 약 2.4초).
+    const DOOR_IN = V(-5.95, -4.86), DOOR_OUT = V(-5.02, -4.79);
+    rebekah.position.copy(DOOR_IN);
+    rebekah.rotation.y = Math.PI / 2;
     rebekah.visible = true;
     g.cam(WELL, 12);
     g.stage('well');
-    await F.acts.walkTo(rebekah, WELL.clone().add(V(-0.6, 1.3)), 1.6);
+    await tween(500, (p) => rebekah.position.lerpVectors(DOOR_IN, DOOR_OUT, p));
+    await F.acts.walkTo(rebekah, WELL.clone().add(V(-0.6, 1.3)), 2.8);
     F.acts.face(rebekah, servant.position);
     F.acts.face(servant, rebekah.position);
     g.meet('rebekah');

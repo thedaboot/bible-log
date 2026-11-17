@@ -40,6 +40,7 @@ export default async (t) => {
         const line = await t.ev(`document.getElementById('line').textContent`);
         const m = marks.find(([s, name]) => line.includes(s) && !shot.has(name));
         if (m) { shot.add(m[1]); await t.wait(Number(process.env.SHOT_WAIT ?? 1500)); await t.shot(m[1]); if (process.env.PROBE) console.log('PROBE', m[1], JSON.stringify(await t.ev(process.env.PROBE))); }
+        if (m && process.env.TRAIL) { await press('Space', ' ', 0); for (let i = 1; i <= Number(process.env.TRAIL); i++) { await t.wait(Number(process.env.TRAILMS ?? 400)); await t.shot(`${m[1]}-t${i}`); if (process.env.PROBE) console.log('PROBE', `${m[1]}-t${i}`, JSON.stringify(await t.ev(process.env.PROBE))); } continue; }
         await press('Space', ' ', 100); continue;
       }
       if (await vis('nextBtn')) { seen.add('다음 버튼'); await t.ev(`document.getElementById('nextBtn').focus(); 1`); await press('Enter', 'Enter', 600); continue; }
@@ -49,7 +50,9 @@ export default async (t) => {
         // 놀이 종류(data-kind)에 맞춰 실제 키로 한 판 해낸다(F58: 연타·균형·따라 긋기·순서 기억·받기, 예전 time·rhythm·hold)
         const kind = await t.ev(`document.getElementById('challenge').dataset.kind`);
         seen.add(`놀이 ${kind}`);
+        let cn = 0; const ctimer = process.env.CHSHOT && kind ? setInterval(async () => { if (cn < Number(process.env.CHSHOT)) { cn++; try { await t.shot(`ch-${id}-${cn}`); if (process.env.PROBE) console.log('PROBE', `ch-${id}-${cn}`, JSON.stringify(await t.ev(process.env.PROBE))); } catch {} } }, Number(process.env.CHMS ?? 900)) : null;
         const ok = await playOnce(t, kind);
+        if (ctimer) clearInterval(ctimer);
         await t.ev(`__dev.speed = 4; 1`);
         if (!ok) seen.add(`놀이 ${kind} 실패 한 번`);
         await t.wait(400);
